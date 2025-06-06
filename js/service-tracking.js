@@ -728,8 +728,13 @@
     if (needsMainTableRefresh) {
         console.log("ST Module: Triggering main table refresh due to Realtime event.");
         refreshMainServicesTable(); 
-        if (notificationMessage) {
+        
+        // CORRECTION: Check if the service-tracking module is currently active before showing a notification.
+        const mainContent = document.querySelector('main');
+        if (notificationMessage && mainContent && mainContent.dataset.currentModule === 'service-tracking') {
             showCustomNotification(notificationMessage, notificationType);
+        } else if (notificationMessage) {
+            console.log(`ST Module: Notification suppressed. Current module is '${mainContent?.dataset.currentModule}', not 'service-tracking'.`);
         }
     }
 
@@ -739,6 +744,10 @@
     }
   }
 
+  // ... (El resto del archivo permanece igual hasta la sección 13)
+  // ... (All other sections like CRUD, Modals, DataTables setup, etc., remain unchanged)
+  // ...
+  
   // SECTION 5: SUPABASE STORAGE HELPERS
   async function uploadServiceDocument(serviceId, serviceCategory, docCategory, docType, file) {
     if (!file) { showCustomNotification("No file selected for upload.", "warning"); return null; }
