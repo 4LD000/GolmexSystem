@@ -596,13 +596,11 @@
     if (serviceChannels.length > 0) {
         console.log("ST Module: Unsubscribing from all service channels:", serviceChannels.map(c => c.topic));
         const removalPromises = serviceChannels.map(channel => {
-            return channel.unsubscribe() 
-                .then(() => supabase.removeChannel(channel))
-                .catch(error => console.error(`ST Module: Error during unsubscribe/removeChannel for ${channel.topic}:`, error));
+            return supabase.removeChannel(channel);
         });
         try {
             await Promise.all(removalPromises);
-            console.log("ST Module: All realtime channels unsubscribed and removal attempts completed.");
+            console.log("ST Module: All realtime channels removed successfully.");
         } catch (aggregateError) {
             console.error("ST Module: Error during Promise.all for channel removal:", aggregateError);
         }
@@ -618,10 +616,7 @@
       return;
     }
 
-    if (serviceChannels.length > 0) {
-        console.warn("ST Module: Stale channels detected before new subscription. Attempting cleanup.");
-        await unsubscribeAllServiceChanges();
-    }
+    await unsubscribeAllServiceChanges(); // *** FIX: Ensure all previous channels are removed before creating new ones.
 
     console.log("ST Module: Attempting to subscribe to service changes for user:", currentUserST.id);
     const newChannels = [];
@@ -631,47 +626,31 @@
         const channelName = `realtime-services-${tableName}-st-${currentUserST.id.slice(0, 8)}`;
 
         console.log(`ST Module: Setting up channel: ${channelName}`);
-        let channel = supabase.channel(channelName, {
+        
+        const channel = supabase.channel(channelName, {
             config: { broadcast: { ack: true } },
         });
 
-        // This defensive check helps avoid errors if the channel object's API changes or is in a weird state.
-        if (typeof channel.off === 'function') {
-            channel.off('postgres_changes');
-        } else {
-            console.warn(`ST Module: Channel object for ${channelName} does NOT have 'off' method. State: ${channel.state}. Skipping .off() call.`);
-        }
-        
-        try {
-            channel
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: tableName },
-                    (payload) => {
-                        handleRealtimeChangeST(payload, categoryKey);
-                    }
-                );
-
-            if (channel.state !== 'joined' && channel.state !== 'joining') {
-                channel.subscribe((status, err) => {
-                    if (status === 'SUBSCRIBED') {
-                        console.log(`ST Module: RT Successfully SUBSCRIBED to ${tableName} (${channelName})`);
-                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                        console.error(`ST Module: RT Subscription FAILED/TIMED_OUT for ${tableName} (${channelName}). Error:`, err);
-                        supabase.removeChannel(channel).catch(e => console.error(`ST Module: Error removing failed channel ${channelName}`, e));
-                        const indexInNew = newChannels.indexOf(channel);
-                        if (indexInNew > -1) newChannels.splice(indexInNew, 1);
-                    } else if (status === 'CLOSED') {
-                        console.warn(`ST Module: RT Subscription to ${tableName} (${channelName}) was CLOSED.`);
-                    }
-                });
-            } else {
-                console.log(`ST Module: Channel ${channelName} already in state ${channel.state}. Listeners attached. Not calling subscribe() again.`);
-            }
-            newChannels.push(channel); 
-        } catch (e) {
-            console.error(`ST Module: CRITICAL error setting up listeners or subscribing to channel ${channelName}.`, e);
-        }
+        channel
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: tableName },
+                (payload) => {
+                    handleRealtimeChangeST(payload, categoryKey);
+                }
+            )
+            .subscribe((status, err) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log(`ST Module: RT Successfully SUBSCRIBED to ${tableName} (${channelName})`);
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error(`ST Module: RT Subscription FAILED/TIMED_OUT for ${tableName} (${channelName}). Error:`, err);
+                } else if (status === 'CLOSED') {
+                    console.warn(`ST Module: RT Subscription to ${tableName} (${channelName}) was CLOSED.`);
+                }
+            });
+            
+        newChannels.push(channel);
     });
+    
     serviceChannels = newChannels; 
     console.log("ST Module: Service change subscriptions setup complete for channels:", serviceChannels.map(c => c.topic));
   }
@@ -729,7 +708,6 @@
         console.log("ST Module: Triggering main table refresh due to Realtime event.");
         refreshMainServicesTable(); 
         
-        // CORRECTION: Check if the service-tracking module is currently active before showing a notification.
         const mainContent = document.querySelector('main');
         if (notificationMessage && mainContent && mainContent.dataset.currentModule === 'service-tracking') {
             showCustomNotification(notificationMessage, notificationType);
@@ -743,7 +721,7 @@
         handleFilterArchive(); 
     }
   }
-
+  
   // ... (El resto del archivo permanece igual hasta la sección 13)
   // ... (All other sections like CRUD, Modals, DataTables setup, etc., remain unchanged)
   // ...
@@ -1774,15 +1752,8 @@
         console.warn("ST Module: Main services table HTML element or tableViewTypeSelect not found for refresh.");
         return;
     }
-    if (!servicesDataTable || !$.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
-        console.log("ST Module: Main DataTable not initialized or JS instance lost, calling initializeOrUpdateTable for setup.");
-        initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, null); 
-        return;
-    }
-
+    
     const viewType = tableViewTypeSelect.value;
-    console.log("ST Module: Refreshing main table data. ViewType:", viewType, "allServicesData count:", allServicesData.length);
-
     const tableData = allServicesData.filter(s => {
         if (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS) {
             return false; 
@@ -1793,9 +1764,9 @@
         return filterServicesForCurrentMonthDisplay([s]).length > 0;
     });
 
-    console.log("ST Module: Data for main table refresh (after filtering):", tableData.length);
-    servicesDataTable.clear().rows.add(tableData).draw(false); 
-    updateDashboard(allServicesData); 
+    // This now calls the robust table update function
+    initializeOrUpdateTable(viewType, servicesTableHtmlElement, null, tableData);
+    updateDashboard(allServicesData);
   }
 
   function initializeOrUpdateTable(viewType = "all", tableElement = servicesTableHtmlElement, columns = null, dataToLoad = null, orderByIdx = null) {
@@ -1803,120 +1774,94 @@
         console.warn("ST Module: initializeOrUpdateTable - Table element not found for view:", viewType);
         return null;
     }
-    $(tableElement).attr('data-viewtype', viewType); 
-
-    let tableDataForInit;
+    
     const isMainServicesTable = (tableElement === servicesTableHtmlElement);
     const currentDtInstance = $.fn.DataTable.isDataTable(tableElement) ? $(tableElement).DataTable() : null;
     const newColumnsDefinition = columns || columnDefinitions[viewType] || columnDefinitions.all;
     
-    const isStructuralChange = columns !== null || 
-                               (!currentDtInstance || currentDtInstance.columns().count() !== newColumnsDefinition.length);
+    // Check if the table structure (columns) has actually changed.
+    const isStructuralChange = !currentDtInstance || currentDtInstance.columns().count() !== newColumnsDefinition.length;
 
-    if (dataToLoad !== null) { 
-        tableDataForInit = dataToLoad;
-    } else if (isMainServicesTable) { 
-        tableDataForInit = allServicesData.filter(s => {
-            if (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS) return false;
+    let tableDataForProcessing;
+
+    if (dataToLoad !== null) {
+        tableDataForProcessing = dataToLoad;
+    } else {
+        // Fallback to filtering all data if dataToLoad is not provided
+        tableDataForProcessing = allServicesData.filter(s => {
+            if (isMainServicesTable && (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS)) return false;
             if (viewType !== "all" && s.serviceCategoryInternal !== viewType) return false;
-            return filterServicesForCurrentMonthDisplay([s]).length > 0;
+            if (isMainServicesTable) return filterServicesForCurrentMonthDisplay([s]).length > 0;
+            return true;
         });
-    } else { 
-        tableDataForInit = allServicesData.filter(s => viewType === "all" || s.serviceCategoryInternal === viewType);
     }
 
-    if (isMainServicesTable && currentDtInstance && !isStructuralChange && dataToLoad === null) {
-        console.log("ST Module: initializeOrUpdateTable redirecting to refreshMainServicesTable for data-only update on main table.");
-        refreshMainServicesTable(); 
-        return servicesDataTable; 
+    if (currentDtInstance && !isStructuralChange) {
+        // *** CORE FIX: If table exists and columns are the same, JUST update data.
+        console.log(`ST Module: Refreshing data only for table ${tableElement.id}`);
+        currentDtInstance.clear().rows.add(tableDataForProcessing).draw(false);
+        return currentDtInstance;
     }
 
-    console.log(`ST Module: Full (Re)Initialization of table for viewType: ${viewType}. Data count: ${tableDataForInit?.length}. Structural Change: ${isStructuralChange}`);
+    // --- Full Re-initialization Logic ---
+    console.log(`ST Module: Full (Re)Initialization of table for ${tableElement.id}. Structural Change: ${isStructuralChange}`);
     
-    const defaultOrderIdx = orderByIdx !== null ? orderByIdx : newColumnsDefinition.findIndex(c => c.data === 'service_display_id' || c.data === 'etd' || c.data === 'created_at');
-    const orderDirection = (newColumnsDefinition[defaultOrderIdx]?.data === 'etd' && viewType === 'all' && isMainServicesTable) ? 'asc' : 'desc';
-
-    if (isMainServicesTable) {
-        updateDashboard(allServicesData); 
-    }
-
-    if (currentDtInstance) { 
-        console.log(`ST Module: Destroying existing DataTable for ${tableElement.id}`);
-        currentDtInstance.clear().destroy();
-        // $(tableElement).empty(); // CORRECTION: This line was removed. It was too aggressive and caused table header duplication on redraw. .destroy() is sufficient.
-        if (isMainServicesTable) {
-            servicesDataTable = null;
-        } else if (tableElement === archiveServicesTableHtmlElement) {
-            archiveServicesDataTable = null;
-        }
+    if (currentDtInstance) {
+        currentDtInstance.destroy();
+        $(tableElement).empty(); // More aggressive cleanup to prevent duplication
     }
     
-    if (!tableElement.querySelector("thead")) {
-        const thead = document.createElement('thead');
-        tableElement.appendChild(thead);
-    }
-    if (!tableElement.querySelector("tbody")) {
-        const tbody = document.createElement('tbody');
-        tableElement.appendChild(tbody);
-    }
-    
-    const thead = tableElement.querySelector("thead");
-    if (!thead) { console.error("ST Module: Could not find or create thead in tableElement for view:", viewType); return null; }
-
+    // Rebuild the header
+    const thead = tableElement.querySelector("thead") || document.createElement('thead');
+    tableElement.appendChild(thead);
     let headerHtml = "<tr>";
     newColumnsDefinition.forEach(col => {
         if (col.visible !== false) headerHtml += `<th>${col.title}</th>`;
     });
     headerHtml += "</tr>";
     thead.innerHTML = headerHtml;
-
-
-    let dtInstance = null;
-    try {
-      if (typeof $ === "function" && $.fn.DataTable) {
-        dtInstance = $(tableElement).DataTable({
-          data: tableDataForInit,
-          columns: newColumnsDefinition,
-          scrollX: true,
-          autoWidth: false,
-          responsive: true,
-          language: { search: "Search:", lengthMenu: "Show _MENU_ entries", info: "Showing _START_ to _END_ of _TOTAL_ entries", infoEmpty: "No services to display", infoFiltered: "(filtered from _MAX_ total)", paginate: { first: "<i class='bx bx-chevrons-left'></i>", last: "<i class='bx bx-chevrons-right'></i>", next: "<i class='bx bx-chevron-right'></i>", previous: "<i class='bx bx-chevron-left'></i>" }, emptyTable: `No ${viewType !== 'all' ? viewType : ''} services found${isMainServicesTable ? ' for the current month' : ''}.`},
-          order: [[defaultOrderIdx >= 0 ? defaultOrderIdx : 0, orderDirection]],
-          createdRow: function (row, data, dataIndex) { 
-            if (data && data.serviceCategoryInternal) $(row).addClass(getCategoryTextAndClass(data.serviceCategoryInternal).rowClass);
-          },
-          drawCallback: function (settings) { 
-            var api = new $.fn.dataTable.Api(settings);
-            api.columns.adjust();
-            if ($.fn.dataTable.Responsive && api.responsive && typeof api.responsive.recalc === 'function') {
-                api.responsive.recalc();
-            }
-          },
-        });
-        if (dtInstance) {
-            setTimeout(() => {
-                dtInstance.columns.adjust();
-                if (dtInstance.responsive && typeof dtInstance.responsive.recalc === 'function') {
-                    dtInstance.responsive.recalc();
-                }
-            }, 150); 
-        }
-      } else {
-        showCustomNotification("Critical Error: Table functionality (jQuery/DataTables) is unavailable.", "error", 7000);
-      }
-    } catch (e) {
-      showCustomNotification(`Error initializing table for ${viewType}: ${e.message}.`, "error", 7000);
-      console.error(`ST Module: EXCEPTION initializing DataTables for view '${viewType}':`, e);
+    
+    // Ensure tbody exists
+    if (!tableElement.querySelector("tbody")) {
+        tableElement.appendChild(document.createElement('tbody'));
     }
+
+    const defaultOrderIdx = orderByIdx !== null ? orderByIdx : newColumnsDefinition.findIndex(c => c.data === 'service_display_id' || c.data === 'etd' || c.data === 'created_at');
+    const orderDirection = (newColumnsDefinition[defaultOrderIdx]?.data === 'etd' && viewType === 'all' && isMainServicesTable) ? 'asc' : 'desc';
+
+    let dtInstance = $(tableElement).DataTable({
+        data: tableDataForProcessing,
+        columns: newColumnsDefinition,
+        scrollX: true,
+        autoWidth: false,
+        responsive: true,
+        language: { search: "Search:", lengthMenu: "Show _MENU_ entries", info: "Showing _START_ to _END_ of _TOTAL_ entries", infoEmpty: "No services to display", infoFiltered: "(filtered from _MAX_ total)", paginate: { first: "<i class='bx bx-chevrons-left'></i>", last: "<i class='bx bx-chevrons-right'></i>", next: "<i class='bx bx-chevron-right'></i>", previous: "<i class='bx bx-chevron-left'></i>" }, emptyTable: `No ${viewType !== 'all' ? viewType : ''} services found${isMainServicesTable ? ' for the current month' : ''}.`},
+        order: [[defaultOrderIdx >= 0 ? defaultOrderIdx : 0, orderDirection]],
+        createdRow: function (row, data, dataIndex) { 
+          if (data && data.serviceCategoryInternal) $(row).addClass(getCategoryTextAndClass(data.serviceCategoryInternal).rowClass);
+        },
+        drawCallback: function (settings) { 
+          var api = new $.fn.dataTable.Api(settings);
+          api.columns.adjust();
+          if ($.fn.dataTable.Responsive && api.responsive && typeof api.responsive.recalc === 'function') {
+              api.responsive.recalc();
+          }
+        },
+    });
 
     if (isMainServicesTable) {
         servicesDataTable = dtInstance;
     } else if (tableElement === archiveServicesTableHtmlElement) {
         archiveServicesDataTable = dtInstance;
     }
+    
+    setTimeout(() => {
+        dtInstance.columns.adjust().responsive.recalc();
+    }, 150);
+
     return dtInstance;
   }
-
+  
   // SECTION 10: ARCHIVE MODAL LOGIC
   function populateArchiveMonthSelect() {
     if (!archiveMonthSelect) return;
@@ -2000,7 +1945,7 @@
     } else {
         noArchiveResultsMessageEl.style.display = "none";
         const archiveColumns = [...columnDefinitions.all]; 
-        archiveServicesDataTable = initializeOrUpdateTable(selectedServiceType, archiveServicesTableHtmlElement, archiveColumns, dataForArchive, 0); 
+        initializeOrUpdateTable(selectedServiceType, archiveServicesTableHtmlElement, archiveColumns, dataForArchive, 0); 
     }
   }
 
@@ -2369,7 +2314,6 @@
         console.log(`ST Module: Auth change - User session confirmed (SAME user: ${currentUserST.id}). Ensuring subscriptions are healthy.`);
         if (serviceChannels.length === 0 || serviceChannels.some(ch => ch.state !== 'joined')) {
            console.warn("ST Module: Subscriptions not healthy or not present for current user. Re-subscribing.");
-           await unsubscribeAllServiceChanges(); 
            await subscribeToServiceChanges(); 
         } else {
            console.log("ST Module: Subscriptions appear healthy for the current user.");
@@ -2396,12 +2340,10 @@
       if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
       if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
       
-      if (tableViewTypeSelect) {
-        initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, null);
-      } else { 
-        initializeOrUpdateTable("all", servicesTableHtmlElement, null, null);
-      }
+      // Initialize tables empty first to avoid errors
+      initializeOrUpdateTable("all", servicesTableHtmlElement, null, []);
       updateDashboard([]); 
+      
       isServiceTrackingInitialized = true; 
     }
 
@@ -2412,16 +2354,10 @@
     $(window).on('resize.serviceTrackingST layoutChange.serviceTrackingST', function () {
         setTimeout(() => { 
             if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
-                servicesDataTable.columns.adjust();
-                if (servicesDataTable.responsive && typeof servicesDataTable.responsive.recalc === 'function') {
-                     servicesDataTable.responsive.recalc();
-                }
+                servicesDataTable.columns.adjust().responsive.recalc();
             }
             if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
-                archiveServicesDataTable.columns.adjust();
-                if (archiveServicesDataTable.responsive && typeof archiveServicesDataTable.responsive.recalc === 'function') {
-                    archiveServicesDataTable.responsive.recalc();
-                }
+                archiveServicesDataTable.columns.adjust().responsive.recalc();
             }
         }, 150);
     });
