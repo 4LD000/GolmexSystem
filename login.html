@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - GoldMex</title>
+  <!-- Asegúrate que la ruta a login-style.css sea correcta -->
+  <link rel="stylesheet" href="css/login-style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Google Sign-In SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- jwt-decode para decodificar el token de Google, aunque con Supabase signInWithIdToken no es estrictamente necesario decodificarlo en el cliente para la info básica -->
+  <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+</head>
+
+<body class="login-page">
+
+  <ul class="animated-bg-flow">
+    <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
+    <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
+    <li></li><li></li><li></li><li></li><li></li>
+  </ul>
+
+  <div class="login-wrapper">
+    <!-- Asegúrate que la ruta a tu logo sea correcta -->
+    <img src="assets/logo.png" alt="GoldMex Logo" class="login-logo" 
+         onerror="this.onerror=null; this.src='https://placehold.co/120x50/1a365d/d4af37?text=GoldMex+Logo&font=montserrat';" />
+    <h2>GoldMex System</h2>
+    
+    <!-- Contenedor para el botón de Google Sign-In -->
+    <div id="g_id_onload" 
+      data-client_id="686783851365-nip1ufvpr15293d39ifisvs4q9182ab1.apps.googleusercontent.com" 
+      data-callback="handleCredentialResponse" 
+      data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin" 
+      data-type="standard" 
+      data-size="large" 
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-shape="rectangular"
+      data-logo_alignment="left">
+    </div>
+    <div id="login-error-message" style="color: var(--goldmex-accent, #e31837); margin-top: 15px; font-size: 0.9rem; display: none;"></div>
+  </div>
+
+  <script>
+    // Configuración de Supabase (igual que en tu script.js principal)
+    const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
+    let supabase;
+
+    try {
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("Supabase client initialized in login page.");
+      } else {
+        console.error("Supabase library not loaded or createClient is not a function.");
+        displayLoginError("Error de inicialización. Por favor, refresca la página.");
+      }
+    } catch (error) {
+      console.error("Error initializing Supabase in login.html:", error);
+      displayLoginError("No se pudo inicializar el servicio de datos. Por favor, refresca.");
+    }
+
+    // Dominios permitidos para tu aplicación Goldmex System
+    const ALLOWED_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+    const ALLOWED_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"]; // Ajusta según necesites
+
+    function isUserAllowed(email) {
+      if (!email) return false;
+      const lowerEmail = email.toLowerCase();
+      const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
+
+      if (ALLOWED_DOMAINS.includes(domain)) return true;
+      if (ALLOWED_EXCEPTIONS.includes(lowerEmail)) return true;
+      
+      console.warn(`Email ${lowerEmail} (domain: ${domain}) is not allowed for Goldmex System.`);
+      return false;
+    }
+
+    function displayLoginError(message) {
+        const errorMessageElement = document.getElementById('login-error-message');
+        if (errorMessageElement) {
+            errorMessageElement.textContent = message;
+            errorMessageElement.style.display = 'block';
+        } else {
+            alert(message); // Fallback si el elemento no existe
+        }
+    }
+
+    // Función para manejar la respuesta de credenciales de Google
+    async function handleCredentialResponse(response) {
+      if (!supabase) {
+        displayLoginError("El cliente de Supabase no está inicializado. No se puede iniciar sesión.");
+        console.error("Supabase client missing in handleCredentialResponse.");
+        return;
+      }
+      if (!response.credential) {
+        displayLoginError("Respuesta de Google inválida. Intenta de nuevo.");
+        console.error("Google credential response is invalid:", response);
+        return;
+      }
+
+      let googleUserEmail;
+      try {
+        const decodedToken = jwt_decode(response.credential);
+        googleUserEmail = decodedToken.email;
+      } catch (e) {
+        console.error("Error decoding Google token:", e);
+        displayLoginError("Error procesando la información de Google. Intenta de nuevo.");
+        return;
+      }
+
+      if (!isUserAllowed(googleUserEmail)) {
+        displayLoginError("Acceso denegado. Utiliza una cuenta de correo corporativa válida o contacta al administrador.");
+        console.error("Login attempt from unauthorized domain/email:", googleUserEmail);
+        // Opcionalmente, podrías intentar cerrar la sesión de Google aquí si es necesario,
+        // pero usualmente el usuario simplemente no podrá acceder a Supabase.
+        // google.accounts.id.revoke(googleUserEmail, done => {
+        //    console.log('consent revoked');
+        // });
+        return;
+      }
+      
+      document.getElementById('login-error-message').style.display = 'none'; // Ocultar errores previos
+
+      try {
+        console.log("Attempting Supabase sign-in with Google ID Token for:", googleUserEmail);
+        const { data, error: supabaseError } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: response.credential, // El id_token de Google
+          // nonce: 'NONCE_STRING' // Opcional: si usas nonces para mayor seguridad
+        });
+
+        if (supabaseError) {
+          console.error("Supabase signInWithIdToken error:", supabaseError);
+          displayLoginError(`Error de autenticación: ${supabaseError.message}. Intenta de nuevo.`);
+          return;
+        }
+
+        console.log("Supabase session established:", data);
+        // No es necesario guardar en localStorage 'user' manualmente si index.html usa onAuthStateChange
+        // para obtener la información del usuario directamente de Supabase.
+        window.location.href = 'index.html'; // Redirigir a la página principal
+
+      } catch (e) {
+        console.error("Error during Supabase sign-in process:", e);
+        displayLoginError("Ocurrió un error inesperado durante el inicio de sesión.");
+      }
+    }
+
+    // Verificar si el usuario ya está logueado al cargar la página de login
+    // Si es así, y tiene una sesión válida en Supabase, redirigir a index.html
+    async function checkInitialSession() {
+        if (!supabase) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user && isUserAllowed(session.user.email)) {
+            console.log("User already logged in and allowed, redirecting from login.html to index.html");
+            window.location.href = 'index.html';
+        } else if (session && session.user && !isUserAllowed(session.user.email)) {
+            // Usuario logueado pero no permitido, forzar logout de Supabase y mostrar error.
+            console.warn(`User ${session.user.email} logged in but not allowed. Forcing Supabase sign out.`);
+            await supabase.auth.signOut();
+            displayLoginError("Tu cuenta no tiene permiso para acceder. Has sido desconectado.");
+        }
+    }
+    // Se ejecuta después de que Supabase se inicialice
+    if (supabase) {
+       checkInitialSession();
+    } else {
+        // Si Supabase no se inicializó, el error ya se mostró.
+        // Podrías añadir un reintento o un mensaje más persistente aquí.
+        const ensureSupabaseLoaded = setInterval(() => {
+            if (window.supabase && !supabase) { // Intentar reinicializar si no lo hizo antes
+                try {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log("Supabase client re-initialized successfully.");
+                    checkInitialSession(); // Ahora sí, verificar sesión
+                    clearInterval(ensureSupabaseLoaded);
+                } catch (e) {
+                    console.error("Failed to re-initialize Supabase:", e);
+                    // El error ya se mostró, no hacer más.
+                    clearInterval(ensureSupabaseLoaded);
+                }
+            } else if (supabase) { // Ya se inicializó
+                clearInterval(ensureSupabaseLoaded);
+            }
+        }, 500);
+    }
+
+  </script>
+</body>
+</html>
