@@ -49,7 +49,7 @@ const ALLOWED_EXCEPTIONS_MAIN = [
 
 // --- Inactivity Logout Configuration ---
 let inactivityTimer;
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutos
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 // --- Global User State Tracking ---
 let currentGlobalUserId = null; // Stores the ID of the currently authenticated user
@@ -86,7 +86,7 @@ async function signOut(isDueToInactivity = false) {
     if (error) {
       console.error("Error signing out:", error.message);
       showCustomNotificationST(
-        `Error al cerrar sesión: ${error.message}`,
+        `Error signing out: ${error.message}`,
         "error"
       );
     } else {
@@ -99,7 +99,7 @@ async function signOut(isDueToInactivity = false) {
   } catch (error) {
     console.error("Exception during sign out:", error);
     showCustomNotificationST(
-      "Ocurrió un error inesperado al cerrar sesión.",
+      "An unexpected error occurred while signing out.",
       "error"
     );
   }
@@ -108,12 +108,7 @@ async function signOut(isDueToInactivity = false) {
 // --- Inactivity Logout Functions ---
 function logoutDueToInactivity() {
   console.log("Inactivity timeout reached. Logging out user...");
-  // Notificación opcional, pero puede ser útil si el usuario regresa justo cuando sucede.
-  showCustomNotificationST(
-    "Has sido desconectado por inactividad.",
-    "info",
-    7000
-  );
+  showCustomNotificationST("You have been logged out due to inactivity.", "info", 7000);
   signOut(true);
 }
 
@@ -151,11 +146,8 @@ function stopInactivityTimer() {
 
 function handleVisibilityChange() {
   if (document.hidden) {
-    // Tab is hidden, timer continues as per requirement.
-    // console.log("script.js: Page hidden. Inactivity timer continues.");
+    // Tab is hidden, timer continues.
   } else {
-    // Tab is visible again.
-    // console.log("script.js: Page visible. Inactivity timer reset.");
     resetInactivityTimer();
   }
 }
@@ -318,97 +310,82 @@ function setActiveMenuItem(clickedLinkElement) {
   }
 }
 
-// En js/script.js
-
-// REEMPLAZA ESTA FUNCIÓN COMPLETA
 async function loadModule(moduleName, clickedLink) {
-  if (!mainContent || !supabase) {
-    console.error(
-      "Main content area or Supabase client not found for loadModule."
-    );
-    return;
-  }
-
-  mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
-  mainContent.dataset.currentModule = `loading-${moduleName}`;
-
-  try {
-    const response = await fetch(`${moduleName}.html`);
-    if (!response.ok)
-      throw new Error(
-        `Could not load ${moduleName}.html. Status: ${response.status}`
-      );
-
-    const htmlContent = await response.text();
-    mainContent.innerHTML = htmlContent;
-    mainContent.dataset.currentModule = moduleName;
-    setActiveMenuItem(clickedLink);
-
-    // --- INICIO DE LA CORRECCIÓN CLAVE ---
-
-    // 1. Eliminar cualquier script de módulo cargado anteriormente para evitar conflictos.
-    const oldScript = document.getElementById("module-script");
-    if (oldScript) {
-      oldScript.remove();
+    if (!mainContent || !supabase) {
+      console.error("Main content area or Supabase client not found for loadModule.");
+      return;
     }
-
-    // 2. Crear y añadir dinámicamente el script del nuevo módulo.
-    const newScript = document.createElement("script");
-    newScript.id = "module-script"; // Un ID para encontrarlo y eliminarlo en la siguiente carga.
-    newScript.src = `js/${moduleName}.js`;
-
-    // 3. El evento 'module_loaded' SOLO se dispara DESPUÉS de que el script se haya cargado y ejecutado.
-    // Esto resuelve la condición de carrera (race condition).
-    newScript.onload = () => {
-      console.log(
-        `SCRIPT.JS: Script 'js/${moduleName}.js' loaded. Dispatching module_loaded event.`
-      );
-      document.dispatchEvent(
-        new CustomEvent("module_loaded", { detail: { moduleName } })
-      );
-    };
-
-    newScript.onerror = () => {
-      console.error(`Failed to load script: js/${moduleName}.js`);
-      mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module script: ${moduleName}.js</h2></div>`;
-    };
-
-    document.body.appendChild(newScript);
-
-    // --- FIN DE LA CORRECCIÓN CLAVE ---
-  } catch (error) {
-    console.error("Error loading module:", error);
-    mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module: ${moduleName}</h2><p style="color: var(--goldmex-accent-color);">${error.message}</p></div>`;
-    mainContent.dataset.currentModule = "error";
-    setActiveMenuItem(null);
+  
+    mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
+    mainContent.dataset.currentModule = `loading-${moduleName}`;
+  
+    try {
+      const response = await fetch(`${moduleName}.html`);
+      if (!response.ok)
+        throw new Error(
+          `Could not load ${moduleName}.html. Status: ${response.status}`
+        );
+  
+      const htmlContent = await response.text();
+      mainContent.innerHTML = htmlContent;
+      mainContent.dataset.currentModule = moduleName;
+      setActiveMenuItem(clickedLink);
+  
+      const oldScript = document.getElementById("module-script");
+      if (oldScript) {
+        oldScript.remove();
+      }
+  
+      const newScript = document.createElement("script");
+      newScript.id = "module-script";
+      newScript.src = `js/${moduleName}.js`;
+      
+      newScript.onload = () => {
+        console.log(`SCRIPT.JS: Script 'js/${moduleName}.js' loaded. Dispatching module_loaded event.`);
+        document.dispatchEvent(new CustomEvent("module_loaded", { detail: { moduleName } })
+        );
+      };
+  
+      newScript.onerror = () => {
+        console.error(`Failed to load script: js/${moduleName}.js`);
+        mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module script: ${moduleName}.js</h2></div>`;
+      };
+  
+      document.body.appendChild(newScript);
+  
+    } catch (error) {
+      console.error("Error loading module:", error);
+      mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module: ${moduleName}</h2><p style="color: var(--goldmex-accent-color);">${error.message}</p></div>`;
+      mainContent.dataset.currentModule = "error";
+      setActiveMenuItem(null);
+    }
   }
-}
-
-allMenuLinks.forEach((link) => {
-  const moduleName = link.dataset.module;
-  if (moduleName) {
-    link.addEventListener("click", async function (event) {
-      event.preventDefault();
-      if (moduleName === "home") {
-        if (mainContent) {
-          mainContent.innerHTML =
-            "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
-          mainContent.dataset.currentModule = "home";
+  
+  allMenuLinks.forEach((link) => {
+    const moduleName = link.dataset.module;
+    if (moduleName) {
+      link.addEventListener("click", async function (event) {
+        event.preventDefault();
+        if (moduleName === "home") {
+          if (mainContent) {
+            mainContent.innerHTML =
+              "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
+            mainContent.dataset.currentModule = "home";
+          }
+          setActiveMenuItem(this);
+        } else {
+          loadModule(moduleName, this);
         }
-        setActiveMenuItem(this);
-      } else {
-        loadModule(moduleName, this);
-      }
-      if (
-        window.innerWidth <= 768 &&
-        sidebar &&
-        !document.body.classList.contains("sidebar-hidden")
-      ) {
-        if (sidebarBtnMobile) sidebarBtnMobile.click();
-      }
-    });
-  }
-});
+        if (
+          window.innerWidth <= 768 &&
+          sidebar &&
+          !document.body.classList.contains("sidebar-hidden")
+        ) {
+          if (sidebarBtnMobile) sidebarBtnMobile.click();
+        }
+      });
+    }
+  });
 
 // --- Utility Functions and Initial Load ---
 function handleResize() {
@@ -444,49 +421,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.warn(
         `script.js: User ${newUser.email} logged in but is NOT allowed. Forcing sign out.`
       );
-      await supabase.auth.signOut(); // This will trigger another onAuthStateChange with session=null
-      // currentGlobalUserId will be cleared in the subsequent event.
-      // No need to update UI here as the signOut will lead to it.
-      accessDenied = true; // Mark access denied to inform modules if needed
-      userChanged = true; // Treat as a change for dispatching
+      await supabase.auth.signOut();
+      accessDenied = true;
+      userChanged = true;
     }
 
     if (userChanged && !accessDenied) {
-      // Only update UI and timer if user state genuinely changed and access is not denied
       console.log(
         "script.js: User state changed. Updating UI and global user ID."
       );
       currentGlobalUserId = newUser ? newUser.id : null;
-      updateUserUI(newUser); // This will start/stop inactivity timer appropriately
-    } else if (!userChanged && newUser && !accessDenied) {
-      console.log(
-        "script.js: Auth state confirmed, user is the same. Inactivity timer NOT restarted by updateUserUI."
-      );
-      // If user is same, but maybe token refreshed, we still want to ensure inactivity timer IS running IF it should be.
-      // updateUserUI already handles this by calling startInactivityTimer if user is present.
-      // The key is not calling updateUserUI if user ID hasn't changed.
-      // However, ensure inactivity timer IS running if currentGlobalUserId is set.
-      if (currentGlobalUserId && inactivityTimer) {
-        // Check if timer exists, implies it should be running
-        // resetInactivityTimer(); // Optionally reset on any SIGNED_IN, even if user is same, for extra safety on token refresh
-        // For now, let's stick to resetting only on genuine activity or focus.
-      } else if (currentGlobalUserId && !inactivityTimer) {
-        // This case should ideally not happen if logic is correct. But as a safeguard:
-        console.warn(
-          "script.js: User is current, but inactivity timer was not running. Restarting."
-        );
-        startInactivityTimer();
-      }
-    } else if (accessDenied && currentGlobalUserId) {
-      // Access was denied for a previously logged-in user
-      console.log(
-        "script.js: Access denied for previously logged in user. UI should reflect no user soon via next auth event."
-      );
-      // currentGlobalUserId will be cleared when signOut's onAuthStateChange event comes.
+      updateUserUI(newUser);
     }
 
-    // Always dispatch the custom event for modules to react if they need to.
-    // Modules have their own logic to decide if they need to re-subscribe or reload data.
     console.log(
       "script.js: Dispatching supabaseAuthStateChange event to modules. User:",
       newUser ? newUser.id : "null",
@@ -499,7 +446,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
     );
 
-    // Handle redirection to login if no user, after dispatching event
     if (!newUser && !window.location.pathname.includes("/login.html")) {
       console.log("script.js: No user session, redirecting to login.html");
       window.location.href = "login.html";
@@ -508,7 +454,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.location.pathname.includes("/login.html") &&
       !accessDenied
     ) {
-      // If user is logged in and on login page (and not just denied access), redirect to index
       console.log(
         "script.js: User authenticated on login page, redirecting to index.html"
       );
@@ -516,7 +461,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Initial session check
   console.log("script.js: Performing initial session check...");
   const {
     data: { session: initialSession },
@@ -528,9 +472,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       initialSessionError.message
     );
   }
-  // The onAuthStateChange listener will be triggered by getSession(),
-  // so it will handle the initial UI update and redirection if necessary.
-  // No need to duplicate logic here.
   console.log(
     "script.js: Initial session check completed. onAuthStateChange will handle the result."
   );
@@ -539,7 +480,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 window.addEventListener("resize", handleResize);
 
 function showCustomNotificationST(message, type = "info", duration = 3800) {
-  // console.log(`Notification (${type}) from script.js: ${message}`); // Kept for debugging
   const containerId = "customNotificationContainerST_Global";
   let notificationContainer = document.getElementById(containerId);
   if (!notificationContainer) {
@@ -556,7 +496,6 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
   }
 
   const notification = document.createElement("div");
-  // Basic styling, assuming main CSS handles .custom-notification-st if defined there
   notification.style.padding = "12px 18px";
   notification.style.borderRadius = "6px";
   notification.style.color = "#fff";
@@ -602,9 +541,6 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
       notification.style.transform = "translateX(110%)";
       setTimeout(() => {
         notification.remove();
-        // if (notificationContainer.childElementCount === 0 && notificationContainer.id === containerId) {
-        //   notificationContainer.remove(); // Optional
-        // }
       }, 400);
     }
   };
