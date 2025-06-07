@@ -132,7 +132,6 @@
   let invoiceSubscription = null;
   let currentUser = null;
   let isInitializingModule = false;
-  let mainAuthListener = null;
 
   // Variable to track the highest z-index for modals
   let highestZIndex = 1100; // Base z-index for .it-modal
@@ -160,14 +159,8 @@
   function closeItModal(modalElement) {
     if (!modalElement) return;
     modalElement.classList.remove("it-modal-open");
-    // highestZIndex doesn't need to be decremented here,
-    // as the next opened modal will just take a higher value.
-    // It will be reset when all modals are closed.
     setTimeout(() => {
       modalElement.style.display = "none";
-      // Optionally reset the z-index of the closed modal to its base
-      // modalElement.style.zIndex = 1100;
-
       const anyOtherItModalOpen = document.querySelector(
         ".it-modal.it-modal-open"
       );
@@ -564,18 +557,8 @@
 
     if (historyFilterMonthSelect.options.length <= 1) {
       const months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
       ];
       historyFilterMonthSelect.innerHTML =
         '<option value="">All Months</option>';
@@ -1602,7 +1585,7 @@
                 <meta charset="UTF-8">
                 <title>Invoice ${invoice.invoice_number}</title>
                 <style>
-                    html, body { 
+                    html, body {
                         height: auto !important; margin: 0 !important; padding: 0 !important;
                         background-color: #ffffff !important; font-family: 'Segoe UI', sans-serif;
                         color: #333; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
@@ -1751,10 +1734,7 @@
     };
 
     try {
-      // Create a temporary element to render the HTML for PDF generation
-      // This element is not added to the visible DOM but used by html2pdf
       const tempRenderElement = document.createElement("div");
-      // Styles to keep it off-screen and match PDF dimensions for better accuracy
       tempRenderElement.style.position = "absolute";
       tempRenderElement.style.left = "-99999px"; // Way off-screen
       tempRenderElement.style.top = "0px";
@@ -1766,7 +1746,6 @@
 
       const elementToConvert = tempRenderElement.querySelector(".invoice-box");
       if (!elementToConvert) {
-        // Sanity check
         throw new Error(
           ".invoice-box not found in temporary render element for PDF conversion."
         );
@@ -1783,7 +1762,6 @@
         "Error generating PDF. Check console for details.",
         "error"
       );
-      // Ensure temp element is removed on error too
       const tempElementExists = document.body.querySelector(
         'div[style*="left: -99999px"]'
       );
@@ -1817,7 +1795,6 @@
       addChargeLineBtn.addEventListener("click", () => addChargeLine());
     }
 
-    // Event delegation for remove charge line buttons
     if (manualChargesContainer) {
       manualChargesContainer.addEventListener("click", (event) => {
         if (event.target.closest(".it-remove-charge-line-btn")) {
@@ -1827,7 +1804,6 @@
       });
     }
 
-    // View Invoice Modal
     if (closeViewInvoiceModalBtn)
       closeViewInvoiceModalBtn.addEventListener("click", () =>
         closeItModal(viewInvoiceModal)
@@ -1837,12 +1813,10 @@
         closeItModal(viewInvoiceModal)
       );
     if (viewInvoiceModal)
-      // Close on backdrop click
       viewInvoiceModal.addEventListener("click", (e) => {
         if (e.target === viewInvoiceModal) closeItModal(viewInvoiceModal);
       });
 
-    // Manual Invoice Modal
     if (closeManualInvoiceModalBtn)
       closeManualInvoiceModalBtn.addEventListener("click", () => {
         closeItModal(manualInvoiceModal);
@@ -1854,7 +1828,6 @@
         resetManualInvoiceForm();
       });
     if (manualInvoiceModal)
-      // Close on backdrop click
       manualInvoiceModal.addEventListener("click", (e) => {
         if (e.target === manualInvoiceModal) {
           closeItModal(manualInvoiceModal);
@@ -1864,7 +1837,6 @@
     if (manualInvoiceForm)
       manualInvoiceForm.addEventListener("submit", handleSaveManualInvoice);
 
-    // Change Invoice Status Modal
     if (closeChangeStatusModalBtn)
       closeChangeStatusModalBtn.addEventListener("click", () =>
         closeItModal(changeInvoiceStatusModal)
@@ -1874,7 +1846,6 @@
         closeItModal(changeInvoiceStatusModal)
       );
     if (changeInvoiceStatusModal)
-      // Close on backdrop click
       changeInvoiceStatusModal.addEventListener("click", (e) => {
         if (e.target === changeInvoiceStatusModal)
           closeItModal(changeInvoiceStatusModal);
@@ -1885,16 +1856,14 @@
         handleChangeInvoiceStatus
       );
 
-    // Main table actions (using jQuery for DataTables event handling)
     if (invoicesTableHtmlElement) {
       $(invoicesTableHtmlElement)
-        .off("click", "button[data-action]") // Remove previous to avoid duplicates
+        .off("click", "button[data-action]")
         .on("click", "button[data-action]", (event) =>
           handleTableActions(event, "main")
         );
     }
 
-    // History table actions
     if (invoiceHistoryTableHtmlElement) {
       $(invoiceHistoryTableHtmlElement)
         .off("click", "button[data-action]")
@@ -1903,9 +1872,7 @@
         );
     }
 
-    // PDF Download from View Modal
     if (downloadInvoicePdfBtn) {
-      // Remove previous handler if it exists (e.g., if setupEventListeners is called multiple times)
       if (downloadPdfModalHandler) {
         downloadInvoicePdfBtn.removeEventListener(
           "click",
@@ -1913,7 +1880,6 @@
         );
       }
       downloadPdfModalHandler = () => {
-        // Store handler to allow removal later if needed
         const invoiceNumberForPdf = viewInvoiceNumberSpan
           ? viewInvoiceNumberSpan.textContent
           : null;
@@ -1951,7 +1917,6 @@
       downloadInvoicePdfBtn.addEventListener("click", downloadPdfModalHandler);
     }
 
-    // --- History Modal Listeners ---
     if (openInvoiceHistoryModalBtn) {
       openInvoiceHistoryModalBtn.addEventListener("click", openHistoryModal);
     }
@@ -1959,11 +1924,9 @@
       closeInvoiceHistoryModalBtn.addEventListener("click", closeHistoryModal);
     }
     if (closeInvoiceHistoryFooterBtn) {
-      // Footer close button for history modal
       closeInvoiceHistoryFooterBtn.addEventListener("click", closeHistoryModal);
     }
     if (invoiceHistoryModal) {
-      // Close history modal on backdrop click
       invoiceHistoryModal.addEventListener("click", (e) => {
         if (e.target === invoiceHistoryModal) closeHistoryModal();
       });
@@ -1989,10 +1952,7 @@
         "change",
         handleFilterHistoryInvoices
       );
-    // Consider adding a debounce/throttle if filtering on customer input text change directly for performance.
-    // For now, customer filter is applied with the "Filter History" button.
 
-    // Global Escape key listener for modals
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         if (viewInvoiceModal?.classList.contains("it-modal-open"))
@@ -2010,7 +1970,6 @@
       }
     });
 
-    // Custom Confirm Modal buttons
     if (itCustomConfirmOkBtn)
       itCustomConfirmOkBtn.addEventListener("click", () => {
         if (typeof currentItConfirmCallback === "function")
@@ -2035,31 +1994,16 @@
           invoiceSubscription.state === "joined" ||
           invoiceSubscription.state === "joining"
         ) {
-          console.log(
-            `IT Module: Unsubscribing from ${channelTopic}... Current state: ${invoiceSubscription.state}`
-          );
           await invoiceSubscription.unsubscribe();
-          console.log(
-            `IT Module: Unsubscribed from ${channelTopic}. New state after unsubscribe: ${invoiceSubscription?.state}`
-          );
-        } else {
-          console.log(
-            `IT Module: Subscription to ${channelTopic} not in 'joined' or 'joining' state (${invoiceSubscription.state}), skipping explicit unsubscribe.`
-          );
         }
-        // After unsubscribing, remove the channel instance.
-        const status = await supabase.removeChannel(invoiceSubscription);
-        console.log(
-          `IT Module: supabase.removeChannel call for ${channelTopic} completed. Status:`,
-          status
-        );
+        await supabase.removeChannel(invoiceSubscription);
       } catch (error) {
         console.error(
           `IT Module: Error during unsubscribe/removeChannel for ${channelTopic}:`,
           error
         );
       } finally {
-        invoiceSubscription = null; // Ensure it's nulled after attempt
+        invoiceSubscription = null;
         console.log(
           `IT Module: invoiceSubscription variable nulled for ${channelTopic}.`
         );
@@ -2095,7 +2039,6 @@
             invoiceHistoryModal &&
             invoiceHistoryModal.style.display === "flex"
           ) {
-            // If history modal is open
             handleFilterHistoryInvoices(); // Refresh history data too
           }
         }
@@ -2108,27 +2051,15 @@
           `IT Module: Channel ${currentTopic} subscription status: ${status}`,
           err || ""
         );
-        if (status === "SUBSCRIBED") {
-          console.log(`IT Module: Successfully subscribed to ${currentTopic}!`);
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error(
-            `IT Module: Subscription to ${currentTopic} FAILED or TIMED OUT. Error:`,
-            err
-          );
-          await removeCurrentSubscription(); // Attempt to clean up
-          // Optionally, attempt to re-subscribe after a delay
-        } else if (status === "CLOSED") {
-          console.warn(
-            `IT Module: Subscription to ${currentTopic} was CLOSED.`
-          );
-          // Might attempt to re-subscribe if closure was unexpected
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`IT Module: Subscription to ${currentTopic} FAILED or TIMED OUT. Error:`, err);
+          await removeCurrentSubscription();
         }
       });
   }
 
-  // SECTION 9: INITIALIZATION
-  let isModuleInitialized = false;
-
+  // SECTION 9: INITIALIZATION (REFACTORED)
+  
   async function loadModuleDataAndSubscribe() {
     console.log("IT Module: loadModuleDataAndSubscribe called.");
     if (!currentUser) {
@@ -2153,19 +2084,16 @@
 
     if (session?.user) {
       if (!currentUser || currentUser.id !== session.user.id) {
-        // User changed or first sign-in
         console.log(
           `IT Module: User state changed or first sign-in. New User: ${session.user.id}, Old User: ${currentUser?.id}. Loading data and subscribing.`
         );
         currentUser = session.user;
         await loadModuleDataAndSubscribe();
       } else {
-        // Same user session confirmed
         console.log(
           `IT Module: User session confirmed (same user: ${currentUser.id}). Ensuring subscription is healthy.`
         );
         if (
-          // Check if subscription is not active
           !invoiceSubscription ||
           (invoiceSubscription.state !== "joined" &&
             invoiceSubscription.state !== "joining")
@@ -2173,7 +2101,7 @@
           console.log(
             `IT Module: Subscription for user ${currentUser.id} is not active (state: ${invoiceSubscription?.state}). Attempting to re-subscribe.`
           );
-          await subscribeToInvoiceChanges(); // Re-establish subscription
+          await subscribeToInvoiceChanges();
         } else {
           console.log(
             `IT Module: Subscription for user ${currentUser.id} is already active (state: ${invoiceSubscription.state}). No action needed.`
@@ -2181,9 +2109,7 @@
         }
       }
     } else {
-      // No active session (user signed out)
       if (currentUser) {
-        // If there was a previously logged-in user
         console.log(
           "IT Module: User signed out. Clearing data and removing subscription."
         );
@@ -2197,57 +2123,42 @@
         console.log(
           "IT Module: No active session and no previous user. Ensuring no subscription."
         );
-        await removeCurrentSubscription(); // Ensure clean state
+        await removeCurrentSubscription();
       }
     }
     isInitializingModule = false;
     console.log("IT Module: manageSubscriptionAndData - Finished.");
   }
-
-  async function initializeApp() {
-    if (!isModuleInitialized) {
-      console.log(
-        "IT Module: Performing one-time DOM setup (event listeners, initial table/dashboard)..."
-      );
-      setupEventListeners();
-      initializeInvoicesTable([]); // Initialize main table empty
-      updateDashboardSummary([]);
-      // History table is initialized when its modal is opened or filters applied.
-      isModuleInitialized = true;
-    }
-
-    // Remove previous listener before setting a new one to prevent duplicates
-    if (
-      mainAuthListener &&
-      typeof mainAuthListener.unsubscribe === "function"
-    ) {
-      console.log(
-        "IT Module: Removing existing main auth state listener before setting new one."
-      );
-      mainAuthListener.unsubscribe();
-      mainAuthListener = null;
-    }
-
-    console.log("IT Module: Setting up main Supabase auth state listener.");
-    // Store the subscription object returned by onAuthStateChange to allow unsubscribing
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(
-        `IT Module: Main onAuthStateChange event: ${event}`,
-        session ? `User: ${session.user?.id}` : "No session"
-      );
-      await manageSubscriptionAndData(session);
-    });
-    mainAuthListener = subscription; // Store the subscription object
-    console.log(
-      "IT Module: Main auth listener set. It will handle the initial auth state and subsequent changes."
-    );
+  
+  async function globalAuthChangeHandlerInvoice(event) {
+    console.log(`IT Module: Global onAuthStateChange event received. Event: ${event.detail.event}`);
+    await manageSubscriptionAndData(event.detail.user ? { user: event.detail.user } : null);
   }
 
-  // Ensure initializeApp runs after DOM is fully loaded
+  function initializeApp() {
+    if (!isModuleInitialized) {
+        console.log("IT Module: Performing one-time DOM setup...");
+        setupEventListeners();
+        initializeInvoicesTable([]);
+        updateDashboardSummary([]);
+        isModuleInitialized = true;
+    }
+
+    // Register the listener for the custom global event from script.js
+    document.removeEventListener('supabaseAuthStateChange', globalAuthChangeHandlerInvoice);
+    document.addEventListener('supabaseAuthStateChange', globalAuthChangeHandlerInvoice);
+
+    // Simulate an auth change event on module load to get the initial state
+    if (supabase) {
+       supabase.auth.getSession().then(({ data: { session } }) => {
+          const detail = { user: session ? session.user : null, event: 'INITIAL_LOAD', accessDenied: false, source: 'script.js' };
+          globalAuthChangeHandlerInvoice({ detail });
+       });
+    }
+  }
+
+  // Ensure initializeApp runs after the DOM is fully loaded
   if (document.readyState === "loading") {
-    document.removeEventListener("DOMContentLoaded", initializeApp); // Remove if already added to be safe
     document.addEventListener("DOMContentLoaded", initializeApp);
   } else {
     initializeApp(); // DOMContentLoaded has already fired
