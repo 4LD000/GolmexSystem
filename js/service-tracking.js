@@ -49,15 +49,15 @@
   const INVOICES_TABLE_NAME = 'invoices';
   const BUCKET_NAME = 'DocsTracking';
 
-  const TIJUANA_UTC_OFFSET = -7; // Tijuana is UTC-7 during PDT (most of the year)
-  const OPERATING_HOUR_START_TIJUANA = 8; // 8 AM Tijuana time
-  const OPERATING_HOUR_END_TIJUANA = 17; // 5 PM Tijuana time (exclusive)
-  const NOTIFICATION_TIMES_TIJUANA = [9, 13, 16]; // 9 AM, 1 PM, 4 PM Tijuana time
+  const TIJUANA_UTC_OFFSET = -7; 
+  const OPERATING_HOUR_START_TIJUANA = 8;
+  const OPERATING_HOUR_END_TIJUANA = 17; 
+  const NOTIFICATION_TIMES_TIJUANA = [9, 13, 16]; 
   let scheduledNotificationTimeouts = [];
 
-  let highestZIndexST = 1050; // Base z-index for ST modals
+  let highestZIndexST = 1050; 
 
-  // DOM Element Selectors (cached for performance)
+  // DOM Element Selectors
   const openServiceModalBtn = document.getElementById("openServiceModalBtn");
   const createServiceModal = document.getElementById("serviceModal");
   const closeCreateServiceModalBtn = document.getElementById("closeServiceModalBtn");
@@ -92,7 +92,7 @@
   const viewOceanSpecificDetails = document.getElementById("viewOceanSpecificDetails");
   const viewAirSpecificDetails = document.getElementById("viewAirSpecificDetails");
   const viewHblOcean = document.getElementById("viewHblOcean");
-  const viewHblAir = document.getElementById("viewHblAir"); // Assuming this is for HAWB in air view
+  const viewHblAir = document.getElementById("viewHblAir"); 
   const viewOceanServiceType = document.getElementById("viewOceanServiceType");
   const viewOceanService = document.getElementById("viewOceanService");
   const viewContainerNumber = document.getElementById("viewContainerNumber");
@@ -142,7 +142,7 @@
   const editFinalDestinationModalInput = document.getElementById("editFinalDestinationModal");
   const editMblHawbModalInput = document.getElementById("editMblHawbModal");
   const editHblHawbGroupModal = document.getElementById("editHblHawbGroupModal");
-  const editHblModalInput = document.getElementById("editHblModal"); // Used for both Ocean HBL and Air HAWB
+  const editHblModalInput = document.getElementById("editHblModal");
   const editContainerFieldsModal = document.getElementById("editContainerFieldsModal");
   const editContainerNumberModalInput = document.getElementById("editContainerNumberModal");
   const editContainerTypeModalInput = document.getElementById("editContainerTypeModal");
@@ -158,8 +158,8 @@
   const editServiceNotesModalTextarea = document.getElementById("editServiceNotesModal");
   const tableViewTypeSelect = document.getElementById("tableViewType");
   const servicesTableHtmlElement = document.getElementById("servicesTable");
-  let servicesDataTable; // Instance of the main DataTable
-  let allServicesData = []; // Holds all fetched and transformed service data
+  let servicesDataTable; 
+  let allServicesData = []; 
   let confirmModalElement, confirmTitleElement, confirmMessageElement, confirmOkBtn, confirmCancelBtn, confirmCloseBtn;
   let currentConfirmCallback = null;
   const docManagementModal = document.getElementById("documentManagementModal");
@@ -190,7 +190,7 @@
   const archiveServicesTableHtmlElement = document.getElementById("archiveServicesTable");
   const noArchiveResultsMessageEl = document.getElementById("noArchiveResultsMessage");
   const closeArchiveModalFooterBtn = document.getElementById("closeArchiveModalFooterBtn");
-  let archiveServicesDataTable; // Instance of the archive DataTable
+  let archiveServicesDataTable; 
   let archiveYearsPopulated = false;
   const progressNotificationModal = document.getElementById("progressNotificationModal");
   const closeProgressNotificationModalBtn = document.getElementById("closeProgressNotificationModalBtn");
@@ -205,11 +205,11 @@
   const viewServiceChargesContainer = document.getElementById("viewServiceChargesContainer");
   const viewNoChargesMessage = document.getElementById("viewNoChargesMessage");
 
-  // --- State variables for Service Tracking module ---
-  let currentUserST = null; // Holds the Supabase user object for this module
+  // State variables for Service Tracking module
+  let currentUserST = null;
   let isServiceTrackingInitialized = false;
-  let isSubscribingST = false; // Flag to prevent concurrent subscription operations
-  let serviceChannels = []; // Array to keep track of active Supabase Realtime channel subscriptions
+  let serviceChannels = []; // Re-introduced for realtime
+  let isProcessingRealtimeUpdate = false; // Flag to prevent race conditions
 
   // SECTION 2: UTILITY FUNCTIONS
   function isWithinOperatingHours() {
@@ -242,7 +242,7 @@
   }
   function showCustomNotification(message, type = "info", duration = 3800) {
     const existingNotifications = document.querySelectorAll(".custom-notification-st");
-    existingNotifications.forEach((notif) => notif.remove()); // Remove old notifications of this type
+    existingNotifications.forEach((notif) => notif.remove()); 
     const notification = document.createElement("div");
     notification.className = `custom-notification-st ${type}`;
     let iconClass = "bx bx-info-circle";
@@ -252,8 +252,8 @@
     notification.innerHTML = `<i class='${iconClass}'></i><span>${message}</span><button class='custom-notification-st-close'>&times;</button>`;
     const notificationContainer = document.getElementById("customNotificationContainerST") || createNotificationContainer();
     notificationContainer.appendChild(notification);
-    notificationContainer.style.display = "block"; // Ensure container is visible
-    void notification.offsetWidth; // Trigger reflow for animation
+    notificationContainer.style.display = "block"; 
+    void notification.offsetWidth; 
     notification.classList.add("show");
     const closeButton = notification.querySelector(".custom-notification-st-close");
     const removeNotification = () => {
@@ -263,7 +263,7 @@
         setTimeout(() => {
           notification.remove();
           if (notificationContainer.childElementCount === 0) notificationContainer.style.display = "none";
-        }, 400); // Match CSS animation duration
+        }, 400); 
       }
     };
     closeButton.addEventListener("click", removeNotification);
@@ -280,7 +280,7 @@
     return container;
   }
   function getConfirmModalElements() {
-    if (confirmModalElement) return true; // Already initialized
+    if (confirmModalElement) return true;
     confirmModalElement = document.getElementById("stCustomConfirmModal");
     confirmTitleElement = document.getElementById("stCustomConfirmTitle");
     confirmMessageElement = document.getElementById("stCustomConfirmMessage");
@@ -301,15 +301,14 @@
   }
   function showCustomConfirm(title, message, onOkCallback) {
     if (!getConfirmModalElements()) {
-      // Fallback to browser confirm if custom modal elements are not found
       console.warn("ST Module: Custom confirm modal elements not found, falling back to window.confirm.");
-      if (window.confirm(message.replace(/<strong>|<\/strong>/g, ""))) { // Strip HTML for basic confirm
+      if (window.confirm(message.replace(/<strong>|<\/strong>/g, ""))) { 
         if (typeof onOkCallback === "function") onOkCallback();
       }
       return;
     }
     confirmTitleElement.textContent = title;
-    confirmMessageElement.innerHTML = message; // Allows HTML in message
+    confirmMessageElement.innerHTML = message; 
     currentConfirmCallback = onOkCallback;
     openModal(confirmModalElement);
   }
@@ -322,37 +321,36 @@
     if (!modalElement) { console.warn("openModal: modalElement is null"); return; }
     highestZIndexST++;
     modalElement.style.zIndex = highestZIndexST;
-    modalElement.style.display = 'none'; // Ensure it's hidden before animation starts
-    void modalElement.offsetHeight; // Trigger reflow
-    modalElement.style.display = "flex"; // Set display to flex to enable centering
-    setTimeout(() => { // Delay adding class to ensure transition works
+    modalElement.style.display = 'none'; 
+    void modalElement.offsetHeight; 
+    modalElement.style.display = "flex";
+    setTimeout(() => { 
       modalElement.classList.add("st-modal-open");
-      document.body.style.overflow = "hidden"; // Prevent background scrolling
-    }, 10); // Small delay
+      document.body.style.overflow = "hidden"; 
+    }, 10); 
   }
   function closeModal(modalElement, formToReset = null) {
     if (!modalElement) { console.warn("closeModal: modalElement is null"); return; }
     modalElement.classList.remove("st-modal-open");
     setTimeout(() => {
       modalElement.style.display = "none";
-      // Check if any other ST modal is still open before restoring body overflow
       const anyOtherSTModalOpen = Array.from(document.querySelectorAll('.st-modal.st-modal-open'))
-                                     .some(m => m !== modalElement && m.style.display !== 'none'); // Check active display too
+                                     .some(m => m !== modalElement && m.style.display !== 'none');
       if (!anyOtherSTModalOpen) {
-          document.body.style.overflow = ""; // Restore background scrolling
-          highestZIndexST = 1050; // Reset z-index counter if all ST modals are closed
+          document.body.style.overflow = ""; 
+          highestZIndexST = 1050; 
       }
       if (formToReset && typeof formToReset.reset === "function") formToReset.reset();
       if (formToReset === newServiceForm) {
         resetCreateFormSpecifics();
-        if(chargesContainerCreate) chargesContainerCreate.innerHTML = ''; // Clear charges
+        if(chargesContainerCreate) chargesContainerCreate.innerHTML = ''; 
       }
       else if (formToReset === editServiceForm) {
         resetEditFormSpecifics();
-         if(chargesContainerEdit) chargesContainerEdit.innerHTML = ''; // Clear charges
+         if(chargesContainerEdit) chargesContainerEdit.innerHTML = ''; 
       }
       else if (modalElement === docManagementModal) resetDocUploadForm();
-    }, 300); // Match CSS transition duration
+    }, 300); 
   }
 
   // SECTION 3: DATA HANDLING AND TRANSFORMATION
@@ -360,36 +358,34 @@
     const categoryInfo = getCategoryTextAndClass(category);
     const tableName = SERVICE_TABLES[category];
     if (!tableName) throw new Error(`Invalid service category for ID generation: ${category}`);
-    // Count existing services for this category
     const { count, error } = await supabase
       .from(tableName)
-      .select('*', { count: 'exact', head: true }); // head:true makes it faster
+      .select('*', { count: 'exact', head: true }); 
 
     if (error) {
       console.error(`Error counting all services for ${category}:`, error);
-      return `${categoryInfo.prefix}-ERR-${Date.now().toString().slice(-3)}`; // Fallback ID
+      return `${categoryInfo.prefix}-ERR-${Date.now().toString().slice(-3)}`;
     }
     const nextNumber = (count || 0) + 1;
     return `${categoryInfo.prefix}-${String(nextNumber).padStart(3, '0')}`;
   }
   async function generateNextInvoiceNumber() {
     const now = new Date();
-    const year = String(now.getFullYear()).slice(-2); // Last two digits of year
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month (01-12)
+    const year = String(now.getFullYear()).slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, '0');
     const prefix = `GMX${year}${month}-`;
 
-    // Find the last invoice number for the current month and year
     const { data: lastInvoice, error: queryError } = await supabase
       .from(INVOICES_TABLE_NAME)
       .select('invoice_number')
-      .like('invoice_number', `${prefix}%`) // Filter by "GMXYYMM-"
-      .order('invoice_number', { ascending: false }) // Get the highest one
+      .like('invoice_number', `${prefix}%`)
+      .order('invoice_number', { ascending: false })
       .limit(1)
-      .single(); // Expect one or none
+      .single(); 
 
-    if (queryError && queryError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+    if (queryError && queryError.code !== 'PGRST116') {
       console.error("Error fetching last invoice number:", queryError);
-      return `${prefix}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}-ERR`; // Fallback
+      return `${prefix}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}-ERR`; 
     }
 
     let nextSequence = 1;
@@ -405,51 +401,47 @@
   function transformServiceDataForUI(row, categoryInternal) {
     const categoryInfo = getCategoryTextAndClass(categoryInternal);
     const transformed = {
-      // Common fields
-      id: row.id, // PK
-      service_display_id: row.service_display_id || row.id.substring(0,8)+'...' , // User-facing ID
-      user_id: row.user_id, // Creator's user ID
-      user_email: row.user_email || "N/A", // Creator's email
+      id: row.id,
+      service_display_id: row.service_display_id || row.id.substring(0,8)+'...' ,
+      user_id: row.user_id,
+      user_email: row.user_email || "N/A",
       created_at: row.created_at,
       updated_at: row.updated_at,
-      serviceCategoryInternal: categoryInternal, // e.g., "ocean", "air"
-      serviceCategoryIcon: `<span class="${categoryInfo.class}">${categoryInfo.text}</span>`, // HTML for icon
+      serviceCategoryInternal: categoryInternal,
+      serviceCategoryIcon: `<span class="${categoryInfo.class}">${categoryInfo.text}</span>`,
       customer: row.customer || "N/A",
       etd: row.etd || "N/A",
       eta: row.eta || "N/A",
       shipper: row.shipper || "N/A",
       consignee: row.consignee || "N/A",
       carrier: row.carrier || "N/A",
-      pol: row.pol || "N/A", // Port/Point of Loading
-      pod: row.pod || "N/A", // Port/Point of Discharge
+      pol: row.pol || "N/A",
+      pod: row.pod || "N/A",
       finalDestination: row.final_destination || "N/A",
-      mblHawbPro: row.mbl_hawb_pro || "N/A", // Master Bill of Lading / Master Air Waybill / PRO Number
+      mblHawbPro: row.mbl_hawb_pro || "N/A",
       numPackages: row.num_packages !== null ? row.num_packages : "N/A",
       grossWeight: row.gross_weight !== null ? `${row.gross_weight} kg` : "N/A",
       commodityDescription: row.commodity_description || "N/A",
       htsCode: row.hts_code || "N/A",
       status: row.status || "Pending",
       notes: row.notes || "",
-      documents: row.documents_metadata || [], // Array of document metadata objects
-      service_charges: row.service_charges || [], // Array of charge objects
+      documents: row.documents_metadata || [],
+      service_charges: row.service_charges || [],
       isfFiledLater: row.isf_filed_later || false,
-
-      // Category-specific fields, default to "N/A" if not applicable
       oceanServiceType: categoryInternal === "ocean" ? (row.ocean_service_type || "N/A") : "N/A",
       oceanService: categoryInternal === "ocean" ? (row.ocean_service || "N/A") : "N/A",
-      hbl: categoryInternal === "ocean" ? (row.hbl || "N/A") : "N/A", // House Bill of Lading (Ocean)
-      hawb: categoryInternal === "air" ? (row.hawb || "N/A") : "N/A", // House Air Waybill (Air)
+      hbl: categoryInternal === "ocean" ? (row.hbl || "N/A") : "N/A",
+      hawb: categoryInternal === "air" ? (row.hawb || "N/A") : "N/A",
       containerNumber: categoryInternal === "ocean" ? (row.container_number || "N/A") : "N/A",
       containerType: categoryInternal === "ocean" ? (row.container_type || "N/A") : "N/A",
       sealNumber: categoryInternal === "ocean" ? (row.seal_number || "N/A") : "N/A",
       flightNumber: categoryInternal === "air" ? (row.flight_number || "N/A") : "N/A",
       dimensions: (categoryInternal === "air" || categoryInternal === "truck") ? (row.dimensions || "N/A") : "N/A",
       truckServiceType: categoryInternal === "truck" ? (row.truck_service_type || "N/A") : "N/A",
-      cbm: categoryInternal === "truck" && row.cbm !== null ? row.cbm : "N/A", // Cubic Meters
+      cbm: categoryInternal === "truck" && row.cbm !== null ? row.cbm : "N/A",
     };
-     // Handle cases where HAWB might have been stored in HBL field from older forms for Air
      if (categoryInternal === "air" && transformed.hawb === "N/A" && row.hbl && row.hbl !== "N/A") {
-        transformed.hawb = row.hbl; // Use HBL value for HAWB if HAWB is N/A but HBL has a value for Air
+        transformed.hawb = row.hbl;
     }
     return transformed;
   }
@@ -458,15 +450,14 @@
         showCustomNotification("User not authenticated for this module. Cannot save data.", "error");
         throw new Error("User not authenticated for Service Tracking module.");
     }
-    const user = currentUserST; // Get current authenticated user
+    const user = currentUserST;
     const dbData = { user_id: user.id };
 
     if (isNewRecord) {
         dbData.service_display_id = await generateNextServiceDisplayId(category);
-        dbData.user_email = user.email; // Store email on creation
+        dbData.user_email = user.email;
     }
 
-    // Mapping from form field names (suffixed with "Modal") to database column names
     const fieldMapping = {
         customerModal: 'customer', etdModal: 'etd', etaModal: 'eta', shipperModal: 'shipper',
         consigneeModal: 'consignee', carrierModal: 'carrier', polModal: 'pol', podModal: 'pod',
@@ -474,14 +465,11 @@
         numPackagesModal: 'num_packages', grossWeightModal: 'gross_weight',
         commodityDescriptionModal: 'commodity_description', htsCodeModal: 'hts_code',
         serviceStatusModal: 'status', serviceNotesModal: 'notes',
-        // Category specific fields (Ocean)
         oceanServiceTypeModal: 'ocean_service_type', oceanServiceModal: 'ocean_service',
-        hblModal: 'hbl', // This will be HBL for Ocean, HAWB for Air (handled below)
+        hblModal: 'hbl', 
         containerNumberModal: 'container_number', containerTypeModal: 'container_type',
         sealNumberModal: 'seal_number', addIsfLaterModal: 'isf_filed_later',
-        // Category specific fields (Air)
-        flightNumberModal: 'flight_number', dimensionsModal: 'dimensions', // also for Truck
-        // Category specific fields (Truck)
+        flightNumberModal: 'flight_number', dimensionsModal: 'dimensions',
         truckServiceTypeModal: 'truck_service_type', cbmModal: 'cbm'
     };
 
@@ -489,28 +477,25 @@
         const dbKey = fieldMapping[formKey];
         if (formData.has(formKey)) {
             let value = formData.get(formKey);
-            // Type conversions and cleaning
-            if (dbKey === 'etd' || dbKey === 'eta') dbData[dbKey] = value ? value : null; // Dates or null
-            else if (dbKey === 'num_packages' || dbKey === 'gross_weight' || dbKey === 'cbm') dbData[dbKey] = (value === '' || isNaN(parseFloat(value))) ? null : parseFloat(value); // Numbers or null
-            else if (dbKey === 'isf_filed_later') dbData[dbKey] = formData.get(formKey) === 'on'; // Boolean for checkbox
-            else if (typeof value === 'string') dbData[dbKey] = value.trim() === '' ? null : value.trim(); // Trim strings, or null if empty
-            else dbData[dbKey] = value; // For other types if any
-        } else if (dbKey === 'isf_filed_later' && isNewRecord) { // Ensure boolean fields have a default if not in form
-             dbData[dbKey] = false; // Default to false if checkbox not present/checked on create
+            if (dbKey === 'etd' || dbKey === 'eta') dbData[dbKey] = value ? value : null;
+            else if (dbKey === 'num_packages' || dbKey === 'gross_weight' || dbKey === 'cbm') dbData[dbKey] = (value === '' || isNaN(parseFloat(value))) ? null : parseFloat(value);
+            else if (dbKey === 'isf_filed_later') dbData[dbKey] = formData.get(formKey) === 'on';
+            else if (typeof value === 'string') dbData[dbKey] = value.trim() === '' ? null : value.trim();
+            else dbData[dbKey] = value;
+        } else if (dbKey === 'isf_filed_later' && isNewRecord) {
+             dbData[dbKey] = false;
         }
     }
 
-    // Handle HBL/HAWB distinction based on category
     if (category === 'air') {
-        if (dbData.hbl !== undefined) { // If 'hblModal' was in form (meaning HAWB for Air)
-            dbData.hawb = dbData.hbl; // Map to 'hawb' column for Air table
-            delete dbData.hbl;        // Remove 'hbl' key as Air table doesn't have it
+        if (dbData.hbl !== undefined) {
+            dbData.hawb = dbData.hbl;
+            delete dbData.hbl;
         }
     } else if (category === 'ocean') {
-        delete dbData.hawb; // Ensure 'hawb' key is not present for Ocean
+        delete dbData.hawb;
     }
 
-    // Clean up fields not relevant to the specific category to avoid DB errors
     const allPossibleCategorySpecificFields = {
         ocean: ['ocean_service_type', 'ocean_service', 'hbl', 'container_number', 'container_type', 'seal_number', 'isf_filed_later'],
         air: ['flight_number', 'hawb', 'dimensions'],
@@ -520,7 +505,6 @@
         if (catKey !== category) allPossibleCategorySpecificFields[catKey].forEach(field => delete dbData[field]);
     }
 
-    // Collect service charges
     const collectedCharges = [];
     if (chargesContainer) {
         const chargeRows = chargesContainer.querySelectorAll('.st-charge-row');
@@ -528,9 +512,9 @@
             const nameSelect = row.querySelector('select[name="chargeName[]"]');
             const costInput = row.querySelector('input[name="chargeCost[]"]');
             const currencySelect = row.querySelector('select[name="chargeCurrency[]"]');
-            if (nameSelect && costInput && currencySelect && nameSelect.value) { // Ensure name is selected
+            if (nameSelect && costInput && currencySelect && nameSelect.value) {
                 const cost = parseFloat(costInput.value);
-                if (!isNaN(cost)) { // Ensure cost is a valid number
+                if (!isNaN(cost)) {
                     collectedCharges.push({
                         name: nameSelect.value,
                         cost: cost,
@@ -540,34 +524,32 @@
             }
         });
     }
-    dbData.service_charges = collectedCharges; // Store as JSONB array
+    dbData.service_charges = collectedCharges;
 
-    // Ensure documents_metadata is an array if new, otherwise it will be handled during edit
     if (!dbData.documents_metadata && isNewRecord) dbData.documents_metadata = [];
 
     return dbData;
   }
 
-  // SECTION 4: SUPABASE CORE LOGIC
-  async function fetchAllServices() {
+  // SECTION 4: SUPABASE CORE LOGIC (NOW INCLUDES REALTIME)
+  async function fetchAndRefreshAllData() {
     if (!currentUserST) {
       console.warn("ST Module: User not authenticated. Cannot fetch services.");
-      allServicesData = []; // Clear local data
-      if (tableViewTypeSelect) initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, []); // Update table with empty data
-      if (archiveYearSelect && !archiveYearsPopulated) populateArchiveYearSelect(); // Populate archive years (might show default range)
-      updateDashboard([]); // Update dashboard with empty data
+      allServicesData = []; 
+      if (tableViewTypeSelect) initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, []);
+      if (archiveYearSelect && !archiveYearsPopulated) populateArchiveYearSelect();
+      updateDashboard([]); 
       return;
     }
     console.log("ST Module: Fetching all services for user:", currentUserST.id);
     try {
-      const selectQuery = "*, service_display_id, user_email, service_charges"; // Ensure all needed columns are fetched
+      const selectQuery = "*, service_display_id, user_email, service_charges";
       const [oceanRes, airRes, truckRes] = await Promise.all([
         supabase.from(SERVICE_TABLES.ocean).select(selectQuery).order('created_at', { ascending: false }),
         supabase.from(SERVICE_TABLES.air).select(selectQuery).order('created_at', { ascending: false }),
         supabase.from(SERVICE_TABLES.truck).select(selectQuery).order('created_at', { ascending: false })
       ]);
 
-      // Error handling for each fetch
       if (oceanRes.error) throw { type: 'ocean', ...oceanRes.error };
       if (airRes.error) throw { type: 'air', ...airRes.error };
       if (truckRes.error) throw { type: 'truck', ...truckRes.error };
@@ -579,152 +561,104 @@
       allServicesData = [...oceanData, ...airData, ...truckData];
       console.log("ST Module: Data fetched successfully, total services:", allServicesData.length);
 
-      refreshMainServicesTable(); // Refresh main table with new data
-      if (archiveYearSelect && !archiveYearsPopulated) populateArchiveYearSelect(); // Populate years if not done
+      refreshMainServicesTable(); 
+      if (archiveYearSelect && !archiveYearsPopulated) populateArchiveYearSelect(); 
 
     } catch (error) {
       console.error("ST Module: Error fetching services from Supabase:", error);
       showCustomNotification(`Error fetching ${error.type || ''} services: ${error.message || 'Unknown error'}`, "error");
-      allServicesData = []; // Clear data on error
+      allServicesData = [];
       if (tableViewTypeSelect) initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, []);
       if (archiveYearSelect && !archiveYearsPopulated) populateArchiveYearSelect();
       updateDashboard([]);
     }
   }
-  
+
+  // Re-introducing Realtime functionality
   async function unsubscribeAllServiceChanges() {
     if (serviceChannels.length > 0) {
         console.log("ST Module: Unsubscribing from all service channels:", serviceChannels.map(c => c.topic));
-        const removalPromises = serviceChannels.map(channel => {
-            return supabase.removeChannel(channel);
-        });
+        const removalPromises = serviceChannels.map(channel => supabase.removeChannel(channel));
         try {
             await Promise.all(removalPromises);
-            console.log("ST Module: All realtime channels removed successfully.");
-        } catch (aggregateError) {
-            console.error("ST Module: Error during Promise.all for channel removal:", aggregateError);
+        } catch (error) {
+            console.error("ST Module: Error during batch channel removal:", error);
         }
-        serviceChannels = []; // Clear the array of managed channel instances
-    } else {
-        console.log("ST Module: No active realtime channels to unsubscribe.");
+        serviceChannels = [];
     }
+  }
+
+  function handleRealtimeChange(payload, tableCategory) {
+    if (isProcessingRealtimeUpdate) {
+        console.log("ST Module: Realtime update skipped, another is in progress.");
+        return;
+    }
+    isProcessingRealtimeUpdate = true;
+    
+    console.log(`ST Module: Realtime change on ${tableCategory}:`, payload.eventType);
+    const eventType = payload.eventType;
+    let changedRecord;
+    let recordIndex = -1;
+
+    switch (eventType) {
+        case 'INSERT':
+            changedRecord = transformServiceDataForUI(payload.new, tableCategory);
+            allServicesData.unshift(changedRecord); // Add to the top
+            break;
+        case 'UPDATE':
+            changedRecord = transformServiceDataForUI(payload.new, tableCategory);
+            recordIndex = allServicesData.findIndex(s => s.id === changedRecord.id);
+            if (recordIndex > -1) {
+                allServicesData[recordIndex] = changedRecord;
+            } else {
+                allServicesData.unshift(changedRecord); // Add if not found
+            }
+            break;
+        case 'DELETE':
+            const deletedId = payload.old.id;
+            if (deletedId) {
+                allServicesData = allServicesData.filter(s => s.id !== deletedId);
+            }
+            break;
+        default:
+            isProcessingRealtimeUpdate = false;
+            return;
+    }
+
+    refreshMainServicesTable();
+    
+    // Also refresh archive table if it's currently open
+    if (archiveServiceModal && archiveServiceModal.style.display === 'flex') {
+        handleFilterArchive();
+    }
+    
+    setTimeout(() => { isProcessingRealtimeUpdate = false; }, 200); // Release the lock
   }
 
   async function subscribeToServiceChanges() {
-    if (!supabase || !currentUserST) {
-      console.warn("ST Module: Supabase client not available or user not authenticated for Realtime subscriptions.");
-      return;
-    }
+    await unsubscribeAllServiceChanges(); // Ensure no old subscriptions are lingering
 
-    await unsubscribeAllServiceChanges(); // *** FIX: Ensure all previous channels are removed before creating new ones.
+    console.log("ST Module: Setting up new realtime subscriptions for all service tables.");
 
-    console.log("ST Module: Attempting to subscribe to service changes for user:", currentUserST.id);
-    const newChannels = [];
-
-    Object.keys(SERVICE_TABLES).forEach(categoryKey => {
+    const newChannels = Object.keys(SERVICE_TABLES).map(categoryKey => {
         const tableName = SERVICE_TABLES[categoryKey];
-        const channelName = `realtime-services-${tableName}-st-${currentUserST.id.slice(0, 8)}`;
-
-        console.log(`ST Module: Setting up channel: ${channelName}`);
-        
-        const channel = supabase.channel(channelName, {
-            config: { broadcast: { ack: true } },
-        });
-
-        channel
-            .on('postgres_changes',
+        const channel = supabase.channel(`public:${tableName}`)
+            .on('postgres_changes', 
                 { event: '*', schema: 'public', table: tableName },
-                (payload) => {
-                    handleRealtimeChangeST(payload, categoryKey);
-                }
+                (payload) => handleRealtimeChange(payload, categoryKey)
             )
             .subscribe((status, err) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log(`ST Module: RT Successfully SUBSCRIBED to ${tableName} (${channelName})`);
-                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error(`ST Module: RT Subscription FAILED/TIMED_OUT for ${tableName} (${channelName}). Error:`, err);
-                } else if (status === 'CLOSED') {
-                    console.warn(`ST Module: RT Subscription to ${tableName} (${channelName}) was CLOSED.`);
+                    console.log(`ST Module: Successfully subscribed to ${tableName}`);
+                } else if (err) {
+                    console.error(`ST Module: Subscription to ${tableName} FAILED. Error:`, err);
                 }
             });
-            
-        newChannels.push(channel);
+        return channel;
     });
-    
-    serviceChannels = newChannels; 
-    console.log("ST Module: Service change subscriptions setup complete for channels:", serviceChannels.map(c => c.topic));
+
+    serviceChannels = newChannels;
   }
-
-  function handleRealtimeChangeST(payload, tableCategory) {
-    console.log(`ST Module: Realtime change on ${tableCategory}:`, payload.eventType, payload);
-    const eventType = payload.eventType;
-    let changedRecordUI;
-    let needsMainTableRefresh = false;
-    let notificationMessage = '';
-    let notificationType = 'info';
-
-    if (eventType === 'INSERT') {
-      changedRecordUI = transformServiceDataForUI(payload.new, tableCategory);
-      const existingIndex = allServicesData.findIndex(s => s.id === changedRecordUI.id);
-      if (existingIndex === -1) { 
-          allServicesData.push(changedRecordUI);
-          notificationMessage = `New service ${changedRecordUI.service_display_id} (${tableCategory}) added.`;
-          notificationType = 'success';
-      } else { 
-          allServicesData[existingIndex] = changedRecordUI;
-          notificationMessage = `Service ${changedRecordUI.service_display_id} (${tableCategory}) data refreshed (received INSERT for existing).`;
-      }
-      allServicesData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); 
-      needsMainTableRefresh = true;
-    } else if (eventType === 'UPDATE') {
-      changedRecordUI = transformServiceDataForUI(payload.new, tableCategory);
-      const index = allServicesData.findIndex(s => s.id === changedRecordUI.id);
-      if (index !== -1) {
-          const oldStatus = allServicesData[index].status;
-          allServicesData[index] = changedRecordUI; 
-          notificationMessage = `Service ${changedRecordUI.service_display_id} (${tableCategory}) updated.`;
-          if (oldStatus !== changedRecordUI.status) {
-              notificationMessage += ` Status: ${oldStatus} -> ${changedRecordUI.status}.`;
-          }
-          needsMainTableRefresh = true;
-      } else { 
-          allServicesData.push(changedRecordUI);
-          allServicesData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          notificationMessage = `Service ${changedRecordUI.service_display_id} (${tableCategory}) added via update event.`;
-          needsMainTableRefresh = true;
-      }
-    } else if (eventType === 'DELETE') {
-      const deletedId = payload.old.id; 
-      if (deletedId) {
-          const serviceToDelete = allServicesData.find(s => s.id === deletedId);
-          const displayIdForNotification = serviceToDelete?.service_display_id || deletedId.substring(0,8)+'...';
-          allServicesData = allServicesData.filter(s => s.id !== deletedId); 
-          notificationMessage = `Service ${displayIdForNotification} (${tableCategory}) deleted.`;
-          needsMainTableRefresh = true;
-      }
-    }
-
-    if (needsMainTableRefresh) {
-        console.log("ST Module: Triggering main table refresh due to Realtime event.");
-        refreshMainServicesTable(); 
-        
-        const mainContent = document.querySelector('main');
-        if (notificationMessage && mainContent && mainContent.dataset.currentModule === 'service-tracking') {
-            showCustomNotification(notificationMessage, notificationType);
-        } else if (notificationMessage) {
-            console.log(`ST Module: Notification suppressed. Current module is '${mainContent?.dataset.currentModule}', not 'service-tracking'.`);
-        }
-    }
-
-    if (archiveServiceModal && archiveServiceModal.style.display === 'flex' && archiveServiceModal.classList.contains('st-modal-open')) {
-        console.log("ST Module: Archive modal is open, refreshing archive data due to Realtime event.");
-        handleFilterArchive(); 
-    }
-  }
-  
-  // ... (El resto del archivo permanece igual hasta la sección 13)
-  // ... (All other sections like CRUD, Modals, DataTables setup, etc., remain unchanged)
-  // ...
   
   // SECTION 5: SUPABASE STORAGE HELPERS
   async function uploadServiceDocument(serviceId, serviceCategory, docCategory, docType, file) {
@@ -837,6 +771,9 @@
             }
         }
         closeModal(createServiceModal, newServiceForm);
+        // The realtime subscription will handle the UI update for all users.
+        // The fetchAndRefreshAllData call is removed from here to rely on realtime.
+        showCustomNotification(`New service ${newService.service_display_id} created.`, "success");
       } catch (e) {
         console.error("Exception during service creation:", e);
         showCustomNotification(`An unexpected error occurred: ${e.message}`, "error");
@@ -901,6 +838,8 @@
           return;
         }
         closeModal(editServiceModal, editServiceForm);
+        showCustomNotification(`Service ${updatedService.service_display_id} updated.`, "success");
+        // Realtime will handle the update for all users.
       } catch (e) {
         console.error("Exception during service update:", e);
         showCustomNotification(`An unexpected error occurred during update: ${e.message}`, "error");
@@ -935,7 +874,10 @@
     if (error) {
       console.error(`Error deleting ${serviceCategoryInternal} service ${serviceId}:`, error);
       showCustomNotification(`Error deleting service: ${error.message}`, "error");
-    } 
+    } else {
+      showCustomNotification(`Service deleted successfully.`, "success");
+      // Realtime will handle the update for all users.
+    }
   }
   async function completeService(serviceId, serviceCategoryInternal) {
     if (!currentUserST) { showCustomNotification("Authentication required to complete service.", "error"); return; }
@@ -1008,8 +950,8 @@
         showCustomNotification(`Invoice ${newInvoice.invoice_number} created for service ${fullServiceDetails.service_display_id}.`, "success", 5000);
         console.log("ST Module: New invoice created in Supabase:", newInvoice);
     }
+    // Realtime will handle the update for all users.
   }
-
 
   // SECTION 7: MODAL SPECIFIC LOGIC & UI SETUP
   function createChargeRowElement(serviceType, charge = null, isEditable = true) {
@@ -1446,8 +1388,9 @@
                 console.error("Error updating service with new document metadata:", updateError);
                 showCustomNotification("File uploaded, but failed to update service record.", "warning");
             } else {
-                service.documents = updatedDocumentsMetadata; 
-                renderServiceDocuments(currentServiceIdForDocs); 
+                showCustomNotification("Document uploaded and record updated.", "success");
+                await fetchAndRefreshAllData(); // Refresh all data
+                renderServiceDocuments(currentServiceIdForDocs); // Re-render the doc list in the modal
                 resetDocUploadForm(); 
             }
         }
@@ -1510,7 +1453,8 @@
                         console.error("Error updating document metadata in DB after storage delete:", updateDbError);
                         showCustomNotification("Storage file handled, but DB update for metadata failed. Please refresh.", "warning");
                     } else {
-                        service.documents = updatedDocumentsMetadata;
+                        showCustomNotification("Document deleted. Refreshing list...", "success");
+                        await fetchAndRefreshAllData();
                         renderServiceDocuments(currentServiceIdForDocs);
                     }
                 } catch (error) {
@@ -1764,7 +1708,6 @@
         return filterServicesForCurrentMonthDisplay([s]).length > 0;
     });
 
-    // This now calls the robust table update function
     initializeOrUpdateTable(viewType, servicesTableHtmlElement, null, tableData);
     updateDashboard(allServicesData);
   }
@@ -1779,7 +1722,6 @@
     const currentDtInstance = $.fn.DataTable.isDataTable(tableElement) ? $(tableElement).DataTable() : null;
     const newColumnsDefinition = columns || columnDefinitions[viewType] || columnDefinitions.all;
     
-    // Check if the table structure (columns) has actually changed.
     const isStructuralChange = !currentDtInstance || currentDtInstance.columns().count() !== newColumnsDefinition.length;
 
     let tableDataForProcessing;
@@ -1787,7 +1729,6 @@
     if (dataToLoad !== null) {
         tableDataForProcessing = dataToLoad;
     } else {
-        // Fallback to filtering all data if dataToLoad is not provided
         tableDataForProcessing = allServicesData.filter(s => {
             if (isMainServicesTable && (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS)) return false;
             if (viewType !== "all" && s.serviceCategoryInternal !== viewType) return false;
@@ -1797,21 +1738,18 @@
     }
 
     if (currentDtInstance && !isStructuralChange) {
-        // *** CORE FIX: If table exists and columns are the same, JUST update data.
         console.log(`ST Module: Refreshing data only for table ${tableElement.id}`);
         currentDtInstance.clear().rows.add(tableDataForProcessing).draw(false);
         return currentDtInstance;
     }
 
-    // --- Full Re-initialization Logic ---
     console.log(`ST Module: Full (Re)Initialization of table for ${tableElement.id}. Structural Change: ${isStructuralChange}`);
     
     if (currentDtInstance) {
         currentDtInstance.destroy();
-        $(tableElement).empty(); // More aggressive cleanup to prevent duplication
+        $(tableElement).empty(); 
     }
     
-    // Rebuild the header
     const thead = tableElement.querySelector("thead") || document.createElement('thead');
     tableElement.appendChild(thead);
     let headerHtml = "<tr>";
@@ -1821,7 +1759,6 @@
     headerHtml += "</tr>";
     thead.innerHTML = headerHtml;
     
-    // Ensure tbody exists
     if (!tableElement.querySelector("tbody")) {
         tableElement.appendChild(document.createElement('tbody'));
     }
@@ -2277,133 +2214,81 @@
     handleTableActions(event, archiveServicesDataTable, allServicesData);
   }
 
-  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING (OPTIMIZED)
+  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING (WITH REALTIME)
   async function handleServiceTrackingAuthChange(sessionUser) {
-    console.log("ST Module: handleServiceTrackingAuthChange called with user:", sessionUser?.id || "No user");
-    if (isSubscribingST) {
-      console.warn("ST Module: Subscription/auth change process already in progress, skipping.");
-      return;
-    }
-    isSubscribingST = true;
-
-    try {
-      const userChanged = (!currentUserST && sessionUser) || (currentUserST && !sessionUser) || (currentUserST && sessionUser && currentUserST.id !== sessionUser.id);
-
-      if (userChanged) {
-        console.log(`ST Module: Auth change - User state has changed. New User: ${sessionUser?.id}, Old User: ${currentUserST?.id}`);
-        await unsubscribeAllServiceChanges(); 
-        currentUserST = sessionUser; 
-
-        if (sessionUser) { 
-          await fetchAllServices(); 
-          await subscribeToServiceChanges(); 
-          setupProgressNotifications(); 
-          archiveYearsPopulated = false; 
-          if (archiveYearSelect) populateArchiveYearSelect();
-        } else { 
-          allServicesData = []; 
-          if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable.clear().rows.add([]).draw(); else refreshMainServicesTable(); 
-          if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) archiveServicesDataTable.clear().rows.add([]).draw();
-          updateDashboard([]);
-          scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-          scheduledNotificationTimeouts = [];
-          archiveYearsPopulated = false;
-          if (archiveYearSelect) populateArchiveYearSelect(); 
-        }
-      } else if (sessionUser) { 
-        console.log(`ST Module: Auth change - User session confirmed (SAME user: ${currentUserST.id}). Ensuring subscriptions are healthy.`);
-        if (serviceChannels.length === 0 || serviceChannels.some(ch => ch.state !== 'joined')) {
-           console.warn("ST Module: Subscriptions not healthy or not present for current user. Re-subscribing.");
-           await subscribeToServiceChanges(); 
+    const userChanged = (!currentUserST && sessionUser) || (currentUserST && !sessionUser) || (currentUserST && sessionUser && currentUserST.id !== sessionUser.id);
+    
+    if (userChanged) {
+        currentUserST = sessionUser;
+        await unsubscribeAllServiceChanges(); // Unsubscribe before doing anything else
+        
+        if (sessionUser) {
+            console.log("ST Module: User logged in. Fetching initial data and subscribing to realtime changes.");
+            await fetchAndRefreshAllData();
+            await subscribeToServiceChanges();
+            setupProgressNotifications();
+            archiveYearsPopulated = false;
+            if(archiveYearSelect) populateArchiveYearSelect();
         } else {
-           console.log("ST Module: Subscriptions appear healthy for the current user.");
+            console.log("ST Module: User logged out. Clearing data.");
+            allServicesData = [];
+            if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable.clear().rows.add([]).draw();
+            if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) archiveServicesDataTable.clear().rows.add([]).draw();
+            updateDashboard([]);
+            scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            scheduledNotificationTimeouts = [];
+            archiveYearsPopulated = false;
         }
-      } else { 
-          console.log("ST Module: No active session and no previous user. Ensuring no subscriptions are active.");
-          await unsubscribeAllServiceChanges(); 
-          updateDashboard([]); 
-      }
-    } catch (error) {
-      console.error("ST Module: Error in handleServiceTrackingAuthChange:", error);
-    } finally {
-      isSubscribingST = false;
-      console.log("ST Module: handleServiceTrackingAuthChange finished.");
     }
   }
 
-  async function initializeServiceTrackingModule() {
+  function initializeServiceTrackingModule() {
+    if (isServiceTrackingInitialized) return;
     console.log("ST Module: Initializing module one-time setup...");
-    if (!isServiceTrackingInitialized) {
-      console.log("ST Module: Performing one-time DOM setup (event listeners, initial empty table/dashboard)...");
-      initModalListeners(); 
-      getConfirmModalElements(); 
-      if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
-      if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
-      
-      // Initialize tables empty first to avoid errors
-      initializeOrUpdateTable("all", servicesTableHtmlElement, null, []);
-      updateDashboard([]); 
-      
-      isServiceTrackingInitialized = true; 
-    }
+    
+    initModalListeners(); 
+    getConfirmModalElements(); 
+    if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
+    if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
+    
+    initializeOrUpdateTable("all", servicesTableHtmlElement, null, []);
+    updateDashboard([]); 
+    
+    isServiceTrackingInitialized = true;
 
-    document.removeEventListener('supabaseAuthStateChange', authChangeHandlerST); 
-    document.addEventListener('supabaseAuthStateChange', authChangeHandlerST);
+    document.addEventListener('supabaseAuthStateChange', (event) => {
+        const { user: sessionUser, accessDenied } = event.detail;
+        if (accessDenied) {
+            handleServiceTrackingAuthChange(null);
+        } else {
+            handleServiceTrackingAuthChange(sessionUser);
+        }
+    });
 
-    $(window).off('resize.serviceTrackingST layoutChange.serviceTrackingST'); 
     $(window).on('resize.serviceTrackingST layoutChange.serviceTrackingST', function () {
         setTimeout(() => { 
-            if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
-                servicesDataTable.columns.adjust().responsive.recalc();
-            }
-            if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
-                archiveServicesDataTable.columns.adjust().responsive.recalc();
-            }
+            if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable.columns.adjust().responsive.recalc();
+            if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) archiveServicesDataTable.columns.adjust().responsive.recalc();
         }, 150);
     });
-    console.log("ST Module: One-time UI setup complete. Waiting for initial auth check or auth state changes.");
-  }
-
-  async function authChangeHandlerST(event) {
-    console.log("ST Module: Detected supabaseAuthStateChange event. Source:", event.detail?.source, "Event Type:", event.detail?.event);
-    if (event.detail?.source === 'script.js') {
-        const sessionUser = event.detail?.user;
-        const accessDenied = event.detail?.accessDenied || false;
-
-        if (accessDenied) {
-            console.warn("ST Module: Access denied for user. Module will reflect no user state.");
-            await handleServiceTrackingAuthChange(null); 
-        } else {
-            await handleServiceTrackingAuthChange(sessionUser);
-        }
-    }
   }
 
   async function initialAuthCheckAndSetupST() {
     initializeServiceTrackingModule(); 
-
-    console.log("ST Module: Performing initial auth check via initialAuthCheckAndSetupST...");
     if (supabase) {
         try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("ST Module: Error getting initial session:", error);
-                await handleServiceTrackingAuthChange(null); 
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session ? session.user : null;
+            if (user && typeof isUserAllowed === 'function' && !isUserAllowed(user.email)) {
+                 await handleServiceTrackingAuthChange(null);
             } else {
-                console.log("ST Module: Initial session check result:", session ? `User: ${session.user?.id}` : "No session");
-                if (session && session.user && typeof isUserAllowed === 'function' && !isUserAllowed(session.user.email)) {
-                    console.warn(`ST Module: Initial user ${session.user.email} is not allowed. Forcing sign out locally for module.`);
-                    await handleServiceTrackingAuthChange(null);
-                } else {
-                    await handleServiceTrackingAuthChange(session ? session.user : null);
-                }
+                 await handleServiceTrackingAuthChange(user);
             }
         } catch (e) {
-            console.error("ST Module: Exception during initial supabase.auth.getSession():", e);
+            console.error("ST Module: Exception during initial auth check:", e);
             await handleServiceTrackingAuthChange(null);
         }
     } else {
-        console.error("ST Module: Supabase not available for initial auth check.");
         await handleServiceTrackingAuthChange(null);
     }
   }
