@@ -2,12 +2,10 @@
 
 <div class="service-tracking-container">
 
-    <!-- Cabecera del Módulo -->
     <div class="service-tracking-header">
         <h2><i class='bx bxs-compass'></i> Service Tracking</h2>
     </div>
 
-    <!-- Resumen del Dashboard -->
     <div class="st-dashboard-summary">
         <div class="st-dashboard-scorecards">
             <div class="st-scorecard">
@@ -75,7 +73,6 @@
         </div>
     </div>
 
-    <!-- Barra de Controles de la Tabla Principal -->
     <div class="st-controls-bar">
         <div class="st-table-view-selector">
             <label for="tableViewType">Table View (Current Month):</label>
@@ -99,16 +96,13 @@
         </div>
     </div>
 
-    <!-- Modal para Crear Nuevo Servicio -->
     <div id="serviceModal" class="st-modal">
-        <div class="st-modal-content st-modal-content-xlarge"> <!-- XLARGE for the new layout -->
-            <div class="st-modal-header">
+        <div class="st-modal-content st-modal-content-xlarge"> <div class="st-modal-header">
                 <h3><i class='bx bx-slider-alt'></i> Create New Service</h3>
                 <button class="st-close-button" id="closeServiceModalBtn" aria-label="Close modal">&times;</button>
             </div>
             <form id="newServiceForm" class="st-modal-body st-modal-body-columns">
                 <div class="st-form-main-column">
-                    <!-- Columna Izquierda del Formulario -->
                     <div class="st-form-column-section">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bx-info-circle'></i> General Information</h4>
@@ -163,7 +157,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Columna Derecha del Formulario -->
                     <div class="st-form-column-section">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bxs-map-pin'></i> Logistics Details</h4>
@@ -192,8 +185,7 @@
                                     <label for="hblModal">HBL (Ocean) / HAWB (Air):</label>
                                     <input type="text" id="hblModal" name="hblModal" placeholder="HBL / HAWB">
                                 </div>
-                                <div class="st-form-group st-form-group-col"></div> <!-- Placeholder -->
-                            </div>
+                                <div class="st-form-group st-form-group-col"></div> </div>
                         </div>
 
                         <div class="st-form-section">
@@ -202,14 +194,14 @@
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
                                         <label for="oceanServiceTypeModal">Ocean Service Type: <span class="st-required">*</span></label>
-                                        <select id="oceanServiceTypeModal" name="oceanServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <select id="oceanServiceTypeModal" name="oceanServiceTypeModal">
                                             <option value="" disabled selected>Select...</option>
                                             <option value="LCL">LCL</option> <option value="FCL">FCL</option>
                                         </select>
                                     </div>
                                     <div class="st-form-group st-form-group-col">
                                         <label for="oceanServiceModal">Ocean Service: <span class="st-required">*</span></label>
-                                        <select id="oceanServiceModal" name="oceanServiceModal"> <!-- Required se validará en JS -->
+                                        <select id="oceanServiceModal" name="oceanServiceModal">
                                             <option value="" disabled selected>Select...</option>
                                             <option value="Door to Door">Door to Door</option> <option value="Door to Port">Door to Port</option>
                                             <option value="Port to Door">Port to Door</option> <option value="Port to Port">Port to Port</option>
@@ -249,7 +241,7 @@
                                  <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
                                         <label for="truckServiceTypeModal">Truck Service Type: <span class="st-required">*</span></label>
-                                        <select id="truckServiceTypeModal" name="truckServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <select id="truckServiceTypeModal" name="truckServiceTypeModal">
                                             <option value="" disabled selected>Select...</option>
                                             <option value="FTL">FTL</option> <option value="LTL">LTL</option>
                                         </select>
@@ -261,8 +253,7 @@
                             </div>
                         </div>
                     </div>
-                     <!-- Fila Inferior del Formulario (abarca ambas columnas del formulario si es necesario) -->
-                    <div class="st-form-bottom-row">
+                     <div class="st-form-bottom-row">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bxs-package'></i> Cargo Details</h4>
                             <div class="st-form-row">
@@ -337,8 +328,7 @@
                         <div class="st-charge-header-item charge-action-header">Action</div>
                     </div>
                     <div id="chargesContainerModal_create" class="st-charges-list-container">
-                        <!-- Charge rows will be added here by JavaScript -->
-                    </div>
+                        </div>
                 </div>
             </form>
             <div class="st-modal-footer">
@@ -348,7 +338,6 @@
         </div>
     </div>
 
-    <!-- Modal para Ver Detalles del Servicio -->
     <div id="viewServiceModal" class="st-modal">
         <div class="st-modal-content st-modal-content-xlarge">
             <div class="st-modal-header">
@@ -428,7 +417,6 @@
                         <i class='bx bx-dollar-circle'></i> Service Charges
                     </h4>
                     <div id="viewServiceChargesContainer" class="st-charges-list-container-view">
-                        <!-- Charges will be listed here by JavaScript -->
                         <p id="viewNoChargesMessage" class="st-detail-value" style="font-style: italic; display: none; text-align:center; padding:1rem;">No charges associated with this service.</p>
                     </div>
                 </div>
@@ -439,17 +427,14 @@
         </div>
     </div>
 
-    <!-- Modal para Editar Servicio -->
     <div id="editServiceModal" class="st-modal">
-        <div class="st-modal-content st-modal-content-xlarge"> <!-- XLARGE for the new layout -->
-            <div class="st-modal-header">
+        <div class="st-modal-content st-modal-content-xlarge"> <div class="st-modal-header">
                 <h3><i class='bx bx-edit-alt'></i> Edit Service <span id="editServiceDisplayIdHeader" class="st-type-badge" style="font-size: 0.9em; background-color: transparent; color: var(--color-text-secondary); border: none; padding-left: 5px;"></span></h3>
                 <button class="st-close-button" id="closeEditServiceModalBtn" aria-label="Close modal">&times;</button>
             </div>
             <form id="editServiceForm" class="st-modal-body st-modal-body-columns">
                 <input type="hidden" id="editServiceId" name="editServiceId">
                 <div class="st-form-main-column">
-                    <!-- Columna Izquierda del Formulario -->
                     <div class="st-form-column-section">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bx-info-circle'></i> General Information</h4>
@@ -504,8 +489,7 @@
                             </div>
                         </div>
                     </div>
-                     <!-- Columna Derecha del Formulario -->
-                    <div class="st-form-column-section">
+                     <div class="st-form-column-section">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bxs-map-pin'></i> Logistics Details</h4>
                             <div class="st-form-row">
@@ -533,8 +517,7 @@
                                     <label for="editHblModal">HBL (Ocean) / HAWB (Air):</label>
                                     <input type="text" id="editHblModal" name="hblModal" placeholder="HBL / HAWB">
                                 </div>
-                                <div class="st-form-group st-form-group-col"></div> <!-- Placeholder -->
-                            </div>
+                                <div class="st-form-group st-form-group-col"></div> </div>
                         </div>
 
                         <div class="st-form-section">
@@ -543,14 +526,14 @@
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
                                         <label for="editOceanServiceTypeModal">Ocean Service Type: <span class="st-required">*</span></label>
-                                        <select id="editOceanServiceTypeModal" name="oceanServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <select id="editOceanServiceTypeModal" name="oceanServiceTypeModal">
                                             <option value="" disabled selected>Select...</option>
                                             <option value="LCL">LCL</option> <option value="FCL">FCL</option>
                                         </select>
                                     </div>
                                     <div class="st-form-group st-form-group-col">
                                         <label for="editOceanServiceModal">Ocean Service: <span class="st-required">*</span></label>
-                                        <select id="editOceanServiceModal" name="oceanServiceModal"> <!-- Required se validará en JS -->
+                                        <select id="editOceanServiceModal" name="oceanServiceModal">
                                             <option value="" disabled selected>Select...</option>
                                             <option value="Door to Door">Door to Door</option> <option value="Door to Port">Door to Port</option>
                                             <option value="Port to Door">Port to Door</option> <option value="Port to Port">Port to Port</option>
@@ -591,7 +574,7 @@
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
                                         <label for="editTruckServiceTypeModal">Truck Service Type: <span class="st-required">*</span></label>
-                                        <select id="editTruckServiceTypeModal" name="truckServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <select id="editTruckServiceTypeModal" name="truckServiceTypeModal">
                                             <option value="" disabled selected>Select...</option>
                                             <option value="FTL">FTL</option> <option value="LTL">LTL</option>
                                         </select>
@@ -604,7 +587,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Fila Inferior del Formulario -->
                     <div class="st-form-bottom-row">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bxs-package'></i> Cargo Details</h4>
@@ -680,8 +662,7 @@
                         <div class="st-charge-header-item charge-action-header">Action</div>
                     </div>
                     <div id="chargesContainerModal_edit" class="st-charges-list-container">
-                        <!-- Existing charge rows and new charge rows will be managed here by JavaScript -->
-                    </div>
+                        </div>
                 </div>
             </form>
             <div class="st-modal-footer">
@@ -691,7 +672,6 @@
         </div>
     </div>
 
-    <!-- Modal para Gestión de Documentos -->
     <div id="documentManagementModal" class="st-modal">
         <div class="st-modal-content" style="max-width: 800px;">
             <div class="st-modal-header">
@@ -739,7 +719,6 @@
         </div>
     </div>
 
-    <!-- Modal para Archivo de Servicios -->
     <div id="archiveServiceModal" class="st-modal">
         <div class="st-modal-content" style="max-width: 90vw; width: 1200px;"> <div class="st-modal-header">
                 <h3><i class='bx bx-calendar-event'></i> Monthly Service Archive</h3>
@@ -773,10 +752,8 @@
                 <div id="archiveTotalResults" style="margin-bottom: 1rem; font-weight: 500;">Results: 0</div>
                 <div class="st-table-container" id="archiveTableContainer" style="max-height: 60vh; overflow-y: auto;">
                      <table id="archiveServicesTable" class="display responsive nowrap" style="width:100%">
-                        <thead>
-                            </thead>
-                        <tbody>
-                            </tbody>
+                        <thead></thead>
+                        <tbody></tbody>
                     </table>
                     <p id="noArchiveResultsMessage" style="text-align:center; padding: 2rem; display:none;">No services found for the selected month and year.</p>
                 </div>
@@ -787,7 +764,6 @@
         </div>
     </div>
 
-    <!-- Modal para Notificaciones de Progreso -->
     <div id="progressNotificationModal" class="st-modal">
         <div class="st-modal-content" style="max-width: 900px;">
             <div class="st-modal-header">
@@ -824,17 +800,13 @@
         </div>
     </div>
 
-    <!-- Contenedor de la Tabla Principal de Servicios -->
     <div class="st-table-container">
         <table id="servicesTable" class="display responsive nowrap" style="width:100%">
-            <thead>
-            </thead>
-            <tbody>
-            </tbody>
+            <thead></thead>
+            <tbody></tbody>
         </table>
     </div>
 
-    <!-- Modal de Confirmación Personalizado -->
     <div id="stCustomConfirmModal" class="st-modal" style="display: none;">
         <div class="st-modal-content" style="max-width: 450px;">
             <div class="st-modal-header">
@@ -851,7 +823,6 @@
         </div>
     </div>
 
-    <!-- Contenedor para Notificaciones Personalizadas -->
     <div id="customNotificationContainerST" class="custom-notification-st-container"></div>
 
 </div>
