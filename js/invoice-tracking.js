@@ -1,4 +1,4 @@
-// js/invoice-tracking.js
+/ js/invoice-tracking.js
 (() => {
   // SECTION 1: DOM Element Selection & Supabase Client
   const createManualInvoiceBtn = document.getElementById(
@@ -88,7 +88,7 @@
   const dbPendingInvoicesEl = document.getElementById("db-pending-invoices");
   const dbOverdueInvoicesEl = document.getElementById("db-overdue-invoices");
 
-  // --- New History Modal Elements ---
+  // --- History Modal Elements ---
   const openInvoiceHistoryModalBtn = document.getElementById(
     "openInvoiceHistoryModalBtn"
   );
@@ -130,8 +130,9 @@
   let currentEditingInvoiceId = null;
   let isDownloadingPdf = false;
   let invoiceSubscription = null;
-  let currentUser = null;
-  let isInitializingModule = false;
+  let currentUserIT = null; // Changed from currentUser to avoid scope collision
+  let isInitializingModuleIT = false; // Changed from isInitializingModule
+  let isModuleInitializedIT = false; // This was the missing variable
 
   // Variable to track the highest z-index for modals
   let highestZIndex = 1100; // Base z-index for .it-modal
@@ -587,7 +588,7 @@
   }
 
   async function handleFilterHistoryInvoices() {
-    if (!currentUser) {
+    if (!currentUserIT) {
       showItNotification("Please log in to view history.", "info");
       if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
       if (historyTotalResultsEl)
@@ -2062,7 +2063,7 @@
   
   async function loadModuleDataAndSubscribe() {
     console.log("IT Module: loadModuleDataAndSubscribe called.");
-    if (!currentUser) {
+    if (!currentUserIT) {
       console.warn(
         "IT Module: No current user, skipping data load and subscription."
       );
@@ -2073,25 +2074,27 @@
   }
 
   async function manageSubscriptionAndData(session) {
-    if (isInitializingModule) {
+    if (isInitializingModuleIT) {
       console.log(
         "IT Module: manageSubscriptionAndData - Initialization already in progress, skipping."
       );
       return;
     }
-    isInitializingModule = true;
+    isInitializingModuleIT = true;
     console.log("IT Module: manageSubscriptionAndData - Starting.");
 
-    if (session?.user) {
-      if (!currentUser || currentUser.id !== session.user.id) {
+    const user = session ? session.user : null;
+
+    if (user) {
+      if (!currentUserIT || currentUserIT.id !== user.id) {
         console.log(
-          `IT Module: User state changed or first sign-in. New User: ${session.user.id}, Old User: ${currentUser?.id}. Loading data and subscribing.`
+          `IT Module: User state changed or first sign-in. New User: ${user.id}, Old User: ${currentUserIT?.id}. Loading data and subscribing.`
         );
-        currentUser = session.user;
+        currentUserIT = user;
         await loadModuleDataAndSubscribe();
       } else {
         console.log(
-          `IT Module: User session confirmed (same user: ${currentUser.id}). Ensuring subscription is healthy.`
+          `IT Module: User session confirmed (same user: ${currentUserIT.id}). Ensuring subscription is healthy.`
         );
         if (
           !invoiceSubscription ||
@@ -2099,21 +2102,21 @@
             invoiceSubscription.state !== "joining")
         ) {
           console.log(
-            `IT Module: Subscription for user ${currentUser.id} is not active (state: ${invoiceSubscription?.state}). Attempting to re-subscribe.`
+            `IT Module: Subscription for user ${currentUserIT.id} is not active (state: ${invoiceSubscription?.state}). Attempting to re-subscribe.`
           );
           await subscribeToInvoiceChanges();
         } else {
           console.log(
-            `IT Module: Subscription for user ${currentUser.id} is already active (state: ${invoiceSubscription.state}). No action needed.`
+            `IT Module: Subscription for user ${currentUserIT.id} is already active (state: ${invoiceSubscription.state}). No action needed.`
           );
         }
       }
     } else {
-      if (currentUser) {
+      if (currentUserIT) {
         console.log(
           "IT Module: User signed out. Clearing data and removing subscription."
         );
-        currentUser = null;
+        currentUserIT = null;
         allInvoicesData = [];
         initializeInvoicesTable([]);
         if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
@@ -2126,7 +2129,7 @@
         await removeCurrentSubscription();
       }
     }
-    isInitializingModule = false;
+    isInitializingModuleIT = false;
     console.log("IT Module: manageSubscriptionAndData - Finished.");
   }
   
@@ -2136,12 +2139,12 @@
   }
 
   function initializeApp() {
-    if (!isModuleInitialized) {
+    if (!isModuleInitializedIT) { // Corrected variable name
         console.log("IT Module: Performing one-time DOM setup...");
         setupEventListeners();
         initializeInvoicesTable([]);
         updateDashboardSummary([]);
-        isModuleInitialized = true;
+        isModuleInitializedIT = true; // Corrected variable name
     }
 
     // Register the listener for the custom global event from script.js
