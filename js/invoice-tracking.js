@@ -118,6 +118,7 @@
   const closeInvoiceHistoryFooterBtn = document.getElementById(
     "closeInvoiceHistoryFooterBtn"
   );
+  let cleanupInvoiceModule;
   let invoiceHistoryDataTable;
   let historyYearsPopulated = false;
 
@@ -2164,6 +2165,30 @@
       updateDashboardSummary([]);
       isModuleInitializedIT = true;
     }
+    cleanupInvoiceModule = async () => {
+      console.log(">>>> IT Module: Cleaning up before unload... <<<<");
+      document.removeEventListener(
+        "supabaseAuthStateChange",
+        window.moduleAuthChangeHandler
+      );
+      document.removeEventListener("moduleWillUnload", cleanupInvoiceModule); // Se limpia a sí misma
+      await removeCurrentSubscription(); // Llama a tu función para cancelar la suscripción
+      isModuleInitializedIT = false; // Permite la reinicialización si el módulo se vuelve a cargar
+      if (invoicesDataTable) {
+        invoicesDataTable.destroy();
+        invoicesDataTable = null;
+      }
+      if (invoiceHistoryDataTable) {
+        invoiceHistoryDataTable.destroy();
+        invoiceHistoryDataTable = null;
+      }
+      console.log(">>>> IT Module: Cleanup complete. <<<<");
+    };
+
+    // Limpia cualquier oyente de descarga anterior y añade el nuevo
+    document.removeEventListener("moduleWillUnload", window.cleanupHandler);
+    window.cleanupHandler = cleanupInvoiceModule; // Asigna la función actual a una referencia global
+    document.addEventListener("moduleWillUnload", window.cleanupHandler);
 
     // Esta rutina asegura que el oyente del módulo anterior se elimine correctamente.
     document.removeEventListener(
@@ -2184,7 +2209,6 @@
           accessDenied: false,
           source: "script.js",
         };
-        // Llama a la nueva función global directamente
         window.moduleAuthChangeHandler({ detail });
       });
     }
