@@ -2260,141 +2260,71 @@
     handleTableActions(event, archiveServicesDataTable, allServicesData);
   }
 
-  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING (OPTIMIZED)
-  async function handleServiceTrackingAuthChange(sessionUser) {
-    console.log("ST Module: handleServiceTrackingAuthChange called with user:", sessionUser?.id || "No user");
-    if (isSubscribingST) {
-      console.warn("ST Module: Subscription/auth change process already in progress, skipping.");
-      return;
-    }
-    isSubscribingST = true;
-
-    try {
-      const userChanged = (!currentUserST && sessionUser) || (currentUserST && !sessionUser) || (currentUserST && sessionUser && currentUserST.id !== sessionUser.id);
-
-      if (userChanged) {
-        console.log(`ST Module: Auth change - User state has changed. New User: ${sessionUser?.id}, Old User: ${currentUserST?.id}`);
-        await unsubscribeAllServiceChanges(); 
-        currentUserST = sessionUser; 
-
-        if (sessionUser) { 
-          await fetchAllServices(); 
-          await subscribeToServiceChanges(); 
-          setupProgressNotifications(); 
-          archiveYearsPopulated = false; 
-          if (archiveYearSelect) populateArchiveYearSelect();
-        } else { 
-          allServicesData = []; 
-          if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable.clear().rows.add([]).draw(); else refreshMainServicesTable(); 
-          if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) archiveServicesDataTable.clear().rows.add([]).draw();
-          updateDashboard([]);
-          scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-          scheduledNotificationTimeouts = [];
-          archiveYearsPopulated = false;
-          if (archiveYearSelect) populateArchiveYearSelect(); 
+  // REEMPLAZA TODA LA SECCIÓN 13 CON ESTO
+  // SECTION 13: MODULE INITIALIZATION
+  
+  function initializeModule() {
+    // Esta función se llama una sola vez cuando el módulo se carga por primera vez
+    console.log("ST Module: Performing one-time DOM setup.");
+    initModalListeners(); 
+    getConfirmModalElements(); 
+    if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
+    if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
+    
+    // Inicializa la tabla vacía para que la UI no se vea rota
+    initializeOrUpdateTable("all", servicesTableHtmlElement, null, []);
+    updateDashboard([]); 
+    
+    // Listener para el evento de cambio de autenticación
+    document.addEventListener('supabaseAuthStateChange', (event) => {
+        const sessionUser = event.detail.user;
+        const mainContent = document.querySelector('main');
+        // Solo actuar si este es el módulo actualmente visible
+        if (mainContent && mainContent.dataset.currentModule === 'service-tracking') {
+            console.log("ST Module: Auth change detected while module is active.");
+            handleServiceTrackingAuthChange(sessionUser);
         }
-      } else if (sessionUser) { 
-        console.log(`ST Module: Auth change - User session confirmed (SAME user: ${currentUserST.id}). Ensuring subscriptions are healthy.`);
-        if (serviceChannels.length === 0 || serviceChannels.some(ch => ch.state !== 'joined')) {
-           console.warn("ST Module: Subscriptions not healthy or not present for current user. Re-subscribing.");
-           await subscribeToServiceChanges(); 
-        } else {
-           console.log("ST Module: Subscriptions appear healthy for the current user.");
-        }
-      } else { 
-          console.log("ST Module: No active session and no previous user. Ensuring no subscriptions are active.");
-          await unsubscribeAllServiceChanges(); 
-          updateDashboard([]); 
-      }
-    } catch (error) {
-      console.error("ST Module: Error in handleServiceTrackingAuthChange:", error);
-    } finally {
-      isSubscribingST = false;
-      console.log("ST Module: handleServiceTrackingAuthChange finished.");
-    }
-  }
-
-  async function initializeServiceTrackingModule() {
-    console.log("ST Module: Initializing module one-time setup...");
-    if (!isServiceTrackingInitialized) {
-      console.log("ST Module: Performing one-time DOM setup (event listeners, initial empty table/dashboard)...");
-      initModalListeners(); 
-      getConfirmModalElements(); 
-      if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
-      if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
-      
-      // Initialize tables empty first to avoid errors
-      initializeOrUpdateTable("all", servicesTableHtmlElement, null, []);
-      updateDashboard([]); 
-      
-      isServiceTrackingInitialized = true; 
-    }
-
-    document.removeEventListener('supabaseAuthStateChange', authChangeHandlerST); 
-    document.addEventListener('supabaseAuthStateChange', authChangeHandlerST);
-
-    $(window).off('resize.serviceTrackingST layoutChange.serviceTrackingST'); 
-    $(window).on('resize.serviceTrackingST layoutChange.serviceTrackingST', function () {
-        setTimeout(() => { 
-            if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
-                servicesDataTable.columns.adjust().responsive.recalc();
-            }
-            if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
-                archiveServicesDataTable.columns.adjust().responsive.recalc();
-            }
-        }, 150);
     });
-    console.log("ST Module: One-time UI setup complete. Waiting for initial auth check or auth state changes.");
+
+    console.log("ST Module: One-time UI setup complete. Waiting for auth state changes.");
   }
 
-  async function authChangeHandlerST(event) {
-    console.log("ST Module: Detected supabaseAuthStateChange event. Source:", event.detail?.source, "Event Type:", event.detail?.event);
-    if (event.detail?.source === 'script.js') {
-        const sessionUser = event.detail?.user;
-        const accessDenied = event.detail?.accessDenied || false;
+  async function handleServiceTrackingAuthChange(sessionUser) {
+    // Esta función gestiona los datos y suscripciones cuando el estado de auth cambia
+    const userChanged = (!currentUserST && sessionUser) || (currentUserST && sessionUser?.id !== currentUserST.id);
 
-        if (accessDenied) {
-            console.warn("ST Module: Access denied for user. Module will reflect no user state.");
-            await handleServiceTrackingAuthChange(null); 
+    if (userChanged) {
+        console.log(`ST Module: User changed. New: ${sessionUser?.id}, Old: ${currentUserST?.id}. Unsubscribing and fetching new data.`);
+        await unsubscribeAllServiceChanges();
+        currentUserST = sessionUser;
+        if (sessionUser) {
+            await fetchAllServices(); // Carga datos del nuevo usuario
+            await subscribeToServiceChanges(); // Suscribe al nuevo usuario
         } else {
-            await handleServiceTrackingAuthChange(sessionUser);
+            // Limpia la UI si el usuario cierra sesión
+            allServicesData = [];
+            initializeOrUpdateTable("all", servicesTableHtmlElement, null, []);
+            updateDashboard([]);
         }
+    } else if (sessionUser && serviceChannels.every(ch => ch.state !== 'joined')) {
+        // Mismo usuario, pero la conexión se perdió, re-suscribe
+        console.warn("ST Module: Same user but subscription lost. Re-subscribing.");
+        await subscribeToServiceChanges();
     }
   }
 
-  async function initialAuthCheckAndSetupST() {
-    initializeServiceTrackingModule(); 
-
-    console.log("ST Module: Performing initial auth check via initialAuthCheckAndSetupST...");
-    if (supabase) {
-        try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("ST Module: Error getting initial session:", error);
-                await handleServiceTrackingAuthChange(null); 
-            } else {
-                console.log("ST Module: Initial session check result:", session ? `User: ${session.user?.id}` : "No session");
-                if (session && session.user && typeof isUserAllowed === 'function' && !isUserAllowed(session.user.email)) {
-                    console.warn(`ST Module: Initial user ${session.user.email} is not allowed. Forcing sign out locally for module.`);
-                    await handleServiceTrackingAuthChange(null);
-                } else {
-                    await handleServiceTrackingAuthChange(session ? session.user : null);
-                }
-            }
-        } catch (e) {
-            console.error("ST Module: Exception during initial supabase.auth.getSession():", e);
-            await handleServiceTrackingAuthChange(null);
+  // --- Punto de Entrada del Módulo ---
+  document.addEventListener('module_loaded', async (event) => {
+    if (event.detail.moduleName === 'service-tracking') {
+        console.log("ST Module: 'module_loaded' event received. Initializing...");
+        if (!isServiceTrackingInitialized) {
+            initializeModule();
+            isServiceTrackingInitialized = true;
         }
-    } else {
-        console.error("ST Module: Supabase not available for initial auth check.");
-        await handleServiceTrackingAuthChange(null);
+        // Siempre verifica el estado de autenticación actual al cargar el módulo
+        const { data: { session } } = await supabase.auth.getSession();
+        handleServiceTrackingAuthChange(session?.user || null);
     }
-  }
+  });
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initialAuthCheckAndSetupST);
-  } else {
-    initialAuthCheckAndSetupST(); 
-  }
-
-})();
+})(); // Fin del IIFE
