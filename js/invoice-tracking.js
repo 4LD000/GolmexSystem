@@ -2138,130 +2138,60 @@
       });
   }
 
+// REEMPLAZA TODA LA SECCIÓN 9 CON ESTO
   // SECTION 9: INITIALIZATION
-  let isModuleInitialized = false;
 
-  async function loadModuleDataAndSubscribe() {
-    console.log("IT Module: loadModuleDataAndSubscribe called.");
-    if (!currentUser) {
-      console.warn(
-        "IT Module: No current user, skipping data load and subscription."
-      );
-      return;
-    }
-    await fetchInvoicesFromSupabase(); // Fetches active data for main table
-    await subscribeToInvoiceChanges();
-  }
+  async function handleInvoiceAuthChange(sessionUser) {
+    const userChanged = (!currentUser && sessionUser) || (currentUser && sessionUser?.id !== currentUser.id);
 
-  async function manageSubscriptionAndData(session) {
-    if (isInitializingModule) {
-      console.log(
-        "IT Module: manageSubscriptionAndData - Initialization already in progress, skipping."
-      );
-      return;
-    }
-    isInitializingModule = true;
-    console.log("IT Module: manageSubscriptionAndData - Starting.");
-
-    if (session?.user) {
-      if (!currentUser || currentUser.id !== session.user.id) {
-        // User changed or first sign-in
-        console.log(
-          `IT Module: User state changed or first sign-in. New User: ${session.user.id}, Old User: ${currentUser?.id}. Loading data and subscribing.`
-        );
-        currentUser = session.user;
-        await loadModuleDataAndSubscribe();
-      } else {
-        // Same user session confirmed
-        console.log(
-          `IT Module: User session confirmed (same user: ${currentUser.id}). Ensuring subscription is healthy.`
-        );
-        if (
-          // Check if subscription is not active
-          !invoiceSubscription ||
-          (invoiceSubscription.state !== "joined" &&
-            invoiceSubscription.state !== "joining")
-        ) {
-          console.log(
-            `IT Module: Subscription for user ${currentUser.id} is not active (state: ${invoiceSubscription?.state}). Attempting to re-subscribe.`
-          );
-          await subscribeToInvoiceChanges(); // Re-establish subscription
-        } else {
-          console.log(
-            `IT Module: Subscription for user ${currentUser.id} is already active (state: ${invoiceSubscription.state}). No action needed.`
-          );
-        }
-      }
-    } else {
-      // No active session (user signed out)
-      if (currentUser) {
-        // If there was a previously logged-in user
-        console.log(
-          "IT Module: User signed out. Clearing data and removing subscription."
-        );
-        currentUser = null;
-        allInvoicesData = [];
-        initializeInvoicesTable([]);
-        if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
-        updateDashboardSummary([]);
+    if (userChanged) {
+        console.log(`IT Module: User changed. New: ${sessionUser?.id}, Old: ${currentUser?.id}. Unsubscribing and fetching new data.`);
         await removeCurrentSubscription();
-      } else {
-        console.log(
-          "IT Module: No active session and no previous user. Ensuring no subscription."
-        );
-        await removeCurrentSubscription(); // Ensure clean state
-      }
+        currentUser = sessionUser;
+        if (sessionUser) {
+            await fetchInvoicesFromSupabase();
+            await subscribeToInvoiceChanges();
+        } else {
+            allInvoicesData = [];
+            initializeInvoicesTable([]);
+            if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
+            updateDashboardSummary([]);
+        }
+    } else if (sessionUser && (!invoiceSubscription || invoiceSubscription.state !== 'joined')) {
+        console.warn("IT Module: Same user but subscription lost. Re-subscribing.");
+        await subscribeToInvoiceChanges();
     }
-    isInitializingModule = false;
-    console.log("IT Module: manageSubscriptionAndData - Finished.");
   }
 
-  async function initializeApp() {
-    if (!isModuleInitialized) {
-      console.log(
-        "IT Module: Performing one-time DOM setup (event listeners, initial table/dashboard)..."
-      );
+  function initializeModule() {
+      console.log("IT Module: Performing one-time DOM setup.");
       setupEventListeners();
-      initializeInvoicesTable([]); // Initialize main table empty
+      initializeInvoicesTable([]);
       updateDashboardSummary([]);
-      // History table is initialized when its modal is opened or filters applied.
-      isModuleInitialized = true;
-    }
 
-    // Remove previous listener before setting a new one to prevent duplicates
-    if (
-      mainAuthListener &&
-      typeof mainAuthListener.unsubscribe === "function"
-    ) {
-      console.log(
-        "IT Module: Removing existing main auth state listener before setting new one."
-      );
-      mainAuthListener.unsubscribe();
-      mainAuthListener = null;
-    }
+      document.addEventListener('supabaseAuthStateChange', (event) => {
+        const sessionUser = event.detail.user;
+        const mainContent = document.querySelector('main');
+        if (mainContent && mainContent.dataset.currentModule === 'invoice-tracking') {
+            console.log("IT Module: Auth change detected while module is active.");
+            handleInvoiceAuthChange(sessionUser);
+        }
+      });
 
-    console.log("IT Module: Setting up main Supabase auth state listener.");
-    // Store the subscription object returned by onAuthStateChange to allow unsubscribing
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(
-        `IT Module: Main onAuthStateChange event: ${event}`,
-        session ? `User: ${session.user?.id}` : "No session"
-      );
-      await manageSubscriptionAndData(session);
-    });
-    mainAuthListener = subscription; // Store the subscription object
-    console.log(
-      "IT Module: Main auth listener set. It will handle the initial auth state and subsequent changes."
-    );
+      console.log("IT Module: One-time UI setup complete.");
   }
 
-  // Ensure initializeApp runs after DOM is fully loaded
-  if (document.readyState === "loading") {
-    document.removeEventListener("DOMContentLoaded", initializeApp); // Remove if already added to be safe
-    document.addEventListener("DOMContentLoaded", initializeApp);
-  } else {
-    initializeApp(); // DOMContentLoaded has already fired
-  }
-})();
+  // --- Punto de Entrada del Módulo ---
+  document.addEventListener('module_loaded', async (event) => {
+      if (event.detail.moduleName === 'invoice-tracking') {
+          console.log("IT Module: 'module_loaded' event received. Initializing...");
+          if (!isModuleInitialized) {
+              initializeModule();
+              isModuleInitialized = true;
+          }
+          const { data: { session } } = await supabase.auth.getSession();
+          handleInvoiceAuthChange(session?.user || null);
+      }
+  });
+
+})(); // Fin del IIFE
