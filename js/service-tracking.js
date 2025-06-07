@@ -486,16 +486,23 @@
     };
 
     for (const formKey in fieldMapping) {
+        const dbKey = fieldMapping[formKey];
         if (formData.has(formKey)) {
             let value = formData.get(formKey);
             // Type conversions and cleaning
-            if (dbKey === 'etd' || dbKey === 'eta') dbData[dbKey] = value ? value : null; // Dates or null
-            else if (dbKey === 'num_packages' || dbKey === 'gross_weight' || dbKey === 'cbm') dbData[dbKey] = (value === '' || isNaN(parseFloat(value))) ? null : parseFloat(value); // Numbers or null
-            else if (dbKey === 'isf_filed_later') dbData[dbKey] = formData.get(formKey) === 'on'; // Boolean for checkbox
-            else if (typeof value === 'string') dbData[dbKey] = value.trim() === '' ? null : value.trim(); // Trim strings, or null if empty
-            else dbData[dbKey] = value; // For other types if any
-        } else if (dbKey === 'isf_filed_later' && isNewRecord) { // Ensure boolean fields have a default if not in form
-             dbData[dbKey] = false; // Default to false if checkbox not present/checked on create
+            if (dbKey === 'etd' || dbKey === 'eta') {
+                dbData[dbKey] = value ? value : null; // Dates or null
+            } else if (dbKey === 'num_packages' || dbKey === 'gross_weight' || dbKey === 'cbm') {
+                dbData[dbKey] = (value === '' || isNaN(parseFloat(value))) ? null : parseFloat(value); // Numbers or null
+            } else if (dbKey === 'isf_filed_later') {
+                dbData[dbKey] = formData.get(formKey) === 'on'; // Boolean for checkbox
+            } else if (typeof value === 'string') {
+                dbData[dbKey] = value.trim() === '' ? null : value.trim(); // Trim strings, or null if empty
+            } else {
+                dbData[dbKey] = value;
+            }
+        } else if (dbKey === 'isf_filed_later') { // Ensure boolean fields have a default if not in form
+             dbData[dbKey] = false;
         }
     }
 
@@ -506,7 +513,8 @@
             delete dbData.hbl;        // Remove 'hbl' key as Air table doesn't have it
         }
     } else if (category === 'ocean') {
-        delete dbData.hawb; // Ensure 'hawb' key is not present for Ocean
+        // Ensure 'hawb' key is not present for Ocean, it might be in dbData if the form logic was complex
+        delete dbData.hawb;
     }
 
     // Clean up fields not relevant to the specific category to avoid DB errors
@@ -515,8 +523,11 @@
         air: ['flight_number', 'hawb', 'dimensions'],
         truck: ['truck_service_type', 'dimensions', 'cbm']
     };
+
     for (const catKey in allPossibleCategorySpecificFields) {
-        if (catKey !== category) allPossibleCategorySpecificFields[catKey].forEach(field => delete dbData[field]);
+        if (catKey !== category) {
+            allPossibleCategorySpecificFields[catKey].forEach(field => delete dbData[field]);
+        }
     }
 
     // Collect service charges
@@ -541,8 +552,9 @@
     }
     dbData.service_charges = collectedCharges; // Store as JSONB array
 
-    // Ensure documents_metadata is an array if new, otherwise it will be handled during edit
-    if (!dbData.documents_metadata && isNewRecord) dbData.documents_metadata = [];
+    if (isNewRecord && !dbData.documents_metadata) {
+        dbData.documents_metadata = [];
+    }
 
     return dbData;
   }
@@ -634,7 +646,6 @@
             config: { broadcast: { ack: true } },
         });
 
-        // This defensive check helps avoid errors if the channel object's API changes or is in a weird state.
         if (typeof channel.off === 'function') {
             channel.off('postgres_changes');
         } else {
@@ -1876,20 +1887,12 @@
           },
           drawCallback: function (settings) {
             var api = new $.fn.dataTable.Api(settings);
-            api.columns.adjust();
-            if ($.fn.dataTable.Responsive && api.responsive && typeof api.responsive.recalc === 'function') {
+            if (api.responsive) {
                 api.responsive.recalc();
             }
+            api.columns.adjust();
           },
         });
-        if (dtInstance) {
-            setTimeout(() => {
-                dtInstance.columns.adjust();
-                if (dtInstance.responsive && typeof dtInstance.responsive.recalc === 'function') {
-                    dtInstance.responsive.recalc();
-                }
-            }, 150);
-        }
       } else {
         showCustomNotification("Critical Error: Table functionality (jQuery/DataTables) is unavailable.", "error", 7000);
       }
@@ -2417,11 +2420,11 @@
       $(window).off('resize.serviceTrackingST layoutChange.serviceTrackingST');
       $(window).on('resize.serviceTrackingST layoutChange.serviceTrackingST', function () {
           setTimeout(() => {
-              if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
-                  servicesDataTable.columns.adjust().responsive.recalc();
+              if (servicesDataTable && servicesDataTable.responsive) {
+                  servicesDataTable.responsive.recalc();
               }
-              if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
-                  archiveServicesDataTable.columns.adjust().responsive.recalc();
+              if (archiveServicesDataTable && archiveServicesDataTable.responsive) {
+                  archiveServicesDataTable.responsive.recalc();
               }
           }, 150);
       });
