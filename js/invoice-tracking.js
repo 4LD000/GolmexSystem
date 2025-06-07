@@ -129,7 +129,7 @@
   let allInvoicesData = [];
   let currentEditingInvoiceId = null;
   let isDownloadingPdf = false;
-  let currentUser = null;
+  let currentUserIT = null; // Changed from currentUser
   let isModuleInitialized = false;
   let invoiceSubscription = null;
   let isProcessingRealtimeUpdate = false;
@@ -286,7 +286,7 @@
     return `${prefix}${String(nextSequence).padStart(4, "0")}`;
   }
 
-  // SECTION 3: SUPABASE DATA FETCHING
+  // SECTION 3: DATA FETCHING AND UI REFRESH
   async function fetchAllInvoices() {
       try {
           const { data, error } = await supabase
@@ -308,7 +308,6 @@
       }
   }
   
-  // This function replaces the need for a separate forHistory=true parameter
   function refreshInvoicesUI() {
       if (!isModuleInitialized) return;
       
@@ -317,9 +316,8 @@
       );
 
       initializeInvoicesTable(activeInvoices);
-      updateDashboardSummary(activeInvoices);
+      updateDashboardSummary(allInvoicesData); // Pass all data for accurate historical counts
       
-      // If history modal is open, refresh its data as well
       if (invoiceHistoryModal && invoiceHistoryModal.style.display === 'flex') {
           handleFilterHistoryInvoices();
       }
@@ -531,7 +529,7 @@
   }
 
   function handleFilterHistoryInvoices() {
-    if (!currentUser) {
+    if (!currentUserIT) {
         showItNotification("Please log in to view history.", "info");
         if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
         if (historyTotalResultsEl) historyTotalResultsEl.textContent = "Results: 0";
@@ -558,9 +556,12 @@
             match = (inv.customer_name || "").toLowerCase().includes(filters.customer.toLowerCase());
         }
   
-        if (match && filters.year && filters.month) {
+        if (match && filters.year && filters.month !== "") {
             const invDate = new Date(inv.invoice_date + 'T00:00:00Z');
             match = invDate.getUTCFullYear() == filters.year && invDate.getUTCMonth() == filters.month;
+        } else if (match && filters.year) {
+            const invDate = new Date(inv.invoice_date + 'T00:00:00Z');
+            match = invDate.getUTCFullYear() == filters.year;
         }
         return match;
     });
@@ -580,7 +581,7 @@
     }
     invoiceHistoryDataTable = $(invoiceHistoryTableHtmlElement).DataTable({
       data: historyData,
-      destroy: true, // Important for re-initialization
+      destroy: true,
       columns: [
         { data: "invoice_number", title: "Invoice #" },
         {
@@ -691,12 +692,13 @@
         inv.status !== INVOICE_STATUS_PAID &&
         inv.status !== INVOICE_STATUS_CANCELLED
     );
+  
+    const paidInvoices = invoices.filter(inv => inv.status === INVOICE_STATUS_PAID);
 
     if (dbTotalInvoicesEl)
       dbTotalInvoicesEl.textContent = activeInvoices.length;
 
-    let paidCount = 0;
-    if (dbPaidInvoicesEl) dbPaidInvoicesEl.textContent = paidCount;
+    if (dbPaidInvoicesEl) dbPaidInvoicesEl.textContent = paidInvoices.length;
 
     let pendingCount = 0,
       overdueCount = 0;
@@ -1645,12 +1647,12 @@
   }
 
   async function handleAuthChange(session) {
-      const userJustChanged = currentUser?.id !== session?.user?.id;
-      currentUser = session?.user || null;
+      const userJustChanged = currentUserIT?.id !== session?.user?.id; // Changed to currentUserIT
+      currentUserIT = session?.user || null; // Changed to currentUserIT
       
       if (userJustChanged) {
           await unsubscribeFromInvoiceChanges();
-          if (currentUser) {
+          if (currentUserIT) { // Changed to currentUserIT
               console.log("IT Module: User logged in. Fetching data and subscribing.");
               await fetchAllInvoices();
               await subscribeToInvoiceChanges();
@@ -1677,7 +1679,7 @@
       });
       
       supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!currentUser && session) {
+          if (!currentUserIT && session) { // Changed to currentUserIT
                handleAuthChange(session);
           }
       });
@@ -1688,4 +1690,4 @@
   } else {
     initializeApp();
   }
-})();
+})()
