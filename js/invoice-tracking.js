@@ -130,7 +130,7 @@
   let isDownloadingPdf = false;
   let invoiceSubscription = null;
   let currentUser = null;
-  let isModuleInitialized = false;
+  let isModuleInitialized = false; // <<< LÍNEA CORREGIDA/AÑADIDA
   let highestZIndex = 1100;
 
   if (typeof supabase === "undefined" || !supabase) {
@@ -177,17 +177,36 @@
       notificationContainer.className = "custom-notification-it-container";
       document.body.appendChild(notificationContainer);
     }
+
+    if (duration === 0) {
+      const existingNotifications = notificationContainer.querySelectorAll(
+        `.custom-notification-st.${type}`
+      );
+      existingNotifications.forEach((notif) => {
+        if (
+          notif
+            .querySelector("span")
+            .textContent.includes(message.substring(0, 10))
+        ) {
+          notif.remove();
+        }
+      });
+    }
+
     const notification = document.createElement("div");
     notification.className = `custom-notification-st ${type}`;
     let iconClass = "bx bx-info-circle";
     if (type === "success") iconClass = "bx bx-check-circle";
     else if (type === "error") iconClass = "bx bx-x-circle";
     else if (type === "warning") iconClass = "bx bx-error-circle";
+
     notification.innerHTML = `<i class='${iconClass}'></i><span>${message}</span><button class='custom-notification-st-close' aria-label="Close notification">&times;</button>`;
     notificationContainer.appendChild(notification);
     notificationContainer.style.display = "flex";
+
     void notification.offsetWidth;
     notification.classList.add("show");
+
     const closeButton = notification.querySelector(
       ".custom-notification-st-close"
     );
@@ -210,7 +229,14 @@
   }
 
   function showItConfirm(title, message, onOkCallback) {
-    if (!itCustomConfirmModal) {
+    if (
+      !itCustomConfirmModal ||
+      !itCustomConfirmTitle ||
+      !itCustomConfirmMessage ||
+      !itCustomConfirmOkBtn ||
+      !itCustomConfirmCancelBtn ||
+      !itCustomConfirmCloseBtn
+    ) {
       if (window.confirm(message.replace(/<strong>|<\/strong>/g, ""))) {
         if (typeof onOkCallback === "function") onOkCallback();
       }
@@ -233,6 +259,7 @@
     const year = String(now.getFullYear()).slice(-2);
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const prefix = `GMX${year}${month}-`;
+
     const { data, error } = await supabase
       .from(INVOICES_TABLE_NAME)
       .select("invoice_number")
@@ -240,10 +267,12 @@
       .order("invoice_number", { ascending: false })
       .limit(1)
       .single();
+
     if (error && error.code !== "PGRST116") {
       console.error("Error fetching last invoice number:", error);
       return `${prefix}ERR${Date.now().toString().slice(-3)}`;
     }
+
     let nextSequence = 1;
     if (data && data.invoice_number) {
       const lastNumStr = data.invoice_number.split("-").pop();
@@ -262,6 +291,7 @@
   ) {
     try {
       let query = supabase.from(INVOICES_TABLE_NAME).select("*");
+
       if (forHistory) {
         let statusesToFetch = [INVOICE_STATUS_PAID, INVOICE_STATUS_CANCELLED];
         if (
@@ -271,6 +301,7 @@
           statusesToFetch = [historyFilters.status];
         }
         query = query.in("status", statusesToFetch);
+
         if (historyFilters.customer) {
           query = query.ilike("customer_name", `%${historyFilters.customer}%`);
         }
@@ -281,6 +312,7 @@
           const endDate = new Date(
             Date.UTC(year, month + 1, 0, 23, 59, 59, 999)
           );
+
           query = query.gte(
             "invoice_date",
             startDate.toISOString().split("T")[0]
@@ -300,7 +332,9 @@
           )
           .order("invoice_date", { ascending: false });
       }
+
       const { data, error } = await query;
+
       if (error) {
         showItNotification(`Error loading invoices: ${error.message}`, "error");
         return [];
@@ -329,6 +363,7 @@
       const date = new Date(dateStr + "T00:00:00Z");
       return date.toLocaleDateString("en-CA");
     };
+
     return {
       ...invoice,
       invoice_date: toLocalDateString(invoice.invoice_date),
@@ -441,7 +476,7 @@
           searchable: false,
           className: "it-table-actions",
           render: function (data, type, row) {
-            let buttonsHtml = ` <button data-action="view" data-id="${row.id}" title="View Invoice"><i class='bx bx-show'></i></button> <button data-action="edit" data-id="${row.id}" title="Edit Invoice"><i class='bx bx-edit'></i></button> <button data-action="download" data-id="${row.id}" title="Download PDF"><i class='bx bxs-file-pdf'></i></button> <button data-action="mark-paid" data-id="${row.id}" title="Mark as Paid"><i class='bx bx-money'></i></button> <button data-action="cancel" data-id="${row.id}" title="Cancel Invoice"><i class='bx bx-x-circle'></i></button> `;
+            let buttonsHtml = `<button data-action="view" data-id="${row.id}" title="View Invoice"><i class='bx bx-show'></i></button> <button data-action="edit" data-id="${row.id}" title="Edit Invoice"><i class='bx bx-edit'></i></button> <button data-action="download" data-id="${row.id}" title="Download PDF"><i class='bx bxs-file-pdf'></i></button> <button data-action="mark-paid" data-id="${row.id}" title="Mark as Paid"><i class='bx bx-money'></i></button> <button data-action="cancel" data-id="${row.id}" title="Cancel Invoice"><i class='bx bx-x-circle'></i></button> `;
             return buttonsHtml;
           },
         },
@@ -578,63 +613,6 @@
       },
     });
   }
-
-  // All other functions from Section 5 onwards remain the same...
-  // ...
-
-  // SECTION 9: INITIALIZATION
-  async function handleInvoiceAuthChange(sessionUser) {
-    const userChanged =
-      (!currentUser && sessionUser) ||
-      (currentUser && sessionUser?.id !== currentUser.id);
-
-    if (userChanged) {
-      console.log(
-        `IT Module: User changed. New: ${sessionUser?.id}, Old: ${currentUser?.id}. Unsubscribing and fetching new data.`
-      );
-      await removeCurrentSubscription();
-      currentUser = sessionUser;
-      if (sessionUser) {
-        await fetchInvoicesFromSupabase();
-        await subscribeToInvoiceChanges();
-      } else {
-        allInvoicesData = [];
-        initializeInvoicesTable([]);
-        if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
-        updateDashboardSummary([]);
-      }
-    } else if (
-      sessionUser &&
-      (!invoiceSubscription || invoiceSubscription.state !== "joined")
-    ) {
-      console.warn(
-        "IT Module: Same user but subscription lost. Re-subscribing."
-      );
-      await subscribeToInvoiceChanges();
-    }
-  }
-
-  function initializeModule() {
-    console.log("IT Module: Performing one-time DOM setup.");
-    setupEventListeners();
-    initializeInvoicesTable([]);
-    updateDashboardSummary([]);
-
-    document.addEventListener("supabaseAuthStateChange", (event) => {
-      const sessionUser = event.detail.user;
-      const mainContent = document.querySelector("main");
-      if (
-        mainContent &&
-        mainContent.dataset.currentModule === "invoice-tracking"
-      ) {
-        console.log("IT Module: Auth change detected while module is active.");
-        handleInvoiceAuthChange(sessionUser);
-      }
-    });
-
-    console.log("IT Module: One-time UI setup complete.");
-  }
-
   // SECTION 5: DASHBOARD SUMMARY & MANUAL INVOICE FORM HELPERS
 
   function updateDashboardSummary(invoices = []) {
@@ -2009,7 +1987,6 @@
       });
   }
 
-  // REEMPLAZA TODA LA SECCIÓN 9 CON ESTO
   // SECTION 9: INITIALIZATION
   async function handleInvoiceAuthChange(sessionUser) {
     const userChanged =
@@ -2063,7 +2040,7 @@
     console.log("IT Module: One-time UI setup complete.");
   }
 
-  // --- Punto de Entrada del Módulo ---
+  // --- Module Entry Point ---
   document.addEventListener("module_loaded", async (event) => {
     if (event.detail.moduleName === "invoice-tracking") {
       console.log("IT Module: 'module_loaded' event received. Initializing...");
@@ -2077,4 +2054,4 @@
       handleInvoiceAuthChange(session?.user || null);
     }
   });
-})(); // Fin del IIFE
+})(); // End of IIFE
