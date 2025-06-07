@@ -486,7 +486,6 @@
     };
 
     for (const formKey in fieldMapping) {
-        const dbKey = fieldMapping[formKey];
         if (formData.has(formKey)) {
             let value = formData.get(formKey);
             // Type conversions and cleaning
@@ -591,12 +590,12 @@
       updateDashboard([]);
     }
   }
-  
+
   async function unsubscribeAllServiceChanges() {
     if (serviceChannels.length > 0) {
         console.log("ST Module: Unsubscribing from all service channels:", serviceChannels.map(c => c.topic));
         const removalPromises = serviceChannels.map(channel => {
-            return channel.unsubscribe() 
+            return channel.unsubscribe()
                 .then(() => supabase.removeChannel(channel))
                 .catch(error => console.error(`ST Module: Error during unsubscribe/removeChannel for ${channel.topic}:`, error));
         });
@@ -641,7 +640,7 @@
         } else {
             console.warn(`ST Module: Channel object for ${channelName} does NOT have 'off' method. State: ${channel.state}. Skipping .off() call.`);
         }
-        
+
         try {
             channel
                 .on('postgres_changes',
@@ -667,12 +666,12 @@
             } else {
                 console.log(`ST Module: Channel ${channelName} already in state ${channel.state}. Listeners attached. Not calling subscribe() again.`);
             }
-            newChannels.push(channel); 
+            newChannels.push(channel);
         } catch (e) {
             console.error(`ST Module: CRITICAL error setting up listeners or subscribing to channel ${channelName}.`, e);
         }
     });
-    serviceChannels = newChannels; 
+    serviceChannels = newChannels;
     console.log("ST Module: Service change subscriptions setup complete for channels:", serviceChannels.map(c => c.topic));
   }
 
@@ -687,39 +686,39 @@
     if (eventType === 'INSERT') {
       changedRecordUI = transformServiceDataForUI(payload.new, tableCategory);
       const existingIndex = allServicesData.findIndex(s => s.id === changedRecordUI.id);
-      if (existingIndex === -1) { 
+      if (existingIndex === -1) {
           allServicesData.push(changedRecordUI);
           notificationMessage = `New service ${changedRecordUI.service_display_id} (${tableCategory}) added.`;
           notificationType = 'success';
-      } else { 
+      } else {
           allServicesData[existingIndex] = changedRecordUI;
-          notificationMessage = `Service ${changedRecordUI.service_display_id} (${tableCategory}) data refreshed (received INSERT for existing).`;
+          notificationMessage = `Service data for ${changedRecordUI.service_display_id} (${tableCategory}) refreshed (received INSERT for existing).`;
       }
-      allServicesData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); 
+      allServicesData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       needsMainTableRefresh = true;
     } else if (eventType === 'UPDATE') {
       changedRecordUI = transformServiceDataForUI(payload.new, tableCategory);
       const index = allServicesData.findIndex(s => s.id === changedRecordUI.id);
       if (index !== -1) {
           const oldStatus = allServicesData[index].status;
-          allServicesData[index] = changedRecordUI; 
+          allServicesData[index] = changedRecordUI;
           notificationMessage = `Service ${changedRecordUI.service_display_id} (${tableCategory}) updated.`;
           if (oldStatus !== changedRecordUI.status) {
               notificationMessage += ` Status: ${oldStatus} -> ${changedRecordUI.status}.`;
           }
           needsMainTableRefresh = true;
-      } else { 
+      } else {
           allServicesData.push(changedRecordUI);
           allServicesData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           notificationMessage = `Service ${changedRecordUI.service_display_id} (${tableCategory}) added via update event.`;
           needsMainTableRefresh = true;
       }
     } else if (eventType === 'DELETE') {
-      const deletedId = payload.old.id; 
+      const deletedId = payload.old.id;
       if (deletedId) {
           const serviceToDelete = allServicesData.find(s => s.id === deletedId);
           const displayIdForNotification = serviceToDelete?.service_display_id || deletedId.substring(0,8)+'...';
-          allServicesData = allServicesData.filter(s => s.id !== deletedId); 
+          allServicesData = allServicesData.filter(s => s.id !== deletedId);
           notificationMessage = `Service ${displayIdForNotification} (${tableCategory}) deleted.`;
           needsMainTableRefresh = true;
       }
@@ -727,7 +726,7 @@
 
     if (needsMainTableRefresh) {
         console.log("ST Module: Triggering main table refresh due to Realtime event.");
-        refreshMainServicesTable(); 
+        refreshMainServicesTable();
         if (notificationMessage) {
             showCustomNotification(notificationMessage, notificationType);
         }
@@ -735,7 +734,7 @@
 
     if (archiveServiceModal && archiveServiceModal.style.display === 'flex' && archiveServiceModal.classList.contains('st-modal-open')) {
         console.log("ST Module: Archive modal is open, refreshing archive data due to Realtime event.");
-        handleFilterArchive(); 
+        handleFilterArchive();
     }
   }
 
@@ -753,17 +752,17 @@
 
     try {
         const uploadButtonInDocModal = document.getElementById('uploadDocBtn');
-        if(uploadButtonInDocModal) uploadButtonInDocModal.disabled = true; 
-        showCustomNotification(`Uploading "${file.name}"...`, "info", 10000); 
+        if(uploadButtonInDocModal) uploadButtonInDocModal.disabled = true;
+        showCustomNotification(`Uploading "${file.name}"...`, "info", 10000);
 
         const { data: uploadData, error: uploadError } = await supabase.storage
             .from(BUCKET_NAME)
             .upload(filePath, file, {
-                cacheControl: '3600', 
-                upsert: false 
+                cacheControl: '3600',
+                upsert: false
             });
 
-        if(uploadButtonInDocModal) uploadButtonInDocModal.disabled = false; 
+        if(uploadButtonInDocModal) uploadButtonInDocModal.disabled = false;
 
         if (uploadError) {
             console.error("Error uploading file to Supabase Storage:", uploadError);
@@ -772,15 +771,15 @@
         }
 
         const documentMetadata = {
-            id: `doc_${timestamp}_${Math.random().toString(36).substring(2, 9)}`, 
-            file_name: file.name, 
-            file_path: uploadData.path, 
+            id: `doc_${timestamp}_${Math.random().toString(36).substring(2, 9)}`,
+            file_name: file.name,
+            file_path: uploadData.path,
             file_size: file.size,
             content_type: file.type,
             doc_category: docCategory,
             doc_type: docType,
             uploaded_at: new Date().toISOString(),
-            user_id: user.id 
+            user_id: user.id
         };
         return documentMetadata;
     } catch (error) {
@@ -799,17 +798,17 @@
       if (!currentUserST) { showCustomNotification("Authentication required to create service.", "error"); return; }
 
       const createServiceBtn = document.getElementById('createServiceBtn');
-      if(createServiceBtn) createServiceBtn.disabled = true; 
+      if(createServiceBtn) createServiceBtn.disabled = true;
       showCustomNotification("Processing new service...", "info", 4000);
 
       const serviceCategory = serviceCategoryModalSelect.value;
       if (!serviceCategory) {
         showCustomNotification("Please select a service type.", "warning");
-        if(createServiceBtn) createServiceBtn.disabled = false; 
+        if(createServiceBtn) createServiceBtn.disabled = false;
         return;
       }
       if (serviceCategory === "ocean" && !validateIsfCreateModal()) {
-        if(createServiceBtn) createServiceBtn.disabled = false; 
+        if(createServiceBtn) createServiceBtn.disabled = false;
         return;
       }
 
@@ -817,7 +816,7 @@
       let serviceDataForDb;
       try {
         serviceDataForDb = await prepareDataForSupabase(formData, serviceCategory, true, chargesContainerCreate);
-        const isfFile = formData.get("isfFileModal"); 
+        const isfFile = formData.get("isfFileModal");
         const tableName = SERVICE_TABLES[serviceCategory];
         if (!tableName) throw new Error(`Invalid service category: ${serviceCategory}`);
 
@@ -828,13 +827,13 @@
         const { data: newService, error } = await supabase
             .from(tableName)
             .insert(serviceDataForDb)
-            .select() 
-            .single(); 
+            .select()
+            .single();
 
         if (error) {
           console.error(`Error creating ${serviceCategory} service in Supabase:`, error);
           showCustomNotification(`DB Error: ${error.message}`, "error");
-          if(createServiceBtn) createServiceBtn.disabled = false; 
+          if(createServiceBtn) createServiceBtn.disabled = false;
           return;
         }
 
@@ -854,7 +853,7 @@
         console.error("Exception during service creation:", e);
         showCustomNotification(`An unexpected error occurred: ${e.message}`, "error");
       } finally {
-        if(createServiceBtn) createServiceBtn.disabled = false; 
+        if(createServiceBtn) createServiceBtn.disabled = false;
       }
     });
   }
@@ -868,7 +867,7 @@
       showCustomNotification("Saving changes...", "info", 4000);
 
       const serviceIdToUpdate = editServiceIdInput.value;
-      const serviceCategory = editServiceCategoryModalSelect.value; 
+      const serviceCategory = editServiceCategoryModalSelect.value;
       if (!serviceIdToUpdate || !serviceCategory) {
         showCustomNotification("Missing service ID or category for update.", "error");
         if(saveChangesBtn) saveChangesBtn.disabled = false;
@@ -878,7 +877,7 @@
       const formData = new FormData(editServiceForm);
       let serviceDataForDb;
       try {
-        serviceDataForDb = await prepareDataForSupabase(formData, serviceCategory, false, chargesContainerEdit); 
+        serviceDataForDb = await prepareDataForSupabase(formData, serviceCategory, false, chargesContainerEdit);
         const newIsfFile = formData.get("editIsfFileModal");
         const tableName = SERVICE_TABLES[serviceCategory];
         if (!tableName) throw new Error(`Invalid service category for update: ${serviceCategory}`);
@@ -891,11 +890,11 @@
             if (isfMetadata) {
                 finalDocumentsMetadata = finalDocumentsMetadata.filter(doc => doc.doc_type !== "ISF Filing Confirmation");
                 finalDocumentsMetadata.push(isfMetadata);
-                serviceDataForDb.isf_filed_later = false; 
+                serviceDataForDb.isf_filed_later = false;
             }
         }
         serviceDataForDb.documents_metadata = finalDocumentsMetadata;
-        serviceDataForDb.updated_at = new Date().toISOString(); 
+        serviceDataForDb.updated_at = new Date().toISOString();
 
         delete serviceDataForDb.user_id; delete serviceDataForDb.user_email;
         delete serviceDataForDb.service_display_id; delete serviceDataForDb.id; delete serviceDataForDb.created_at;
@@ -932,7 +931,7 @@
     const serviceToDelete = allServicesData.find(s => s.id === serviceId);
 
     if (serviceToDelete && serviceToDelete.documents && serviceToDelete.documents.length > 0) {
-        const filePathsToDelete = serviceToDelete.documents.map(doc => doc.file_path).filter(Boolean); 
+        const filePathsToDelete = serviceToDelete.documents.map(doc => doc.file_path).filter(Boolean);
         if (filePathsToDelete.length > 0) {
             console.log("ST Module: Deleting documents from storage:", filePathsToDelete);
             const { error: storageError } = await supabase.storage.from(BUCKET_NAME).remove(filePathsToDelete);
@@ -948,7 +947,7 @@
     if (error) {
       console.error(`Error deleting ${serviceCategoryInternal} service ${serviceId}:`, error);
       showCustomNotification(`Error deleting service: ${error.message}`, "error");
-    } 
+    }
   }
   async function completeService(serviceId, serviceCategoryInternal) {
     if (!currentUserST) { showCustomNotification("Authentication required to complete service.", "error"); return; }
@@ -956,13 +955,13 @@
     const tableName = SERVICE_TABLES[serviceCategoryInternal];
     if (!tableName) { showCustomNotification(`Cannot complete: Invalid service category "${serviceCategoryInternal}".`, "error"); return; }
 
-    const user = currentUserST; 
+    const user = currentUserST;
 
     const { data: updatedServiceData, error: updateServiceError } = await supabase
       .from(tableName)
       .update({ status: 'Completed', updated_at: new Date().toISOString() })
       .eq('id', serviceId)
-      .select() 
+      .select()
       .single();
 
     if (updateServiceError) {
@@ -973,17 +972,17 @@
 
     const fullServiceDetails = transformServiceDataForUI(updatedServiceData, serviceCategoryInternal);
     const newInvoiceNumber = await generateNextInvoiceNumber();
-    const currentDate = new Date().toISOString().split('T')[0]; 
+    const currentDate = new Date().toISOString().split('T')[0];
     const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30); 
+    dueDate.setDate(dueDate.getDate() + 30);
     const formattedDueDate = dueDate.toISOString().split('T')[0];
 
     const invoiceCharges = (fullServiceDetails.service_charges || []).map(sc => ({
         name: sc.name,
-        quantity: 1, 
+        quantity: 1,
         unit_price: sc.cost || 0,
         currency: sc.currency || SERVICE_CHARGES_MAP.defaultCurrency,
-        amount: sc.cost || 0 
+        amount: sc.cost || 0
     }));
 
     const totalsByCurrency = invoiceCharges.reduce((acc, charge) => {
@@ -994,17 +993,17 @@
 
     const invoicePayload = {
       invoice_number: newInvoiceNumber,
-      service_id_fk: fullServiceDetails.id, 
+      service_id_fk: fullServiceDetails.id,
       service_display_id: fullServiceDetails.service_display_id,
       customer_name: fullServiceDetails.customer,
       invoice_date: currentDate,
       due_date: formattedDueDate,
-      charges: invoiceCharges, 
-      totals_by_currency: totalsByCurrency, 
-      status: 'Pending', 
+      charges: invoiceCharges,
+      totals_by_currency: totalsByCurrency,
+      status: 'Pending',
       payment_communication: `Ref: ${newInvoiceNumber} / Service: ${fullServiceDetails.service_display_id}`,
       notes: `Invoice automatically generated from completed service ${fullServiceDetails.service_display_id}.`,
-      user_id: user.id, 
+      user_id: user.id,
       user_email: user.email
     };
 
@@ -1045,7 +1044,7 @@
     costInput.type = 'number';
     costInput.name = 'chargeCost[]';
     costInput.placeholder = 'Cost';
-    costInput.step = '0.01'; 
+    costInput.step = '0.01';
     costInput.value = charge && charge.cost !== undefined ? charge.cost.toFixed(2) : '';
     if (!isEditable) costInput.disabled = true;
 
@@ -1077,14 +1076,14 @@
   }
   function populateChargesUI(container, serviceType, chargesData = [], isEditable = true) {
     if (!container) return;
-    container.innerHTML = ''; 
+    container.innerHTML = '';
 
     if (chargesData && chargesData.length > 0) {
         chargesData.forEach(charge => {
             container.appendChild(createChargeRowElement(serviceType, charge, isEditable));
         });
         if (viewNoChargesMessage && !isEditable) viewNoChargesMessage.style.display = 'none';
-    } else if (!isEditable && viewNoChargesMessage) { 
+    } else if (!isEditable && viewNoChargesMessage) {
         viewNoChargesMessage.style.display = 'block';
         viewNoChargesMessage.textContent = 'No charges associated with this service.';
     }
@@ -1094,16 +1093,16 @@
     if (truckFieldsModal) truckFieldsModal.style.display = "none"; if (flightNumberGroupModal) flightNumberGroupModal.style.display = "none";
     if (hblHawbGroupModal) hblHawbGroupModal.style.display = "none"; if (containerFieldsModal) containerFieldsModal.style.display = "none";
     if (dimensionsCbmGroupModal) dimensionsCbmGroupModal.style.display = "none"; if (isfErrorModal) isfErrorModal.style.display = "none";
-    if (isfRequiredIndicatorModal) isfRequiredIndicatorModal.style.display = "inline"; 
-    if (isfFileInputModal) isfFileInputModal.value = ""; 
+    if (isfRequiredIndicatorModal) isfRequiredIndicatorModal.style.display = "inline";
+    if (isfFileInputModal) isfFileInputModal.value = "";
     if (addIsfLaterCheckboxModal) addIsfLaterCheckboxModal.checked = false;
-    if (chargesContainerCreate) chargesContainerCreate.innerHTML = ''; 
+    if (chargesContainerCreate) chargesContainerCreate.innerHTML = '';
   }
   function handleCreateCategoryChange() {
     const category = serviceCategoryModalSelect.value;
-    resetCreateFormSpecifics(); 
+    resetCreateFormSpecifics();
 
-    const hblLabel = document.querySelector('label[for="hblModal"]'); 
+    const hblLabel = document.querySelector('label[for="hblModal"]');
 
     if (category === "ocean") {
       if (oceanFieldsModal) oceanFieldsModal.style.display = "block";
@@ -1132,17 +1131,17 @@
     if (category && chargesContainerCreate) {
        chargesContainerCreate.appendChild(createChargeRowElement(category, null, true));
     }
-    validateIsfCreateModal(); 
+    validateIsfCreateModal();
   }
   function validateIsfCreateModal() {
-    if (!isfErrorModal || !serviceCategoryModalSelect || !isfFileInputModal || !addIsfLaterCheckboxModal) return true; 
+    if (!isfErrorModal || !serviceCategoryModalSelect || !isfFileInputModal || !addIsfLaterCheckboxModal) return true;
     const category = serviceCategoryModalSelect.value;
     if (category === "ocean" && !addIsfLaterCheckboxModal.checked && (!isfFileInputModal.files || isfFileInputModal.files.length === 0)) {
       isfErrorModal.textContent = 'For Ocean services, ISF file or "Add ISF Later" is required.';
       isfErrorModal.style.display = "block";
       return false;
     }
-    if (isfErrorModal) isfErrorModal.style.display = "none"; 
+    if (isfErrorModal) isfErrorModal.style.display = "none";
     return true;
   }
   function populateViewModal(serviceData) {
@@ -1150,8 +1149,8 @@
 
     const categoryInfo = getCategoryTextAndClass(serviceData.serviceCategoryInternal);
     if (viewServiceTypeBadge) {
-      viewServiceTypeBadge.innerHTML = categoryInfo.text; 
-      viewServiceTypeBadge.className = `st-type-badge ${categoryInfo.class}`; 
+      viewServiceTypeBadge.innerHTML = categoryInfo.text;
+      viewServiceTypeBadge.className = `st-type-badge ${categoryInfo.class}`;
     }
 
     viewServiceId.textContent = serviceData.service_display_id || "N/A";
@@ -1188,7 +1187,7 @@
       viewSealNumber.textContent = serviceData.sealNumber || "N/A";
     } else if (serviceData.serviceCategoryInternal === "air") {
       viewAirSpecificDetails.style.display = "block";
-      viewHblAir.textContent = serviceData.hawb || "N/A"; 
+      viewHblAir.textContent = serviceData.hawb || "N/A";
       viewFlightNumber.textContent = serviceData.flightNumber || "N/A";
       viewDimensionsAir.textContent = serviceData.dimensions || "N/A";
     } else if (serviceData.serviceCategoryInternal === "truck") {
@@ -1199,14 +1198,14 @@
     }
 
     if (viewServiceChargesContainer && viewNoChargesMessage) {
-        viewServiceChargesContainer.innerHTML = ''; 
+        viewServiceChargesContainer.innerHTML = '';
         viewNoChargesMessage.style.display = 'none';
         const charges = serviceData.service_charges || [];
         if (charges.length > 0) {
             const totalsByCurrency = {};
             charges.forEach(charge => {
                 const chargeDiv = document.createElement('div');
-                chargeDiv.className = 'st-detail-group charge-item-view'; 
+                chargeDiv.className = 'st-detail-group charge-item-view';
                 chargeDiv.innerHTML = `
                     <span class="st-detail-value charge-name-view">${charge.name}</span>
                     <span class="st-detail-value charge-cost-view">${(charge.cost || 0).toFixed(2)} ${charge.currency || SERVICE_CHARGES_MAP.defaultCurrency}</span>
@@ -1219,7 +1218,7 @@
 
             Object.keys(totalsByCurrency).forEach(currency => {
                 const totalDiv = document.createElement('div');
-                totalDiv.className = 'charge-total-view'; 
+                totalDiv.className = 'charge-total-view';
                 totalDiv.innerHTML = `
                     <span class="charge-total-label-view">TOTAL (${currency}):</span>
                     <span class="charge-total-amount-view">${totalsByCurrency[currency].toFixed(2)} ${currency}</span>
@@ -1242,14 +1241,14 @@
     if (editContainerFieldsModal) editContainerFieldsModal.style.display = "none";
     if (editDimensionsCbmGroupModal) editDimensionsCbmGroupModal.style.display = "none";
     if (editIsfErrorModal) editIsfErrorModal.style.display = "none";
-    if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "inline"; 
-    if (editIsfFileModalInput) { editIsfFileModalInput.value = ""; editIsfFileModalInput.style.display = 'block';} 
-    if (currentIsfFileDisplay) currentIsfFileDisplay.textContent = ""; 
+    if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "inline";
+    if (editIsfFileModalInput) { editIsfFileModalInput.value = ""; editIsfFileModalInput.style.display = 'block';}
+    if (currentIsfFileDisplay) currentIsfFileDisplay.textContent = "";
     if (editAddIsfLaterModalCheckbox) { editAddIsfLaterModalCheckbox.checked = false; editAddIsfLaterModalCheckbox.disabled = false;}
-    if (chargesContainerEdit) chargesContainerEdit.innerHTML = ''; 
+    if (chargesContainerEdit) chargesContainerEdit.innerHTML = '';
   }
   function handleEditCategoryChange() {
-    const category = editServiceCategoryModalSelect.value; 
+    const category = editServiceCategoryModalSelect.value;
     if (editOceanFieldsModal) editOceanFieldsModal.style.display = "none";
     if (editAirFieldsModal) editAirFieldsModal.style.display = "none";
     if (editTruckFieldsModal) editTruckFieldsModal.style.display = "none";
@@ -1257,9 +1256,9 @@
     if (editHblHawbGroupModal) editHblHawbGroupModal.style.display = "none";
     if (editContainerFieldsModal) editContainerFieldsModal.style.display = "none";
     if (editDimensionsCbmGroupModal) editDimensionsCbmGroupModal.style.display = "none";
-    if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "none"; 
+    if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "none";
 
-    const hblLabelEdit = document.querySelector('label[for="editHblModal"]'); 
+    const hblLabelEdit = document.querySelector('label[for="editHblModal"]');
 
      if (category === "ocean") {
         if (editOceanFieldsModal) editOceanFieldsModal.style.display = "block";
@@ -1283,7 +1282,7 @@
     }
 
     if (chargesContainerEdit) {
-        const currentCharges = []; 
+        const currentCharges = [];
         const existingChargeRows = chargesContainerEdit.querySelectorAll('.st-charge-row');
         existingChargeRows.forEach(row => {
             const nameSelect = row.querySelector('select[name="chargeName[]"]');
@@ -1295,10 +1294,10 @@
         });
         populateChargesUI(chargesContainerEdit, category, currentCharges, true);
     }
-    validateIsfEditModal(); 
+    validateIsfEditModal();
   }
   function validateIsfEditModal() {
-    if (editIsfErrorModal) editIsfErrorModal.style.display = "none"; 
+    if (editIsfErrorModal) editIsfErrorModal.style.display = "none";
     return true;
   }
   function populateEditModal(serviceData) {
@@ -1306,14 +1305,14 @@
       console.error("populateEditModal: Form or serviceData missing.", serviceData);
       return;
     }
-    editServiceForm.reset(); 
-    resetEditFormSpecifics(); 
+    editServiceForm.reset();
+    resetEditFormSpecifics();
 
-    editServiceIdInput.value = serviceData.id; 
+    editServiceIdInput.value = serviceData.id;
     if (editServiceDisplayIdHeader) editServiceDisplayIdHeader.textContent = `(${serviceData.service_display_id || 'N/A'})`;
     editServiceCategoryModalSelect.value = serviceData.serviceCategoryInternal;
-    editServiceCategoryModalSelect.disabled = true; 
-    handleEditCategoryChange(); 
+    editServiceCategoryModalSelect.disabled = true;
+    handleEditCategoryChange();
 
     editCustomerModalInput.value = serviceData.customer !== "N/A" ? serviceData.customer : "";
     editEtdModalInput.value = serviceData.etd !== "N/A" ? serviceData.etd : "";
@@ -1335,16 +1334,16 @@
     if (serviceData.serviceCategoryInternal === "ocean") {
         editOceanServiceTypeModalSelect.value = serviceData.oceanServiceType !== "N/A" ? serviceData.oceanServiceType : "";
         editOceanServiceModalSelect.value = serviceData.oceanService !== "N/A" ? serviceData.oceanService : "";
-        editHblModalInput.value = serviceData.hbl !== "N/A" ? serviceData.hbl : ""; 
+        editHblModalInput.value = serviceData.hbl !== "N/A" ? serviceData.hbl : "";
         const isfDoc = serviceData.documents?.find(doc => doc.doc_type === "ISF Filing Confirmation");
         if (isfDoc) {
             currentIsfFileDisplay.textContent = `Current ISF: ${isfDoc.file_name} (manage in Docs).`;
-            if (editIsfFileModalInput) editIsfFileModalInput.style.display = 'none'; 
-            if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.disabled = true; 
+            if (editIsfFileModalInput) editIsfFileModalInput.style.display = 'none';
+            if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.disabled = true;
         } else {
             currentIsfFileDisplay.textContent = "No ISF on file. Upload new or check 'Add Later'.";
-            if (editIsfFileModalInput) editIsfFileModalInput.style.display = 'block'; 
-            if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.disabled = false; 
+            if (editIsfFileModalInput) editIsfFileModalInput.style.display = 'block';
+            if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.disabled = false;
         }
         if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.checked = serviceData.isfFiledLater || false;
         editContainerNumberModalInput.value = serviceData.containerNumber !== "N/A" ? serviceData.containerNumber : "";
@@ -1352,7 +1351,7 @@
         editSealNumberModalInput.value = serviceData.sealNumber !== "N/A" ? serviceData.sealNumber : "";
     } else if (serviceData.serviceCategoryInternal === "air") {
         editFlightNumberModalInput.value = serviceData.flightNumber !== "N/A" ? serviceData.flightNumber : "";
-        editHblModalInput.value = serviceData.hawb !== "N/A" ? serviceData.hawb : ""; 
+        editHblModalInput.value = serviceData.hawb !== "N/A" ? serviceData.hawb : "";
         editDimensionsModalInput.value = serviceData.dimensions !== "N/A" ? serviceData.dimensions : "";
     } else if (serviceData.serviceCategoryInternal === "truck") {
         editTruckServiceTypeModalSelect.value = serviceData.truckServiceType !== "N/A" ? serviceData.truckServiceType : "";
@@ -1366,7 +1365,7 @@
   // SECTION 8: DOCUMENT MANAGEMENT MODAL UI LOGIC
   function populateDocCategorySelect() {
     if (!docCategorySelect) return;
-    docCategorySelect.innerHTML = '<option value="" selected disabled>Select a category...</option>'; 
+    docCategorySelect.innerHTML = '<option value="" selected disabled>Select a category...</option>';
     for (const category in documentCategories) {
       const option = document.createElement("option");
       option.value = category; option.textContent = category; docCategorySelect.appendChild(option);
@@ -1375,37 +1374,37 @@
   function handleDocCategoryChange() {
     if (!docCategorySelect || !docTypeSelect) return;
     const selectedCategory = docCategorySelect.value;
-    docTypeSelect.innerHTML = '<option value="" selected disabled>Select a type...</option>'; 
+    docTypeSelect.innerHTML = '<option value="" selected disabled>Select a type...</option>';
     if (selectedCategory && documentCategories[selectedCategory]) {
       documentCategories[selectedCategory].forEach((type) => {
         const option = document.createElement("option");
         option.value = type; option.textContent = type; docTypeSelect.appendChild(option);
       });
-      docTypeSelect.disabled = false; 
+      docTypeSelect.disabled = false;
     } else {
-      docTypeSelect.disabled = true; 
+      docTypeSelect.disabled = true;
     }
   }
   function resetDocUploadForm() {
-    if (docCategorySelect) docCategorySelect.value = ""; 
-    if (docTypeSelect) { 
+    if (docCategorySelect) docCategorySelect.value = "";
+    if (docTypeSelect) {
       docTypeSelect.innerHTML = '<option value="" selected disabled>Select a type...</option>';
       docTypeSelect.disabled = true;
     }
-    if (docFileInput) docFileInput.value = ""; 
+    if (docFileInput) docFileInput.value = "";
     const uploadButtonInDocModal = document.getElementById('uploadDocBtn');
-    if(uploadButtonInDocModal) uploadButtonInDocModal.disabled = false; 
+    if(uploadButtonInDocModal) uploadButtonInDocModal.disabled = false;
   }
   function renderServiceDocuments(serviceIdForDocs) {
     if (!docListContainer || !noDocsMessage) return;
     const service = allServicesData.find((s) => s.id === serviceIdForDocs);
-    docListContainer.innerHTML = ""; 
+    docListContainer.innerHTML = "";
 
     if (service && service.documents && service.documents.length > 0) {
-        noDocsMessage.style.display = "none"; 
+        noDocsMessage.style.display = "none";
         service.documents.forEach((doc) => {
             const card = document.createElement("div"); card.className = "st-doc-card";
-            const iconClass = getFileIconClass(doc.file_name); 
+            const iconClass = getFileIconClass(doc.file_name);
             card.innerHTML = `
                 <div class="st-doc-card-icon"><i class='bx ${iconClass}'></i></div>
                 <div class="st-doc-card-info">
@@ -1419,7 +1418,7 @@
             docListContainer.appendChild(card);
         });
     } else {
-        noDocsMessage.style.display = "block"; 
+        noDocsMessage.style.display = "block";
         noDocsMessage.textContent = "No documents uploaded for this service yet.";
     }
   }
@@ -1430,7 +1429,7 @@
     if (!currentUserST) { showCustomNotification("Authentication required to upload document.", "error"); return; }
 
     const uploadButton = document.getElementById('uploadDocBtn');
-    if(uploadButton) uploadButton.disabled = true; 
+    if(uploadButton) uploadButton.disabled = true;
 
     const service = allServicesData.find(s => s.id === currentServiceIdForDocs);
     if (!service) {
@@ -1441,7 +1440,7 @@
     const file = docFileInput.files[0];
     const docCategory = docCategorySelect.value;
     const docType = docTypeSelect.value;
-    const serviceCategoryForStoragePath = service.serviceCategoryInternal; 
+    const serviceCategoryForStoragePath = service.serviceCategoryInternal;
 
     try {
         const newDocumentMetadata = await uploadServiceDocument(currentServiceIdForDocs, serviceCategoryForStoragePath, docCategory, docType, file);
@@ -1459,28 +1458,28 @@
                 console.error("Error updating service with new document metadata:", updateError);
                 showCustomNotification("File uploaded, but failed to update service record.", "warning");
             } else {
-                service.documents = updatedDocumentsMetadata; 
-                renderServiceDocuments(currentServiceIdForDocs); 
-                resetDocUploadForm(); 
+                service.documents = updatedDocumentsMetadata;
+                renderServiceDocuments(currentServiceIdForDocs);
+                resetDocUploadForm();
             }
         }
     } catch (e) {
       console.error("Exception in handleDocumentUpload:", e);
       showCustomNotification("An unexpected error occurred during document upload.", "error");
     } finally {
-      if(uploadButton) uploadButton.disabled = false; 
+      if(uploadButton) uploadButton.disabled = false;
     }
   }
   async function handleDocumentAction(event) {
     const targetButton = event.target.closest("button[data-doc-path], button[data-doc-id]");
-    if (!targetButton || !currentServiceIdForDocs) return; 
+    if (!targetButton || !currentServiceIdForDocs) return;
     if (!currentUserST) { showCustomNotification("Authentication required for document action.", "error"); return; }
 
     const service = allServicesData.find(s => s.id === currentServiceIdForDocs);
     if (!service) { showCustomNotification("Service not found for document action.", "error"); return; }
 
     const docPath = targetButton.dataset.docPath;
-    const docIdInMetadata = targetButton.dataset.docId; 
+    const docIdInMetadata = targetButton.dataset.docId;
     const docFileName = targetButton.dataset.fileName || (docPath ? docPath.split('/').pop() : 'document');
 
     if (targetButton.classList.contains("st-doc-card-download") && docPath) {
@@ -1488,14 +1487,14 @@
             showCustomNotification(`Preparing download for "${docFileName}"...`, "info", 2000);
             const { data, error } = await supabase.storage.from(BUCKET_NAME).download(docPath);
             if (error) throw error;
-            const blob = data; 
+            const blob = data;
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = docFileName; 
+            link.download = docFileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(link.href); 
+            URL.revokeObjectURL(link.href);
             showCustomNotification(`Downloading "${docFileName}"...`, "success");
         } catch (error) {
             console.error("Error downloading document:", error);
@@ -1505,9 +1504,9 @@
         showCustomConfirm("Confirm Document Deletion", `Are you sure you want to delete the document "${docFileName}"? This action cannot be undone.`,
             async () => {
                 try {
-                    targetButton.disabled = true; 
+                    targetButton.disabled = true;
                     const { error: deleteStorageError } = await supabase.storage.from(BUCKET_NAME).remove([docPath]);
-                    if (deleteStorageError && deleteStorageError.statusCode !== '404') { 
+                    if (deleteStorageError && deleteStorageError.statusCode !== '404') {
                         console.error("Error deleting document from storage:", deleteStorageError);
                     }
 
@@ -1530,7 +1529,7 @@
                     console.error("Exception during document deletion:", error);
                     showCustomNotification(`Error deleting document: ${error.message}`, "error");
                 } finally {
-                    targetButton.disabled = false; 
+                    targetButton.disabled = false;
                 }
             }
         );
@@ -1539,8 +1538,8 @@
 
   // SECTION 9: DATATABLE SETUP AND DASHBOARD FUNCTIONS
   const commonColumnConfig = {
-    className: "dt-center", 
-    manageStatusActions: { 
+    className: "dt-center",
+    manageStatusActions: {
         title: "Actions", data: null, orderable: false, searchable: false, className: "dt-center st-actions-column",
         render: function(data, type, row) {
             let completeButtonDisabled = COMPLETED_STATUSES.includes(row.status) || row.status === CANCELLED_STATUS ? 'disabled' : '';
@@ -1550,7 +1549,7 @@
                     </div>`;
         }
     },
-    viewEditActions: { 
+    viewEditActions: {
         title: "View/Edit", data: null, orderable: false, searchable: false, className: "dt-center st-actions-column",
         render: function(data, type, row) {
             return `<div class="st-table-actions">
@@ -1559,7 +1558,7 @@
                     </div>`;
         }
     },
-    docsAction: { 
+    docsAction: {
         title: "Docs", data: null, orderable: false, searchable: false, className: "dt-center st-actions-column",
         render: function(data, type, row) {
             return `<div class="st-table-actions">
@@ -1572,23 +1571,23 @@
     customer: { title: "Customer", data: "customer", className: "dt-left" },
     etd: { title: "ETD", data: "etd", type: "date", className: "dt-center" },
     eta: { title: "ETA", data: "eta", type: "date", className: "dt-center" },
-    pol: { title: "Origin", data: "pol", className: "dt-left" }, 
-    pod: { title: "Destination", data: "pod", className: "dt-left" }, 
-    mblHawbPro: { title: "Main Ref.", data: "mblHawbPro", className: "dt-left" }, 
+    pol: { title: "Origin", data: "pol", className: "dt-left" },
+    pod: { title: "Destination", data: "pod", className: "dt-left" },
+    mblHawbPro: { title: "Main Ref.", data: "mblHawbPro", className: "dt-left" },
     status: { title: "Status", data: "status", className: "dt-center" },
-    internal_id: { title: "Internal ID", data: "id", visible: false }, 
+    internal_id: { title: "Internal ID", data: "id", visible: false },
     serviceCategoryIcon: { title: "Type", data: "serviceCategoryIcon", className: "dt-center" },
     oceanServiceType: { title: "Ocean Service Type", data: "oceanServiceType", className: "dt-left" },
     oceanService: { title: "Ocean Service", data: "oceanService", className: "dt-left" },
-    hbl: { title: "HBL", data: "hbl", className: "dt-left" }, 
+    hbl: { title: "HBL", data: "hbl", className: "dt-left" },
     containerNumber: { title: "Container #", data: "containerNumber", className: "dt-left" },
     containerType: { title: "Cont. Type", data: "containerType", className: "dt-left" },
     sealNumber: { title: "Seal #", data: "sealNumber", className: "dt-left" },
-    flightNumber: { title: "Flight #", data: "flightNumber", className: "dt-left" }, 
-    hawb: { title: "HAWB", data: "hawb", className: "dt-left" }, 
-    dimensions: { title: "Dimensions", data: "dimensions", className: "dt-left" }, 
-    truckServiceType: { title: "Truck Service Type", data: "truckServiceType", className: "dt-left" }, 
-    cbm: { title: "CBM", data: "cbm", type: "num", className: "dt-right" }, 
+    flightNumber: { title: "Flight #", data: "flightNumber", className: "dt-left" },
+    hawb: { title: "HAWB", data: "hawb", className: "dt-left" },
+    dimensions: { title: "Dimensions", data: "dimensions", className: "dt-left" },
+    truckServiceType: { title: "Truck Service Type", data: "truckServiceType", className: "dt-left" },
+    cbm: { title: "CBM", data: "cbm", type: "num", className: "dt-right" },
     shipper: { title: "Shipper", data: "shipper", className: "dt-left" },
     consignee: { title: "Consignee", data: "consignee", className: "dt-left" },
     carrier: { title: "Carrier", data: "carrier", className: "dt-left" },
@@ -1599,7 +1598,7 @@
     htsCode: { title: "HTS Code", data: "htsCode", className: "dt-left" },
   };
   const columnDefinitions = {
-    all: [ 
+    all: [
       commonColumnConfig.service_display_id, commonColumnConfig.serviceCategoryIcon,
       commonColumnConfig.customer, commonColumnConfig.user_email,
       commonColumnConfig.etd, commonColumnConfig.eta, commonColumnConfig.pol, commonColumnConfig.pod,
@@ -1607,13 +1606,13 @@
       commonColumnConfig.manageStatusActions,
       commonColumnConfig.viewEditActions,
       commonColumnConfig.docsAction,
-      commonColumnConfig.internal_id, 
+      commonColumnConfig.internal_id,
     ],
-    ocean: [ 
+    ocean: [
       commonColumnConfig.service_display_id, commonColumnConfig.customer, commonColumnConfig.user_email,
       commonColumnConfig.oceanServiceType, commonColumnConfig.oceanService, commonColumnConfig.etd, commonColumnConfig.eta,
       commonColumnConfig.shipper, commonColumnConfig.consignee, commonColumnConfig.carrier,
-      {...commonColumnConfig.pol, title: "POL (Ocean)"}, 
+      {...commonColumnConfig.pol, title: "POL (Ocean)"},
       {...commonColumnConfig.pod, title: "POD (Ocean)"}, commonColumnConfig.finalDestination,
       {...commonColumnConfig.mblHawbPro, title: "MBL"}, commonColumnConfig.hbl, commonColumnConfig.containerNumber,
       commonColumnConfig.containerType, commonColumnConfig.sealNumber, commonColumnConfig.numPackages,
@@ -1622,7 +1621,7 @@
       commonColumnConfig.manageStatusActions, commonColumnConfig.viewEditActions, commonColumnConfig.docsAction,
       commonColumnConfig.internal_id,
     ],
-    air: [ 
+    air: [
         commonColumnConfig.service_display_id, commonColumnConfig.customer, commonColumnConfig.user_email,
         commonColumnConfig.etd, commonColumnConfig.eta, commonColumnConfig.shipper, commonColumnConfig.consignee,
         commonColumnConfig.carrier, commonColumnConfig.flightNumber, {...commonColumnConfig.pol, title: "POL (Air)"},
@@ -1633,12 +1632,12 @@
         commonColumnConfig.manageStatusActions, commonColumnConfig.viewEditActions, commonColumnConfig.docsAction,
         commonColumnConfig.internal_id,
     ],
-    truck: [ 
+    truck: [
         commonColumnConfig.service_display_id, commonColumnConfig.customer, commonColumnConfig.user_email,
         commonColumnConfig.truckServiceType, commonColumnConfig.etd, commonColumnConfig.eta,
         commonColumnConfig.shipper, commonColumnConfig.consignee, commonColumnConfig.carrier,
-        {...commonColumnConfig.pol, title: "Origin (Truck)"}, 
-        {...commonColumnConfig.pod, title: "Destination (Truck)"}, 
+        {...commonColumnConfig.pol, title: "Origin (Truck)"},
+        {...commonColumnConfig.pod, title: "Destination (Truck)"},
         commonColumnConfig.finalDestination, {...commonColumnConfig.mblHawbPro, title: "PRO #"},
         commonColumnConfig.numPackages, commonColumnConfig.grossWeight, commonColumnConfig.dimensions,
         commonColumnConfig.cbm, commonColumnConfig.commodityDescription, commonColumnConfig.htsCode,
@@ -1650,7 +1649,7 @@
   function getCurrentMonthRange() {
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth(); 
+    const month = now.getMonth();
 
     const startDate = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
 
@@ -1682,17 +1681,17 @@
       if (etdInMonth || etaInMonth) return true;
 
       if (etdDate && etdDate < startDate && etaDate && etaDate >= todayUTC && etaDate <= displayEndDate) {
-          return true; 
+          return true;
       }
-      if (etaDate && etaDate >= startDate && etaDate < todayUTC) { 
-         return true; 
+      if (etaDate && etaDate >= startDate && etaDate < todayUTC) {
+         return true;
       }
 
-      return false; 
+      return false;
     });
   }
-  function updateDashboard(servicesForDashboard) { 
-    if (!dbTotalServicesEl) return; 
+  function updateDashboard(servicesForDashboard) {
+    if (!dbTotalServicesEl) return;
 
     const currentMonthServicesForDashboard = filterServicesForCurrentMonthDisplay(servicesForDashboard);
 
@@ -1712,15 +1711,15 @@
 
     dbInProgressServicesEl.textContent = currentMonthServicesForDashboard.filter(s => IN_PROGRESS_STATUSES.includes(s.status)).length;
 
-    updateUpcomingDeadlines(currentMonthServicesForDashboard); 
+    updateUpcomingDeadlines(currentMonthServicesForDashboard);
   }
-  function updateUpcomingDeadlines(servicesData) { 
+  function updateUpcomingDeadlines(servicesData) {
     if (!dbUpcomingListEl) return;
 
-    const todayStartOfDayUTC = new Date(new Date().setUTCHours(0, 0, 0, 0)); 
+    const todayStartOfDayUTC = new Date(new Date().setUTCHours(0, 0, 0, 0));
 
     const upcomingServices = servicesData
-      .filter(s => !COMPLETED_STATUSES.includes(s.status) && s.status !== CANCELLED_STATUS) 
+      .filter(s => !COMPLETED_STATUSES.includes(s.status) && s.status !== CANCELLED_STATUS)
       .map(s => {
         const etd = s.etd && s.etd !== "N/A" ? new Date(s.etd.includes('T') || s.etd.includes('Z') ? s.etd : s.etd + 'T00:00:00Z') : null;
         const eta = s.eta && s.eta !== "N/A" ? new Date(s.eta.includes('T') || s.eta.includes('Z') ? s.eta : s.eta + 'T00:00:00Z') : null;
@@ -1730,31 +1729,31 @@
         const upcomingEtd = etd && etd >= todayStartOfDayUTC ? etd : null;
         const upcomingEta = eta && eta >= todayStartOfDayUTC ? eta : null;
 
-        if (upcomingEtd && upcomingEta) { 
+        if (upcomingEtd && upcomingEta) {
           relevantDate = upcomingEtd <= upcomingEta ? upcomingEtd : upcomingEta;
           dateType = upcomingEtd <= upcomingEta ? "ETD" : "ETA";
-        } else if (upcomingEtd) { 
+        } else if (upcomingEtd) {
           relevantDate = upcomingEtd;
           dateType = "ETD";
-        } else if (upcomingEta) { 
+        } else if (upcomingEta) {
           relevantDate = upcomingEta;
           dateType = "ETA";
         }
         return { ...s, relevantDate, dateType };
       })
-      .filter(s => s.relevantDate) 
-      .sort((a, b) => a.relevantDate - b.relevantDate); 
+      .filter(s => s.relevantDate)
+      .sort((a, b) => a.relevantDate - b.relevantDate);
 
-    dbUpcomingListEl.innerHTML = ""; 
+    dbUpcomingListEl.innerHTML = "";
     if (upcomingServices.length === 0) {
       dbUpcomingListEl.innerHTML = `<li class="no-upcoming-data">No upcoming services to display.</li>`;
       return;
     }
 
-    upcomingServices.slice(0, 3).forEach(service => { 
+    upcomingServices.slice(0, 3).forEach(service => {
       const li = document.createElement("li");
       const dateString = service.relevantDate.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
-      let categoryEmoji = getCategoryTextAndClass(service.serviceCategoryInternal).text.split(' ')[0]; 
+      let categoryEmoji = getCategoryTextAndClass(service.serviceCategoryInternal).text.split(' ')[0];
       li.innerHTML = `<span class="service-id">${categoryEmoji} ${service.service_display_id}</span><span class="service-customer">${service.customer || "N/A"}</span><span class="service-date"><strong>${service.dateType}:</strong> ${dateString}</span>`;
       dbUpcomingListEl.appendChild(li);
     });
@@ -1767,7 +1766,7 @@
     }
     if (!servicesDataTable || !$.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
         console.log("ST Module: Main DataTable not initialized or JS instance lost, calling initializeOrUpdateTable for setup.");
-        initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, null); 
+        initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, null);
         return;
     }
 
@@ -1776,17 +1775,17 @@
 
     const tableData = allServicesData.filter(s => {
         if (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS) {
-            return false; 
+            return false;
         }
         if (viewType !== "all" && s.serviceCategoryInternal !== viewType) {
-            return false; 
+            return false;
         }
         return filterServicesForCurrentMonthDisplay([s]).length > 0;
     });
 
     console.log("ST Module: Data for main table refresh (after filtering):", tableData.length);
-    servicesDataTable.clear().rows.add(tableData).draw(false); 
-    updateDashboard(allServicesData); 
+    servicesDataTable.clear().rows.add(tableData).draw(false);
+    updateDashboard(allServicesData);
   }
 
   function initializeOrUpdateTable(viewType = "all", tableElement = servicesTableHtmlElement, columns = null, dataToLoad = null, orderByIdx = null) {
@@ -1794,54 +1793,53 @@
         console.warn("ST Module: initializeOrUpdateTable - Table element not found for view:", viewType);
         return null;
     }
-    $(tableElement).attr('data-viewtype', viewType); 
+    $(tableElement).attr('data-viewtype', viewType);
 
     let tableDataForInit;
     const isMainServicesTable = (tableElement === servicesTableHtmlElement);
     const currentDtInstance = $.fn.DataTable.isDataTable(tableElement) ? $(tableElement).DataTable() : null;
     const newColumnsDefinition = columns || columnDefinitions[viewType] || columnDefinitions.all;
-    
-    const isStructuralChange = columns !== null || 
+
+    const isStructuralChange = columns !== null ||
                                (!currentDtInstance || currentDtInstance.columns().count() !== newColumnsDefinition.length);
 
-    if (dataToLoad !== null) { 
+    if (dataToLoad !== null) {
         tableDataForInit = dataToLoad;
-    } else if (isMainServicesTable) { 
+    } else if (isMainServicesTable) {
         tableDataForInit = allServicesData.filter(s => {
             if (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS) return false;
             if (viewType !== "all" && s.serviceCategoryInternal !== viewType) return false;
             return filterServicesForCurrentMonthDisplay([s]).length > 0;
         });
-    } else { 
+    } else {
         tableDataForInit = allServicesData.filter(s => viewType === "all" || s.serviceCategoryInternal === viewType);
     }
 
     if (isMainServicesTable && currentDtInstance && !isStructuralChange && dataToLoad === null) {
         console.log("ST Module: initializeOrUpdateTable redirecting to refreshMainServicesTable for data-only update on main table.");
-        refreshMainServicesTable(); 
-        return servicesDataTable; 
+        refreshMainServicesTable();
+        return servicesDataTable;
     }
 
     console.log(`ST Module: Full (Re)Initialization of table for viewType: ${viewType}. Data count: ${tableDataForInit?.length}. Structural Change: ${isStructuralChange}`);
-    
+
     const defaultOrderIdx = orderByIdx !== null ? orderByIdx : newColumnsDefinition.findIndex(c => c.data === 'service_display_id' || c.data === 'etd' || c.data === 'created_at');
     const orderDirection = (newColumnsDefinition[defaultOrderIdx]?.data === 'etd' && viewType === 'all' && isMainServicesTable) ? 'asc' : 'desc';
 
     if (isMainServicesTable) {
-        updateDashboard(allServicesData); 
+        updateDashboard(allServicesData);
     }
 
-    if (currentDtInstance) { 
+    if (currentDtInstance) {
         console.log(`ST Module: Destroying existing DataTable for ${tableElement.id}`);
         currentDtInstance.clear().destroy();
-        // $(tableElement).empty(); // CORRECTION: This line was removed. It was too aggressive and caused table header duplication on redraw. .destroy() is sufficient.
         if (isMainServicesTable) {
             servicesDataTable = null;
         } else if (tableElement === archiveServicesTableHtmlElement) {
             archiveServicesDataTable = null;
         }
     }
-    
+
     if (!tableElement.querySelector("thead")) {
         const thead = document.createElement('thead');
         tableElement.appendChild(thead);
@@ -1850,7 +1848,7 @@
         const tbody = document.createElement('tbody');
         tableElement.appendChild(tbody);
     }
-    
+
     const thead = tableElement.querySelector("thead");
     if (!thead) { console.error("ST Module: Could not find or create thead in tableElement for view:", viewType); return null; }
 
@@ -1873,10 +1871,10 @@
           responsive: true,
           language: { search: "Search:", lengthMenu: "Show _MENU_ entries", info: "Showing _START_ to _END_ of _TOTAL_ entries", infoEmpty: "No services to display", infoFiltered: "(filtered from _MAX_ total)", paginate: { first: "<i class='bx bx-chevrons-left'></i>", last: "<i class='bx bx-chevrons-right'></i>", next: "<i class='bx bx-chevron-right'></i>", previous: "<i class='bx bx-chevron-left'></i>" }, emptyTable: `No ${viewType !== 'all' ? viewType : ''} services found${isMainServicesTable ? ' for the current month' : ''}.`},
           order: [[defaultOrderIdx >= 0 ? defaultOrderIdx : 0, orderDirection]],
-          createdRow: function (row, data, dataIndex) { 
+          createdRow: function (row, data, dataIndex) {
             if (data && data.serviceCategoryInternal) $(row).addClass(getCategoryTextAndClass(data.serviceCategoryInternal).rowClass);
           },
-          drawCallback: function (settings) { 
+          drawCallback: function (settings) {
             var api = new $.fn.dataTable.Api(settings);
             api.columns.adjust();
             if ($.fn.dataTable.Responsive && api.responsive && typeof api.responsive.recalc === 'function') {
@@ -1890,7 +1888,7 @@
                 if (dtInstance.responsive && typeof dtInstance.responsive.recalc === 'function') {
                     dtInstance.responsive.recalc();
                 }
-            }, 150); 
+            }, 150);
         }
       } else {
         showCustomNotification("Critical Error: Table functionality (jQuery/DataTables) is unavailable.", "error", 7000);
@@ -1911,47 +1909,47 @@
   // SECTION 10: ARCHIVE MODAL LOGIC
   function populateArchiveMonthSelect() {
     if (!archiveMonthSelect) return;
-    archiveMonthSelect.innerHTML = ""; 
+    archiveMonthSelect.innerHTML = "";
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const currentMonth = new Date().getMonth(); 
+    const currentMonth = new Date().getMonth();
     months.forEach((month, index) => {
         const option = document.createElement("option");
-        option.value = index; 
+        option.value = index;
         option.textContent = month;
-        if (index === currentMonth) option.selected = true; 
+        if (index === currentMonth) option.selected = true;
         archiveMonthSelect.appendChild(option);
     });
   }
   function populateArchiveYearSelect() {
     if (!archiveYearSelect) return;
 
-    archiveYearSelect.innerHTML = ""; 
+    archiveYearSelect.innerHTML = "";
     const serviceYears = new Set();
-    allServicesData.forEach(service => { 
+    allServicesData.forEach(service => {
         if (service.etd && service.etd !== "N/A") serviceYears.add(new Date(service.etd + 'T00:00:00Z').getUTCFullYear());
         if (service.eta && service.eta !== "N/A") serviceYears.add(new Date(service.eta + 'T00:00:00Z').getUTCFullYear());
     });
 
     const currentYear = new Date().getFullYear();
-    serviceYears.add(currentYear); 
+    serviceYears.add(currentYear);
 
     const minServiceYear = serviceYears.size > 0 ? Math.min(...Array.from(serviceYears).filter(y => !isNaN(y))) : currentYear;
     const startYear = Math.min(currentYear - 5, minServiceYear);
     const endYear = Math.max(currentYear + 1, ...Array.from(serviceYears).filter(y => !isNaN(y)), currentYear);
 
 
-    for (let y = endYear; y >= startYear; y--) { 
+    for (let y = endYear; y >= startYear; y--) {
         serviceYears.add(y);
     }
 
     const sortedYears = Array.from(serviceYears).filter(y => !isNaN(y)).sort((a, b) => b - a);
-    if (sortedYears.length === 0) sortedYears.push(currentYear); 
+    if (sortedYears.length === 0) sortedYears.push(currentYear);
 
     sortedYears.forEach(year => {
         const option = document.createElement("option");
         option.value = year;
         option.textContent = year;
-        if (year === currentYear) option.selected = true; 
+        if (year === currentYear) option.selected = true;
         archiveYearSelect.appendChild(option);
     });
     archiveYearsPopulated = true;
@@ -1960,13 +1958,13 @@
   function handleFilterArchive() {
     if (!archiveMonthSelect || !archiveYearSelect || !archiveServiceTypeSelect || !archiveTotalResultsEl || !noArchiveResultsMessageEl) return;
 
-    const selectedMonth = parseInt(archiveMonthSelect.value, 10); 
+    const selectedMonth = parseInt(archiveMonthSelect.value, 10);
     const selectedYear = parseInt(archiveYearSelect.value, 10);
     const selectedServiceType = archiveServiceTypeSelect.value;
 
     const dataForArchive = allServicesData.filter(service => {
         const isCompletedOrCancelled = COMPLETED_STATUSES.includes(service.status) || service.status === CANCELLED_STATUS;
-        if (!isCompletedOrCancelled) return false; 
+        if (!isCompletedOrCancelled) return false;
 
         const typeMatches = selectedServiceType === "all" || service.serviceCategoryInternal === selectedServiceType;
         if (!typeMatches) return false;
@@ -1982,16 +1980,16 @@
     archiveTotalResultsEl.textContent = `Results: ${dataForArchive.length}`;
     if (dataForArchive.length === 0) {
         if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
-            archiveServicesDataTable.clear().draw(); 
+            archiveServicesDataTable.clear().draw();
         } else if (archiveServicesTableHtmlElement.querySelector("tbody")) {
-            archiveServicesTableHtmlElement.querySelector("tbody").innerHTML = ""; 
+            archiveServicesTableHtmlElement.querySelector("tbody").innerHTML = "";
         }
         noArchiveResultsMessageEl.style.display = "block";
         noArchiveResultsMessageEl.textContent = "No services found for the selected month, year, and type.";
     } else {
         noArchiveResultsMessageEl.style.display = "none";
-        const archiveColumns = [...columnDefinitions.all]; 
-        archiveServicesDataTable = initializeOrUpdateTable(selectedServiceType, archiveServicesTableHtmlElement, archiveColumns, dataForArchive, 0); 
+        const archiveColumns = [...columnDefinitions.all];
+        archiveServicesDataTable = initializeOrUpdateTable(selectedServiceType, archiveServicesTableHtmlElement, archiveColumns, dataForArchive, 0);
     }
   }
 
@@ -1999,24 +1997,24 @@
   function getEtaProximityClass(etaStr) {
     if (!etaStr || etaStr === "N/A") return '';
     const now = new Date();
-    const todayStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()); 
+    const todayStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const etaDateUTC = new Date(etaStr.includes('T') || etaStr.includes('Z') ? etaStr : etaStr + 'T00:00:00Z');
-    if (isNaN(etaDateUTC.getTime())) return ''; 
+    if (isNaN(etaDateUTC.getTime())) return '';
 
     const etaYear = etaDateUTC.getUTCFullYear();
     const etaMonth = etaDateUTC.getUTCMonth();
     const etaDay = etaDateUTC.getUTCDate();
-    const etaStartOfDayLocal = new Date(etaYear, etaMonth, etaDay); 
+    const etaStartOfDayLocal = new Date(etaYear, etaMonth, etaDay);
 
     const diffTime = etaStartOfDayLocal.getTime() - todayStartOfDay.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return 'progress-overdue';   
-    if (diffDays === 0) return 'progress-red';     
-    if (diffDays === 1) return 'progress-red';     
-    if (diffDays <= 3) return 'progress-orange';  
-    return 'progress-yellow'; 
+    if (diffDays < 0) return 'progress-overdue';
+    if (diffDays === 0) return 'progress-red';
+    if (diffDays === 1) return 'progress-red';
+    if (diffDays <= 3) return 'progress-orange';
+    return 'progress-yellow';
   }
   function showProgressNotificationModal(isManualCall = false) {
     if (!progressNotificationModal || !progressNotificationTableBody || !noProgressServicesMessage) return;
@@ -2030,28 +2028,28 @@
     }
 
     const now = new Date();
-    const todayStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()); 
+    const todayStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const relevantServices = allServicesData.filter(service => {
       const etdValid = service.etd && service.etd !== "N/A";
       const etaValid = service.eta && service.eta !== "N/A";
-      if (!etdValid || !etaValid) return false; 
+      if (!etdValid || !etaValid) return false;
 
       const etdDate = new Date(service.etd.includes('T') || service.etd.includes('Z') ? service.etd : service.etd + 'T00:00:00Z');
       const etaDate = new Date(service.eta.includes('T') || service.eta.includes('Z') ? service.eta : service.eta + 'T00:00:00Z');
-      if (isNaN(etdDate.getTime()) || isNaN(etaDate.getTime())) return false; 
+      if (isNaN(etdDate.getTime()) || isNaN(etaDate.getTime())) return false;
 
       const isEligibleByStatus = !COMPLETED_STATUSES.includes(service.status) && service.status !== CANCELLED_STATUS;
 
       const etdStartOfDayLocal = new Date(etdDate.getUTCFullYear(), etdDate.getUTCMonth(), etdDate.getUTCDate());
       const etaStartOfDayLocal = new Date(etaDate.getUTCFullYear(), etaDate.getUTCMonth(), etaDate.getUTCDate());
 
-      const isAfterETD = todayStartOfDay >= etdStartOfDayLocal; 
+      const isAfterETD = todayStartOfDay >= etdStartOfDayLocal;
       let isBeforeRelevantETA;
-      if (isManualCall) { 
+      if (isManualCall) {
         isBeforeRelevantETA = todayStartOfDay <= etaStartOfDayLocal;
-      } else { 
-        isBeforeRelevantETA = todayStartOfDay < etaStartOfDayLocal; 
+      } else {
+        isBeforeRelevantETA = todayStartOfDay < etaStartOfDayLocal;
       }
       return isEligibleByStatus && isAfterETD && isBeforeRelevantETA;
     });
@@ -2060,14 +2058,14 @@
       noProgressServicesMessage.style.display = "block";
       noProgressServicesMessage.textContent = "No active services currently in transit to display.";
       progressNotificationTableBody.innerHTML = "";
-      if (isManualCall) { 
+      if (isManualCall) {
          openModal(progressNotificationModal);
       }
       return;
     }
 
     noProgressServicesMessage.style.display = "none";
-    progressNotificationTableBody.innerHTML = ""; 
+    progressNotificationTableBody.innerHTML = "";
 
     const servicesToDisplay = relevantServices.map(service => {
       const etaDateForSort = new Date(service.eta.includes('T') || service.eta.includes('Z') ? service.eta : service.eta + 'T00:00:00Z');
@@ -2080,36 +2078,36 @@
       if (proximityClass) row.classList.add(proximityClass);
 
       row.insertCell().innerHTML = service.service_display_id || 'N/A';
-      row.insertCell().innerHTML = service.serviceCategoryIcon || 'N/A'; 
+      row.insertCell().innerHTML = service.serviceCategoryIcon || 'N/A';
       row.insertCell().textContent = service.customer || 'N/A';
       row.insertCell().textContent = service.etd || 'N/A';
       row.insertCell().textContent = service.eta || 'N/A';
       row.insertCell().textContent = service.status || 'N/A';
     });
-    openModal(progressNotificationModal); 
+    openModal(progressNotificationModal);
   }
   function scheduleDailyNotifications() {
-    scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId)); 
+    scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
     scheduledNotificationTimeouts = [];
     const now = new Date();
 
     NOTIFICATION_TIMES_TIJUANA.forEach(targetHour => {
         if (targetHour >= OPERATING_HOUR_START_TIJUANA && targetHour < OPERATING_HOUR_END_TIJUANA) {
-            let notificationTimeToday = new Date(); 
-            let targetUTCHour = (targetHour - TIJUANA_UTC_OFFSET + 24) % 24; 
+            let notificationTimeToday = new Date();
+            let targetUTCHour = (targetHour - TIJUANA_UTC_OFFSET + 24) % 24;
 
-            notificationTimeToday.setUTCHours(targetUTCHour, 0, 0, 0); 
+            notificationTimeToday.setUTCHours(targetUTCHour, 0, 0, 0);
 
             if (notificationTimeToday.getTime() <= now.getTime()) {
                 notificationTimeToday.setUTCDate(notificationTimeToday.getUTCDate() + 1);
             }
 
             const delay = notificationTimeToday.getTime() - now.getTime();
-            if (delay > 0) { 
+            if (delay > 0) {
                 console.log(`ST Module: Scheduling progress notification for ${notificationTimeToday.toLocaleString('en-US', { timeZone: 'America/Tijuana' })} (in ${Math.round(delay/60000)} mins)`);
                 const timeoutId = setTimeout(() => {
-                    if (isWithinOperatingHours()) { 
-                        showProgressNotificationModal(false); 
+                    if (isWithinOperatingHours()) {
+                        showProgressNotificationModal(false);
                     }
                 }, delay);
                 scheduledNotificationTimeouts.push(timeoutId);
@@ -2117,9 +2115,9 @@
         }
     });
 
-    let tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 5, 0); 
+    let tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 5, 0);
     let delayUntilTomorrow = tomorrow.getTime() - now.getTime();
-    if(delayUntilTomorrow < 0) delayUntilTomorrow += 24 * 60 * 60 * 1000; 
+    if(delayUntilTomorrow < 0) delayUntilTomorrow += 24 * 60 * 60 * 1000;
 
     console.log(`ST Module: Scheduling daily re-scheduler for ${tomorrow.toLocaleString('en-US', { timeZone: 'America/Tijuana' })}`);
     const dailyRescheduleTimeout = setTimeout(scheduleDailyNotifications, delayUntilTomorrow);
@@ -2128,22 +2126,22 @@
   function setupProgressNotifications() {
     scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
     scheduledNotificationTimeouts = [];
-    scheduleDailyNotifications(); 
+    scheduleDailyNotifications();
   }
 
   // SECTION 12: GENERAL EVENT LISTENERS
   function initCreateModalListeners() {
     if (openServiceModalBtn) openServiceModalBtn.addEventListener("click", () => {
         if (createServiceModal) {
-            if (serviceCategoryModalSelect) serviceCategoryModalSelect.value = ""; 
-            if (chargesContainerCreate) chargesContainerCreate.innerHTML = ''; 
-            handleCreateCategoryChange(); 
+            if (serviceCategoryModalSelect) serviceCategoryModalSelect.value = "";
+            if (chargesContainerCreate) chargesContainerCreate.innerHTML = '';
+            handleCreateCategoryChange();
             openModal(createServiceModal);
         }
     });
     if (closeCreateServiceModalBtn) closeCreateServiceModalBtn.addEventListener("click", () => closeModal(createServiceModal, newServiceForm));
     if (cancelCreateServiceBtn) cancelCreateServiceBtn.addEventListener("click", () => closeModal(createServiceModal, newServiceForm));
-    if (createServiceModal) createServiceModal.addEventListener("click", (event) => { if (event.target === createServiceModal) closeModal(createServiceModal, newServiceForm); }); 
+    if (createServiceModal) createServiceModal.addEventListener("click", (event) => { if (event.target === createServiceModal) closeModal(createServiceModal, newServiceForm); });
     if (serviceCategoryModalSelect) serviceCategoryModalSelect.addEventListener("change", handleCreateCategoryChange);
     if (addIsfLaterCheckboxModal) addIsfLaterCheckboxModal.addEventListener("change", validateIsfCreateModal);
     if (isfFileInputModal) isfFileInputModal.addEventListener("change", validateIsfCreateModal);
@@ -2171,8 +2169,8 @@
     if (editIsfFileModalInput) editIsfFileModalInput.addEventListener("change", validateIsfEditModal);
     if (addChargeBtnEdit && chargesContainerEdit && editServiceCategoryModalSelect) {
         addChargeBtnEdit.addEventListener('click', () => {
-            const currentServiceType = editServiceCategoryModalSelect.value; 
-             if (!currentServiceType) { 
+            const currentServiceType = editServiceCategoryModalSelect.value;
+             if (!currentServiceType) {
                 showCustomNotification("Service type is not defined for editing charges.", "error");
                 return;
             }
@@ -2184,15 +2182,14 @@
     if (closeDocModalBtn) closeDocModalBtn.addEventListener("click", () => closeModal(docManagementModal));
     if (closeDocModalFooterBtn) closeDocModalFooterBtn.addEventListener("click", () => closeModal(docManagementModal));
     if (docManagementModal) docManagementModal.addEventListener("click", (event) => { if (event.target === docManagementModal) closeModal(docManagementModal); });
-    if (docCategorySelect) docCategorySelect.addEventListener("change", handleDocCategoryChange);
   }
   function initArchiveModalListeners() {
     if (openArchiveModalBtn) {
         openArchiveModalBtn.addEventListener("click", () => {
             if (archiveServiceModal) {
-                populateArchiveMonthSelect(); 
-                if (!archiveYearsPopulated) populateArchiveYearSelect(); 
-                handleFilterArchive(); 
+                populateArchiveMonthSelect();
+                if (!archiveYearsPopulated) populateArchiveYearSelect();
+                handleFilterArchive();
                 openModal(archiveServiceModal);
             }
         });
@@ -2208,7 +2205,7 @@
     if (progressNotificationModal) progressNotificationModal.addEventListener("click", (event) => { if (event.target === progressNotificationModal) closeModal(progressNotificationModal); });
     if (openProgressNotificationModalBtnManual) {
         openProgressNotificationModalBtnManual.addEventListener("click", (event) => {
-            showProgressNotificationModal(true); 
+            showProgressNotificationModal(true);
         });
     }
   }
@@ -2239,12 +2236,12 @@
   }
   if (tableViewTypeSelect) {
     tableViewTypeSelect.addEventListener("change", (event) => {
-        initializeOrUpdateTable(event.target.value, servicesTableHtmlElement, null, null); 
+        initializeOrUpdateTable(event.target.value, servicesTableHtmlElement, null, null);
     });
   }
   function handleTableActions(event, tableInstance, dataArray) {
       const button = event.target.closest("button[data-action]");
-      if (!button) return; 
+      if (!button) return;
       if (!tableInstance) { console.warn("handleTableActions: tableInstance is null/undefined"); return; }
 
       const rowElement = button.closest("tr");
@@ -2252,27 +2249,27 @@
 
       let rowData;
       try {
-          rowData = tableInstance.row(rowElement).data(); 
+          rowData = tableInstance.row(rowElement).data();
       } catch (e) {
           console.error("Error getting DataTable row data:", e); return;
       }
 
-      if (!rowData || !rowData.id) { 
+      if (!rowData || !rowData.id) {
           showCustomNotification("Could not retrieve service ID for action. Please refresh.", "warning");
           return;
       }
 
       const action = button.dataset.action;
-      const serviceToProcess = dataArray.find(s => s.id === rowData.id) || rowData; 
+      const serviceToProcess = dataArray.find(s => s.id === rowData.id) || rowData;
       const displayIdForModalsAndConfirm = serviceToProcess.service_display_id || serviceToProcess.id.substring(0,8)+'...';
 
       switch (action) {
         case "docs":
           currentServiceIdForDocs = serviceToProcess.id;
           if (docModalServiceIdSpan) docModalServiceIdSpan.textContent = displayIdForModalsAndConfirm;
-          populateDocCategorySelect(); 
-          handleDocCategoryChange(); 
-          renderServiceDocuments(currentServiceIdForDocs); 
+          populateDocCategorySelect();
+          handleDocCategoryChange();
+          renderServiceDocuments(currentServiceIdForDocs);
           openModal(docManagementModal);
           break;
         case "view":
@@ -2301,29 +2298,29 @@
       }
   }
   if (servicesTableHtmlElement) {
-    servicesTableHtmlElement.removeEventListener('click', mainTableActionHandler); 
+    servicesTableHtmlElement.removeEventListener('click', mainTableActionHandler);
     servicesTableHtmlElement.addEventListener('click', mainTableActionHandler);
   }
   if (archiveServicesTableHtmlElement) {
-    archiveServicesTableHtmlElement.removeEventListener('click', archiveTableActionHandler); 
+    archiveServicesTableHtmlElement.removeEventListener('click', archiveTableActionHandler);
     archiveServicesTableHtmlElement.addEventListener('click', archiveTableActionHandler);
   }
   function mainTableActionHandler(event) {
-    if (!servicesDataTable) { 
+    if (!servicesDataTable) {
         if ($.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable = $(servicesTableHtmlElement).DataTable();
         else { console.warn("Main DataTable not initialized for action handling."); return; }
     }
     handleTableActions(event, servicesDataTable, allServicesData);
   }
   function archiveTableActionHandler(event) {
-     if (!archiveServicesDataTable) { 
+     if (!archiveServicesDataTable) {
         if ($.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) archiveServicesDataTable = $(archiveServicesTableHtmlElement).DataTable();
         else { console.warn("Archive DataTable not initialized for action handling."); return; }
     }
     handleTableActions(event, archiveServicesDataTable, allServicesData);
   }
 
-  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING (OPTIMIZED)
+  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING (OPTIMIZED AND CORRECTED)
   async function handleServiceTrackingAuthChange(sessionUser) {
     console.log("ST Module: handleServiceTrackingAuthChange called with user:", sessionUser?.id || "No user");
     if (isSubscribingST) {
@@ -2337,38 +2334,38 @@
 
       if (userChanged) {
         console.log(`ST Module: Auth change - User state has changed. New User: ${sessionUser?.id}, Old User: ${currentUserST?.id}`);
-        await unsubscribeAllServiceChanges(); 
-        currentUserST = sessionUser; 
+        await unsubscribeAllServiceChanges();
+        currentUserST = sessionUser;
 
-        if (sessionUser) { 
-          await fetchAllServices(); 
-          await subscribeToServiceChanges(); 
-          setupProgressNotifications(); 
-          archiveYearsPopulated = false; 
+        if (sessionUser) {
+          await fetchAllServices();
+          await subscribeToServiceChanges();
+          setupProgressNotifications();
+          archiveYearsPopulated = false;
           if (archiveYearSelect) populateArchiveYearSelect();
-        } else { 
-          allServicesData = []; 
-          if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable.clear().rows.add([]).draw(); else refreshMainServicesTable(); 
+        } else {
+          allServicesData = [];
+          if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) servicesDataTable.clear().rows.add([]).draw(); else refreshMainServicesTable();
           if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) archiveServicesDataTable.clear().rows.add([]).draw();
           updateDashboard([]);
           scheduledNotificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
           scheduledNotificationTimeouts = [];
           archiveYearsPopulated = false;
-          if (archiveYearSelect) populateArchiveYearSelect(); 
+          if (archiveYearSelect) populateArchiveYearSelect();
         }
-      } else if (sessionUser) { 
+      } else if (sessionUser) {
         console.log(`ST Module: Auth change - User session confirmed (SAME user: ${currentUserST.id}). Ensuring subscriptions are healthy.`);
         if (serviceChannels.length === 0 || serviceChannels.some(ch => ch.state !== 'joined')) {
            console.warn("ST Module: Subscriptions not healthy or not present for current user. Re-subscribing.");
-           await unsubscribeAllServiceChanges(); 
-           await subscribeToServiceChanges(); 
+           await unsubscribeAllServiceChanges();
+           await subscribeToServiceChanges();
         } else {
            console.log("ST Module: Subscriptions appear healthy for the current user.");
         }
-      } else { 
+      } else {
           console.log("ST Module: No active session and no previous user. Ensuring no subscriptions are active.");
-          await unsubscribeAllServiceChanges(); 
-          updateDashboard([]); 
+          await unsubscribeAllServiceChanges();
+          updateDashboard([]);
       }
     } catch (error) {
       console.error("ST Module: Error in handleServiceTrackingAuthChange:", error);
@@ -2378,95 +2375,63 @@
     }
   }
 
-  async function initializeServiceTrackingModule() {
-    console.log("ST Module: Initializing module one-time setup...");
-    if (!isServiceTrackingInitialized) {
-      console.log("ST Module: Performing one-time DOM setup (event listeners, initial empty table/dashboard)...");
-      initModalListeners(); 
-      getConfirmModalElements(); 
-      if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
-      if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
-      
-      if (tableViewTypeSelect) {
-        initializeOrUpdateTable(tableViewTypeSelect.value, servicesTableHtmlElement, null, null);
-      } else { 
-        initializeOrUpdateTable("all", servicesTableHtmlElement, null, null);
+  async function globalAuthChangeHandler(event) {
+      console.log("ST Module: Detected global supabaseAuthStateChange event. Source:", event.detail?.source);
+      const sessionUser = event.detail?.user;
+      const accessDenied = event.detail?.accessDenied || false;
+
+      if (accessDenied) {
+          console.warn("ST Module: Access denied. Module will reflect no user state.");
+          await handleServiceTrackingAuthChange(null);
+      } else {
+          await handleServiceTrackingAuthChange(sessionUser);
       }
-      updateDashboard([]); 
-      isServiceTrackingInitialized = true; 
-    }
-
-    document.removeEventListener('supabaseAuthStateChange', authChangeHandlerST); 
-    document.addEventListener('supabaseAuthStateChange', authChangeHandlerST);
-
-    $(window).off('resize.serviceTrackingST layoutChange.serviceTrackingST'); 
-    $(window).on('resize.serviceTrackingST layoutChange.serviceTrackingST', function () {
-        setTimeout(() => { 
-            if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
-                servicesDataTable.columns.adjust();
-                if (servicesDataTable.responsive && typeof servicesDataTable.responsive.recalc === 'function') {
-                     servicesDataTable.responsive.recalc();
-                }
-            }
-            if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
-                archiveServicesDataTable.columns.adjust();
-                if (archiveServicesDataTable.responsive && typeof archiveServicesDataTable.responsive.recalc === 'function') {
-                    archiveServicesDataTable.responsive.recalc();
-                }
-            }
-        }, 150);
-    });
-    console.log("ST Module: One-time UI setup complete. Waiting for initial auth check or auth state changes.");
   }
 
-  async function authChangeHandlerST(event) {
-    console.log("ST Module: Detected supabaseAuthStateChange event. Source:", event.detail?.source, "Event Type:", event.detail?.event);
-    if (event.detail?.source === 'script.js') {
-        const sessionUser = event.detail?.user;
-        const accessDenied = event.detail?.accessDenied || false;
+  function initializeServiceTrackingModule() {
+      console.log("ST Module: Initializing module...");
+      if (!isServiceTrackingInitialized) {
+          console.log("ST Module: Performing one-time DOM setup...");
+          initModalListeners();
+          getConfirmModalElements();
+          if (uploadDocBtn) uploadDocBtn.addEventListener("click", handleDocumentUpload);
+          if (docListContainer) docListContainer.addEventListener("click", handleDocumentAction);
+          initializeOrUpdateTable("all", servicesTableHtmlElement, null, null);
+          updateDashboard([]);
+          isServiceTrackingInitialized = true;
+      }
 
-        if (accessDenied) {
-            console.warn("ST Module: Access denied for user. Module will reflect no user state.");
-            await handleServiceTrackingAuthChange(null); 
-        } else {
-            await handleServiceTrackingAuthChange(sessionUser);
-        }
-    }
+      // Register the listener for the custom global event
+      document.removeEventListener('supabaseAuthStateChange', globalAuthChangeHandler);
+      document.addEventListener('supabaseAuthStateChange', globalAuthChangeHandler);
+
+      // Simulate an auth change event on module load to get the initial state
+      if (supabase) {
+         supabase.auth.getSession().then(({ data: { session } }) => {
+            const detail = { user: session ? session.user : null, event: 'INITIAL_LOAD', accessDenied: false, source: 'script.js' };
+            globalAuthChangeHandler({ detail });
+         });
+      }
+
+      // Add resize handlers for DataTables responsiveness
+      $(window).off('resize.serviceTrackingST layoutChange.serviceTrackingST');
+      $(window).on('resize.serviceTrackingST layoutChange.serviceTrackingST', function () {
+          setTimeout(() => {
+              if (servicesDataTable && $.fn.DataTable.isDataTable(servicesTableHtmlElement)) {
+                  servicesDataTable.columns.adjust().responsive.recalc();
+              }
+              if (archiveServicesDataTable && $.fn.DataTable.isDataTable(archiveServicesTableHtmlElement)) {
+                  archiveServicesDataTable.columns.adjust().responsive.recalc();
+              }
+          }, 150);
+      });
   }
 
-  async function initialAuthCheckAndSetupST() {
-    initializeServiceTrackingModule(); 
-
-    console.log("ST Module: Performing initial auth check via initialAuthCheckAndSetupST...");
-    if (supabase) {
-        try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("ST Module: Error getting initial session:", error);
-                await handleServiceTrackingAuthChange(null); 
-            } else {
-                console.log("ST Module: Initial session check result:", session ? `User: ${session.user?.id}` : "No session");
-                if (session && session.user && typeof isUserAllowed === 'function' && !isUserAllowed(session.user.email)) {
-                    console.warn(`ST Module: Initial user ${session.user.email} is not allowed. Forcing sign out locally for module.`);
-                    await handleServiceTrackingAuthChange(null);
-                } else {
-                    await handleServiceTrackingAuthChange(session ? session.user : null);
-                }
-            }
-        } catch (e) {
-            console.error("ST Module: Exception during initial supabase.auth.getSession():", e);
-            await handleServiceTrackingAuthChange(null);
-        }
-    } else {
-        console.error("ST Module: Supabase not available for initial auth check.");
-        await handleServiceTrackingAuthChange(null);
-    }
-  }
-
+  // Ensure the module initializes when the DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initialAuthCheckAndSetupST);
+    document.addEventListener('DOMContentLoaded', initializeServiceTrackingModule);
   } else {
-    initialAuthCheckAndSetupST(); 
+    initializeServiceTrackingModule();
   }
 
 })();
