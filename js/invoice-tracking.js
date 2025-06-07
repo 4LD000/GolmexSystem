@@ -88,7 +88,7 @@
   const dbPendingInvoicesEl = document.getElementById("db-pending-invoices");
   const dbOverdueInvoicesEl = document.getElementById("db-overdue-invoices");
 
-  // --- New History Modal Elements ---
+  // History Modal Elements
   const openInvoiceHistoryModalBtn = document.getElementById(
     "openInvoiceHistoryModalBtn"
   );
@@ -129,16 +129,12 @@
   let allInvoicesData = [];
   let currentEditingInvoiceId = null;
   let isDownloadingPdf = false;
-  let invoiceSubscription = null;
   let currentUser = null;
-  let isInitializingModule = false;
-  let mainAuthListener = null;
-
-  // NEW: Flag to prevent realtime update race conditions
+  let isModuleInitialized = false;
+  let invoiceSubscription = null;
   let isProcessingRealtimeUpdate = false;
 
-  // Variable to track the highest z-index for modals
-  let highestZIndex = 1100; // Base z-index for .it-modal
+  let highestZIndex = 1100;
 
   if (typeof supabase === "undefined" || !supabase) {
     console.error("Supabase client is not available in invoice-tracking.js.");
@@ -150,35 +146,28 @@
   }
 
   // SECTION 2: UTILITY FUNCTIONS
-
   function openItModal(modalElement) {
     if (!modalElement) return;
-    highestZIndex++; // Increment for the new modal
-    modalElement.style.zIndex = highestZIndex; // Apply the new highest z-index
+    highestZIndex++;
+    modalElement.style.zIndex = highestZIndex;
     modalElement.style.display = "flex";
     setTimeout(() => modalElement.classList.add("it-modal-open"), 10);
-    document.body.style.overflow = "hidden"; // Prevent body scroll
+    document.body.style.overflow = "hidden";
   }
 
   function closeItModal(modalElement) {
     if (!modalElement) return;
     modalElement.classList.remove("it-modal-open");
-    // highestZIndex doesn't need to be decremented here,
-    // as the next opened modal will just take a higher value.
-    // It will be reset when all modals are closed.
     setTimeout(() => {
       modalElement.style.display = "none";
-      // Optionally reset the z-index of the closed modal to its base
-      // modalElement.style.zIndex = 1100;
-
       const anyOtherItModalOpen = document.querySelector(
         ".it-modal.it-modal-open"
       );
       if (!anyOtherItModalOpen) {
-        document.body.style.overflow = ""; // Restore body scroll if no other IT modals are open
-        highestZIndex = 1100; // Reset z-index counter if all IT modals are closed
+        document.body.style.overflow = "";
+        highestZIndex = 1100;
       }
-    }, 300); // Matches opacity transition duration
+    }, 300);
   }
 
   function showItNotification(message, type = "info", duration = 3800) {
@@ -192,7 +181,6 @@
     }
 
     if (duration === 0) {
-      // Special case: remove existing notifications of the same message
       const existingNotifications = notificationContainer.querySelectorAll(
         `.custom-notification-st.${type}`
       );
@@ -200,7 +188,7 @@
         if (
           notif
             .querySelector("span")
-            .textContent.includes(message.substring(0, 10)) // Simple check
+            .textContent.includes(message.substring(0, 10))
         ) {
           notif.remove();
         }
@@ -216,9 +204,9 @@
 
     notification.innerHTML = `<i class='${iconClass}'></i><span>${message}</span><button class='custom-notification-st-close' aria-label="Close notification">&times;</button>`;
     notificationContainer.appendChild(notification);
-    notificationContainer.style.display = "flex"; // Ensure container is visible
+    notificationContainer.style.display = "flex";
 
-    void notification.offsetWidth; // Force reflow for transition
+    void notification.offsetWidth;
     notification.classList.add("show");
 
     const closeButton = notification.querySelector(
@@ -233,7 +221,7 @@
           if (notificationContainer.childElementCount === 0) {
             notificationContainer.style.display = "none";
           }
-        }, 400); // Matches transition duration
+        }, 400);
       }
     };
     closeButton.addEventListener("click", removeNotification);
@@ -251,15 +239,13 @@
       !itCustomConfirmCancelBtn ||
       !itCustomConfirmCloseBtn
     ) {
-      // Fallback to window.confirm if custom modal elements are not found
       if (window.confirm(message.replace(/<strong>|<\/strong>/g, ""))) {
-        // Basic message cleanup
         if (typeof onOkCallback === "function") onOkCallback();
       }
       return;
     }
     itCustomConfirmTitle.textContent = title;
-    itCustomConfirmMessage.innerHTML = message; // Allow HTML in message
+    itCustomConfirmMessage.innerHTML = message;
     currentItConfirmCallback = onOkCallback;
     openItModal(itCustomConfirmModal);
   }
@@ -272,22 +258,21 @@
 
   async function generateNextInvoiceNumberSupabase() {
     const now = new Date();
-    const year = String(now.getFullYear()).slice(-2); // YY
-    const month = String(now.getMonth() + 1).padStart(2, "0"); // MM
+    const year = String(now.getFullYear()).slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, "0");
     const prefix = `GMX${year}${month}-`;
 
     const { data, error } = await supabase
       .from(INVOICES_TABLE_NAME)
       .select("invoice_number")
-      .like("invoice_number", `${prefix}%`) // Filter by current year-month prefix
-      .order("invoice_number", { ascending: false }) // Get the highest number
+      .like("invoice_number", `${prefix}%`)
+      .order("invoice_number", { ascending: false })
       .limit(1)
-      .single(); // Expect at most one result
+      .single();
 
     if (error && error.code !== "PGRST116") {
-      // PGRST116: no rows found, which is fine
       console.error("Error fetching last invoice number:", error);
-      return `${prefix}ERR${Date.now().toString().slice(-3)}`; // Fallback error number
+      return `${prefix}ERR${Date.now().toString().slice(-3)}`;
     }
 
     let nextSequence = 1;
@@ -298,94 +283,54 @@
         nextSequence = lastNum + 1;
       }
     }
-    return `${prefix}${String(nextSequence).padStart(4, "0")}`; // e.g., GMX2405-0001
+    return `${prefix}${String(nextSequence).padStart(4, "0")}`;
   }
 
   // SECTION 3: SUPABASE DATA FETCHING
-  async function fetchInvoicesFromSupabase(
-    forHistory = false,
-    historyFilters = {}
-  ) {
-    try {
-      let query = supabase.from(INVOICES_TABLE_NAME).select("*");
+  async function fetchAllInvoices() {
+      try {
+          const { data, error } = await supabase
+              .from(INVOICES_TABLE_NAME)
+              .select("*")
+              .order("created_at", { ascending: false });
 
-      if (forHistory) {
-        // Apply history-specific filters
-        let statusesToFetch = [INVOICE_STATUS_PAID, INVOICE_STATUS_CANCELLED];
-        if (
-          historyFilters.status &&
-          historyFilters.status !== ALL_STATUSES_FILTER
-        ) {
-          statusesToFetch = [historyFilters.status];
-        }
-        query = query.in("status", statusesToFetch);
-
-        if (historyFilters.customer) {
-          query = query.ilike("customer_name", `%${historyFilters.customer}%`);
-        }
-        if (historyFilters.year && historyFilters.month) {
-          const year = parseInt(historyFilters.year);
-          const month = parseInt(historyFilters.month); // JS month is 0-indexed
-          const startDate = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
-          const endDate = new Date(
-            Date.UTC(year, month + 1, 0, 23, 59, 59, 999)
-          ); // Last day of month
-
-          query = query.gte(
-            "invoice_date",
-            startDate.toISOString().split("T")[0]
-          );
-          query = query.lte(
-            "invoice_date",
-            endDate.toISOString().split("T")[0]
-          );
-        }
-        query = query.order("invoice_date", { ascending: false });
-      } else {
-        // Fetch 'active' invoices for the main table (not Paid or Cancelled)
-        query = query
-          .not(
-            "status",
-            "in",
-            `(${INVOICE_STATUS_PAID},${INVOICE_STATUS_CANCELLED})`
-          )
-          .order("invoice_date", { ascending: false });
+          if (error) {
+              throw error;
+          }
+          allInvoicesData = data.map(transformInvoiceDataForUI);
+          refreshInvoicesUI();
+          
+      } catch (e) {
+          console.error("Exception while fetching all invoices:", e);
+          showItNotification(`An unexpected error occurred: ${e.message}`, "error");
+          allInvoicesData = [];
+          refreshInvoicesUI();
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching invoices from Supabase:", error);
-        showItNotification(`Error loading invoices: ${error.message}`, "error");
-        return [];
-      } else {
-        const transformedData = data.map(transformInvoiceDataForUI);
-        if (!forHistory) {
-          allInvoicesData = transformedData;
-          initializeInvoicesTable(allInvoicesData);
-          updateDashboardSummary(allInvoicesData);
-        }
-        return transformedData;
-      }
-    } catch (e) {
-      console.error("Exception while fetching invoices:", e);
-      showItNotification(`An unexpected error occurred: ${e.message}`, "error");
-      if (!forHistory) {
-        allInvoicesData = [];
-        initializeInvoicesTable([]);
-        updateDashboardSummary([]);
-      }
-      return [];
-    }
   }
+  
+  // This function replaces the need for a separate forHistory=true parameter
+  function refreshInvoicesUI() {
+      if (!isModuleInitialized) return;
+      
+      const activeInvoices = allInvoicesData.filter(
+          (inv) => inv.status !== INVOICE_STATUS_PAID && inv.status !== INVOICE_STATUS_CANCELLED
+      );
+
+      initializeInvoicesTable(activeInvoices);
+      updateDashboardSummary(activeInvoices);
+      
+      // If history modal is open, refresh its data as well
+      if (invoiceHistoryModal && invoiceHistoryModal.style.display === 'flex') {
+          handleFilterHistoryInvoices();
+      }
+  }
+
 
   function transformInvoiceDataForUI(invoice) {
     const toLocalDateString = (dateStr) => {
       if (!dateStr) return "N/A";
-      // Assuming dateStr is 'YYYY-MM-DD' from Supabase (date type)
-      // Create Date object assuming UTC to avoid timezone shifts when only date is relevant
       const date = new Date(dateStr + "T00:00:00Z");
-      return date.toLocaleDateString("en-CA"); // YYYY-MM-DD format for inputs
+      return date.toLocaleDateString("en-CA");
     };
 
     return {
@@ -406,22 +351,18 @@
         return defaultValue;
       }
     }
-    return field || defaultValue; // Return field if already an object, or default
+    return field || defaultValue;
   }
 
-  // SECTION 4: INVOICE TABLE INITIALIZATION AND RENDERING (MAIN TABLE)
+  // SECTION 4: INVOICE TABLE INITIALIZATION AND RENDERING
   function initializeInvoicesTable(invoicesData = []) {
     if ($.fn.DataTable.isDataTable(invoicesTableHtmlElement)) {
-      invoicesDataTable.clear().destroy();
+      invoicesDataTable.clear().rows.add(invoicesData).draw();
+      return;
     }
-    const activeInvoices = invoicesData.filter(
-      (inv) =>
-        inv.status !== INVOICE_STATUS_PAID &&
-        inv.status !== INVOICE_STATUS_CANCELLED
-    );
-
+    
     invoicesDataTable = $(invoicesTableHtmlElement).DataTable({
-      data: activeInvoices,
+      data: invoicesData,
       columns: [
         { data: "invoice_number", title: "Invoice #" },
         {
@@ -433,12 +374,9 @@
         {
           data: "invoice_date",
           title: "Invoice Date",
-          render: (
-            data,
-            type // Format for display, keep YYYY-MM-DD for sorting/filtering
-          ) =>
+          render: (data, type) =>
             type === "display" && data !== "N/A"
-              ? new Date(data + "T00:00:00Z").toLocaleDateString() // Use user's locale for display
+              ? new Date(data + "T00:00:00Z").toLocaleDateString()
               : data,
         },
         {
@@ -460,11 +398,10 @@
                 typeof data === "object" &&
                 Object.keys(data).length > 0
               ) {
-                let displayCurrency = "USD"; // Prefer USD
+                let displayCurrency = "USD";
                 if (!data.hasOwnProperty("USD")) {
-                  // If no USD, try MXN
                   if (data.hasOwnProperty("MXN")) displayCurrency = "MXN";
-                  else displayCurrency = Object.keys(data)[0]; // Or first available
+                  else displayCurrency = Object.keys(data)[0];
                 }
                 return `${parseFloat(data[displayCurrency] || 0).toFixed(
                   2
@@ -472,7 +409,6 @@
               }
               return "N/A";
             }
-            // For sorting/type detection, return a numeric value (e.g., USD equivalent or primary currency value)
             if (data && data.hasOwnProperty("USD")) return parseFloat(data.USD);
             if (
               data &&
@@ -539,9 +475,8 @@
         },
         emptyTable: "No active invoices found.",
       },
-      order: [[3, "desc"]], // Default sort by Invoice Date descending
+      order: [[3, "desc"]],
       drawCallback: function (settings) {
-        // Recalculate responsive layout after draw
         var api = new $.fn.dataTable.Api(settings);
         if ($.fn.dataTable.Responsive && api.responsive)
           api.responsive.recalc();
@@ -553,7 +488,7 @@
   function openHistoryModal() {
     if (!invoiceHistoryModal) return;
     populateHistoryFilterDropdowns();
-    handleFilterHistoryInvoices(); // Initial load
+    handleFilterHistoryInvoices();
     openItModal(invoiceHistoryModal);
   }
 
@@ -567,24 +502,14 @@
 
     if (historyFilterMonthSelect.options.length <= 1) {
       const months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
       ];
       historyFilterMonthSelect.innerHTML =
         '<option value="">All Months</option>';
       months.forEach((month, index) => {
         const option = document.createElement("option");
-        option.value = index; // 0-11 for JS Date month
+        option.value = index;
         option.textContent = month;
         historyFilterMonthSelect.appendChild(option);
       });
@@ -594,64 +519,68 @@
       const currentYear = new Date().getFullYear();
       historyFilterYearSelect.innerHTML = '<option value="">All Years</option>';
       for (let i = 0; i < 5; i++) {
-        // Current year and past 4 years
         const year = currentYear - i;
         const option = document.createElement("option");
         option.value = year;
         option.textContent = year;
         historyFilterYearSelect.appendChild(option);
       }
-      historyFilterYearSelect.value = currentYear; // Default to current year
+      historyFilterYearSelect.value = currentYear;
       historyYearsPopulated = true;
     }
   }
 
-  async function handleFilterHistoryInvoices() {
+  function handleFilterHistoryInvoices() {
     if (!currentUser) {
-      showItNotification("Please log in to view history.", "info");
-      if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
-      if (historyTotalResultsEl)
-        historyTotalResultsEl.textContent = "Results: 0";
-      if (noHistoryResultsMessageEl)
-        noHistoryResultsMessageEl.style.display = "block";
-      return;
+        showItNotification("Please log in to view history.", "info");
+        if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
+        if (historyTotalResultsEl) historyTotalResultsEl.textContent = "Results: 0";
+        if (noHistoryResultsMessageEl) noHistoryResultsMessageEl.style.display = "block";
+        return;
     }
-
+  
     const filters = {
-      customer: historyFilterCustomerInput.value.trim(),
-      month: historyFilterMonthSelect.value,
-      year: historyFilterYearSelect.value,
-      status: historyFilterStatusSelect.value,
+        customer: historyFilterCustomerInput.value.trim(),
+        month: historyFilterMonthSelect.value,
+        year: historyFilterYearSelect.value,
+        status: historyFilterStatusSelect.value,
     };
-
-    // Feedback for the button
-    const originalButtonText = applyHistoryFiltersBtn.innerHTML;
-    applyHistoryFiltersBtn.innerHTML =
-      "<i class='bx bx-loader-alt bx-spin'></i> Filtering...";
-    applyHistoryFiltersBtn.disabled = true;
-
-    const historicalInvoices = await fetchInvoicesFromSupabase(true, filters);
-
-    // Restore button
-    applyHistoryFiltersBtn.innerHTML = originalButtonText;
-    applyHistoryFiltersBtn.disabled = false;
-
-    initializeInvoiceHistoryTable(historicalInvoices);
-
-    if (historyTotalResultsEl)
-      historyTotalResultsEl.textContent = `Results: ${historicalInvoices.length}`;
+  
+    let statusesToFilter = [INVOICE_STATUS_PAID, INVOICE_STATUS_CANCELLED];
+    if (filters.status && filters.status !== ALL_STATUSES_FILTER) {
+        statusesToFilter = [filters.status];
+    }
+  
+    let filteredHistory = allInvoicesData.filter(inv => {
+        let match = statusesToFilter.includes(inv.status);
+  
+        if (match && filters.customer) {
+            match = (inv.customer_name || "").toLowerCase().includes(filters.customer.toLowerCase());
+        }
+  
+        if (match && filters.year && filters.month) {
+            const invDate = new Date(inv.invoice_date + 'T00:00:00Z');
+            match = invDate.getUTCFullYear() == filters.year && invDate.getUTCMonth() == filters.month;
+        }
+        return match;
+    });
+  
+    initializeInvoiceHistoryTable(filteredHistory);
+  
+    if (historyTotalResultsEl) historyTotalResultsEl.textContent = `Results: ${filteredHistory.length}`;
     if (noHistoryResultsMessageEl) {
-      noHistoryResultsMessageEl.style.display =
-        historicalInvoices.length === 0 ? "block" : "none";
+        noHistoryResultsMessageEl.style.display = filteredHistory.length === 0 ? "block" : "none";
     }
   }
 
   function initializeInvoiceHistoryTable(historyData = []) {
     if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-      invoiceHistoryDataTable.clear().destroy();
+        invoiceHistoryDataTable.clear().rows.add(historyData).draw();
+        return;
     }
     invoiceHistoryDataTable = $(invoiceHistoryTableHtmlElement).DataTable({
       data: historyData,
+      destroy: true, // Important for re-initialization
       columns: [
         { data: "invoice_number", title: "Invoice #" },
         {
@@ -756,7 +685,6 @@
   }
 
   // SECTION 5: DASHBOARD SUMMARY & MANUAL INVOICE FORM HELPERS
-
   function updateDashboardSummary(invoices = []) {
     const activeInvoices = invoices.filter(
       (inv) =>
@@ -767,9 +695,7 @@
     if (dbTotalInvoicesEl)
       dbTotalInvoicesEl.textContent = activeInvoices.length;
 
-    let paidCount = activeInvoices.filter(
-      (inv) => inv.status === INVOICE_STATUS_PAID
-    ).length; // This will be 0 based on filter
+    let paidCount = 0;
     if (dbPaidInvoicesEl) dbPaidInvoicesEl.textContent = paidCount;
 
     let pendingCount = 0,
@@ -798,7 +724,7 @@
         }" required>
         <select name="charge_currency[]" required>
             <option value="USD" ${
-              chargeData?.currency === "USD" || (!chargeData && "USD") // Default to USD
+              chargeData?.currency === "USD" || (!chargeData && "USD")
                 ? "selected"
                 : ""
             }>USD</option>
@@ -826,7 +752,7 @@
     });
 
     if (chargeData) calculateAndUpdateChargeLineAmount(chargeLineDiv);
-    else calculateAndUpdateChargeLineAmount(chargeLineDiv); // Calculate for new lines too
+    else calculateAndUpdateChargeLineAmount(chargeLineDiv);
     updateManualTotals();
   }
 
@@ -899,50 +825,45 @@
     const manualInvoiceDateInput = document.getElementById("manualInvoiceDate");
     if (manualInvoiceDateInput) manualInvoiceDateInput.value = today;
     const manualStatusSelect = document.getElementById("manualStatus");
-    if (manualStatusSelect) manualStatusSelect.value = "Pending"; // Default status
+    if (manualStatusSelect) manualStatusSelect.value = "Pending";
   }
 
   // SECTION 6: EVENT HANDLERS
-
   function handleFilterApply() {
     const customerFilter = filterCustomerInput.value.toLowerCase().trim();
-    const dateStartFilter = filterDateStartInput.value; // YYYY-MM-DD
-    const dateEndFilter = filterDateEndInput.value; // YYYY-MM-DD
-    const statusFilter = filterStatusSelect.value; // "all", "Pending", "Overdue" etc.
+    const dateStartFilter = filterDateStartInput.value;
+    const dateEndFilter = filterDateEndInput.value;
+    const statusFilter = filterStatusSelect.value;
     const currencyFilter = filterCurrencySelect.value;
 
     let filteredData = allInvoicesData.filter((inv) => {
-      let match = true;
-      if (
-        customerFilter &&
-        !(inv.customer_name || "").toLowerCase().includes(customerFilter)
-      )
-        match = false;
-
-      const invDate = inv.invoice_date; // Already YYYY-MM-DD from transform
-      if (dateStartFilter && invDate !== "N/A" && invDate < dateStartFilter)
-        match = false;
-      if (dateEndFilter && invDate !== "N/A" && invDate > dateEndFilter)
-        match = false;
-
-      if (
-        statusFilter !== ALL_STATUSES_FILTER &&
-        (inv.status || "").toLowerCase() !== statusFilter.toLowerCase() // Case-insensitive match
-      )
-        match = false;
-
-      if (currencyFilter !== ALL_STATUSES_FILTER) {
-        const currenciesInInvoice = inv.totals_by_currency
-          ? Object.keys(inv.totals_by_currency)
-          : [];
-        if (!currenciesInInvoice.includes(currencyFilter)) {
-          match = false;
+        if (inv.status === INVOICE_STATUS_PAID || inv.status === INVOICE_STATUS_CANCELLED) {
+            return false;
         }
-      }
-      return match;
+
+        let match = true;
+        if (customerFilter && !(inv.customer_name || "").toLowerCase().includes(customerFilter))
+            match = false;
+
+        const invDate = inv.invoice_date;
+        if (dateStartFilter && invDate !== "N/A" && invDate < dateStartFilter)
+            match = false;
+        if (dateEndFilter && invDate !== "N/A" && invDate > dateEndFilter)
+            match = false;
+
+        if (statusFilter !== ALL_STATUSES_FILTER && (inv.status || "").toLowerCase() !== statusFilter.toLowerCase())
+            match = false;
+
+        if (currencyFilter !== ALL_STATUSES_FILTER) {
+            const currenciesInInvoice = inv.totals_by_currency ? Object.keys(inv.totals_by_currency) : [];
+            if (!currenciesInInvoice.includes(currencyFilter)) {
+                match = false;
+            }
+        }
+        return match;
     });
     initializeInvoicesTable(filteredData);
-    updateDashboardSummary(filteredData); // Update dashboard with filtered active invoices
+    updateDashboardSummary(filteredData);
   }
 
   function handleFilterReset() {
@@ -951,30 +872,18 @@
     filterDateEndInput.value = "";
     filterStatusSelect.value = ALL_STATUSES_FILTER;
     filterCurrencySelect.value = ALL_STATUSES_FILTER;
-    initializeInvoicesTable(allInvoicesData); // Show all (active) data
-    updateDashboardSummary(allInvoicesData);
+
+    const activeInvoices = allInvoicesData.filter(inv => inv.status !== INVOICE_STATUS_PAID && inv.status !== INVOICE_STATUS_CANCELLED);
+    initializeInvoicesTable(activeInvoices);
+    updateDashboardSummary(activeInvoices);
   }
 
   function renderInvoiceDetail(invoiceId) {
-    let invoice = allInvoicesData.find((inv) => inv.id === invoiceId);
-
-    if (!invoice) {
-      if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-        const historyTableInstance = $(
-          invoiceHistoryTableHtmlElement
-        ).DataTable();
-        const historyRowData = historyTableInstance
-          .rows()
-          .data()
-          .toArray()
-          .find((inv) => inv.id === invoiceId);
-        if (historyRowData) invoice = historyRowData;
-      }
-    }
+    const invoice = allInvoicesData.find((inv) => inv.id === invoiceId);
 
     if (!invoice) {
       invoiceContentContainer.innerHTML = "<p>Invoice details not found.</p>";
-      openItModal(viewInvoiceModal); // Open modal even if not found to show message
+      openItModal(viewInvoiceModal);
       return;
     }
 
@@ -1004,7 +913,6 @@
       Object.keys(invoice.totals_by_currency).length > 0
         ? invoice.totals_by_currency
         : (invoice.charges || []).reduce((acc, charge) => {
-            // Fallback if totals_by_currency is empty but charges exist
             const currency = charge.currency || "USD";
             acc[currency] = (acc[currency] || 0) + (charge.amount || 0);
             return acc;
@@ -1016,7 +924,6 @@
       ).toFixed(2)}</td></tr>`;
     }
 
-    // Use toLocaleDateString for user-friendly display format
     const displayInvoiceDate =
       invoice.invoice_date !== "N/A"
         ? new Date(invoice.invoice_date + "T00:00:00Z").toLocaleDateString()
@@ -1096,58 +1003,21 @@
     const invoiceId = button.dataset.id;
     const action = button.dataset.action;
 
-    let invoiceRow;
-    if (tableType === "history") {
-      if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-        const historyTableInstance = $(
-          invoiceHistoryTableHtmlElement
-        ).DataTable();
-        invoiceRow = historyTableInstance
-          .rows()
-          .data()
-          .toArray()
-          .find((inv) => inv.id === invoiceId);
-      }
-    } else {
-      // 'main' table
-      invoiceRow = allInvoicesData.find((inv) => inv.id === invoiceId);
-    }
+    const invoiceRow = allInvoicesData.find((inv) => inv.id === invoiceId);
 
     if (!invoiceRow) {
-      // As a last resort, try to fetch the single invoice if not found in caches
-      try {
-        const { data, error } = await supabase
-          .from(INVOICES_TABLE_NAME)
-          .select("*")
-          .eq("id", invoiceId)
-          .single();
-        if (error && error.code !== "PGRST116") throw error; // PGRST116: no rows, handle below
-        if (data) {
-          invoiceRow = transformInvoiceDataForUI(data);
-        } else {
-          showItNotification(
-            "Could not find invoice data for this action.",
-            "error"
-          );
-          return;
-        }
-      } catch (e) {
-        console.error("Error fetching specific invoice for action:", e);
-        showItNotification(`Error retrieving invoice: ${e.message}`, "error");
+        showItNotification("Could not find invoice data for this action.", "error");
         return;
-      }
     }
 
     switch (action) {
       case "view":
-        renderInvoiceDetail(invoiceId); // renderInvoiceDetail can handle finding/fetching again if needed
+        renderInvoiceDetail(invoiceId);
         break;
       case "edit":
         if (tableType === "history") {
-          // Editing generally not allowed for historical (Paid/Cancelled)
           showItNotification(
-            "Historical invoices typically cannot be edited directly. Consider creating a credit note or new invoice.",
-            "info"
+            "Historical invoices typically cannot be edited directly.", "info"
           );
           return;
         }
@@ -1163,7 +1033,6 @@
           invoiceRow.customer_address || "";
         document.getElementById("manualCustomerTaxId").value =
           invoiceRow.customer_tax_id || "";
-        // invoiceRow.invoice_date and due_date are already YYYY-MM-DD from transform
         document.getElementById("manualInvoiceDate").value =
           invoiceRow.invoice_date !== "N/A"
             ? invoiceRow.invoice_date
@@ -1181,7 +1050,7 @@
         document.getElementById("manualNotes").value = invoiceRow.notes || "";
 
         (invoiceRow.charges || []).forEach((charge) => addChargeLine(charge));
-        if ((invoiceRow.charges || []).length === 0) addChargeLine(); // Add one empty line if no charges
+        if ((invoiceRow.charges || []).length === 0) addChargeLine();
 
         updateManualTotals();
         openItModal(manualInvoiceModal);
@@ -1190,14 +1059,8 @@
         handleDownloadPdf(invoiceId);
         break;
       case "mark-paid":
-        if (
-          tableType === "history" &&
-          invoiceRow.status === INVOICE_STATUS_PAID
-        ) {
-          showItNotification(
-            `Invoice ${invoiceRow.invoice_number} is already Paid.`,
-            "info"
-          );
+        if (tableType === "history" && invoiceRow.status === INVOICE_STATUS_PAID) {
+          showItNotification(`Invoice ${invoiceRow.invoice_number} is already Paid.`, "info");
           return;
         }
         if (changeStatusModalTitle)
@@ -1211,14 +1074,8 @@
         openItModal(changeInvoiceStatusModal);
         break;
       case "cancel":
-        if (
-          tableType === "history" &&
-          invoiceRow.status === INVOICE_STATUS_CANCELLED
-        ) {
-          showItNotification(
-            `Invoice ${invoiceRow.invoice_number} is already Cancelled.`,
-            "info"
-          );
+        if (tableType === "history" && invoiceRow.status === INVOICE_STATUS_CANCELLED) {
+          showItNotification(`Invoice ${invoiceRow.invoice_number} is already Cancelled.`, "info");
           return;
         }
         if (changeStatusModalTitle)
@@ -1247,11 +1104,7 @@
     }
 
     try {
-      showItNotification(
-        `Updating invoice status to ${newStatus}...`,
-        "info",
-        0 // Keep notification until success/failure
-      );
+      showItNotification(`Updating invoice status to ${newStatus}...`, "info", 0);
       const { data, error } = await supabase
         .from(INVOICES_TABLE_NAME)
         .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -1262,48 +1115,15 @@
       if (error) throw error;
 
       if (data) {
-        showItNotification("", "info", 1); // Clear loading notification
-        showItNotification(
-          `Invoice ${data.invoice_number} status updated to ${newStatus}.`,
-          "success"
-        );
-        // If status is Paid or Cancelled, it should be removed from main active table
-        if (
-          newStatus === INVOICE_STATUS_PAID ||
-          newStatus === INVOICE_STATUS_CANCELLED
-        ) {
-          allInvoicesData = allInvoicesData.filter(
-            (inv) => inv.id !== invoiceId
-          );
-          initializeInvoicesTable(allInvoicesData);
-          updateDashboardSummary(allInvoicesData);
-          if (
-            invoiceHistoryModal &&
-            invoiceHistoryModal.style.display === "flex"
-          ) {
-            // Check if history modal is open
-            handleFilterHistoryInvoices(); // Refresh history if it's open
-          }
-        } else {
-          // For other status changes (e.g., Pending to Overdue), update in place
-          const invoiceIndex = allInvoicesData.findIndex(
-            (inv) => inv.id === invoiceId
-          );
-          if (invoiceIndex > -1) {
-            allInvoicesData[invoiceIndex] = transformInvoiceDataForUI(data);
-            initializeInvoicesTable(allInvoicesData);
-            updateDashboardSummary(allInvoicesData);
-          } else {
-            // Fallback: If not found in active (should not happen unless it was already historical)
-            await fetchInvoicesFromSupabase(); // Refetch all active
-          }
-        }
+        showItNotification("", "info", 1);
+        showItNotification(`Invoice ${data.invoice_number} status updated to ${newStatus}.`, "success");
+        closeItModal(changeInvoiceStatusModal);
+        // Realtime will handle the UI update
       }
     } catch (e) {
       console.error("Error updating invoice status:", e);
-      showItNotification("", "info", 1); // Clear loading notification
+      showItNotification("", "info", 1);
       showItNotification(`Failed to update status: ${e.message}`, "error");
-    } finally {
       closeItModal(changeInvoiceStatusModal);
     }
   }
@@ -1316,34 +1136,23 @@
 
     const userResponse = await supabase.auth.getUser();
     if (userResponse.error || !userResponse.data || !userResponse.data.user) {
-      showItNotification(
-        "User not authenticated. Cannot save invoice.",
-        "error"
-      );
+      showItNotification("User not authenticated. Cannot save invoice.", "error");
       saveBtn.disabled = false;
       saveBtn.innerHTML = "Save Invoice";
       return;
     }
     const user = userResponse.data.user;
     const formData = new FormData(manualInvoiceForm);
-    const invoiceId = formData.get("manualInvoiceId"); // For editing
+    const invoiceId = formData.get("manualInvoiceId");
 
     const charges = [];
     manualChargesContainer
       .querySelectorAll(".it-charge-line")
       .forEach((line) => {
-        const name = line
-          .querySelector('input[name="charge_name[]"]')
-          .value.trim();
-        const quantity = parseFloat(
-          line.querySelector('input[name="charge_quantity[]"]').value
-        );
-        const unit_price = parseFloat(
-          line.querySelector('input[name="charge_unit_price[]"]').value
-        );
-        const currency = line.querySelector(
-          'select[name="charge_currency[]"]'
-        ).value;
+        const name = line.querySelector('input[name="charge_name[]"]').value.trim();
+        const quantity = parseFloat(line.querySelector('input[name="charge_quantity[]"]').value);
+        const unit_price = parseFloat(line.querySelector('input[name="charge_unit_price[]"]').value);
+        const currency = line.querySelector('select[name="charge_currency[]"]').value;
         if (name && !isNaN(quantity) && !isNaN(unit_price) && currency) {
           charges.push({
             name,
@@ -1356,10 +1165,7 @@
       });
 
     if (charges.length === 0) {
-      showItNotification(
-        "Please add at least one valid charge line.",
-        "warning"
-      );
+      showItNotification("Please add at least one valid charge line.", "warning");
       saveBtn.disabled = false;
       saveBtn.innerHTML = "Save Invoice";
       return;
@@ -1367,49 +1173,34 @@
 
     const totals_by_currency = {};
     charges.forEach((charge) => {
-      totals_by_currency[charge.currency] =
-        (totals_by_currency[charge.currency] || 0) + charge.amount;
+      totals_by_currency[charge.currency] = (totals_by_currency[charge.currency] || 0) + charge.amount;
     });
 
     let invoice_number = formData.get("invoice_number").trim();
     if (!invoice_number && !invoiceId) {
-      // New invoice, no number provided
       invoice_number = await generateNextInvoiceNumberSupabase();
     } else if (!invoice_number && invoiceId) {
-      // Editing, number cleared by user (retain original or generate new if policy dictates)
-      const originalInvoice = allInvoicesData.find(
-        (inv) => inv.id === invoiceId
-      );
-      invoice_number = originalInvoice
-        ? originalInvoice.invoice_number
-        : await generateNextInvoiceNumberSupabase(); // Or show error if number must be kept
+      const originalInvoice = allInvoicesData.find((inv) => inv.id === invoiceId);
+      invoice_number = originalInvoice ? originalInvoice.invoice_number : await generateNextInvoiceNumberSupabase();
     }
 
     const invoiceData = {
       customer_name: formData.get("customer_name").trim(),
       customer_address: formData.get("customer_address").trim() || null,
       customer_tax_id: formData.get("customer_tax_id").trim() || null,
-      invoice_date: formData.get("invoice_date"), // Should be YYYY-MM-DD
-      due_date: formData.get("due_date") || null, // Should be YYYY-MM-DD
+      invoice_date: formData.get("invoice_date"),
+      due_date: formData.get("due_date") || null,
       service_display_id: formData.get("service_display_id").trim() || null,
       invoice_number: invoice_number,
       status: formData.get("status"),
-      payment_communication:
-        formData.get("payment_communication").trim() || null,
+      payment_communication: formData.get("payment_communication").trim() || null,
       notes: formData.get("notes").trim() || null,
-      charges: charges, // Array of charge objects
-      totals_by_currency: totals_by_currency, // Object with currency totals
+      charges: charges,
+      totals_by_currency: totals_by_currency,
     };
 
-    if (
-      !invoiceData.customer_name ||
-      !invoiceData.invoice_date ||
-      !invoiceData.status
-    ) {
-      showItNotification(
-        "Customer Name, Invoice Date, and Status are required.",
-        "warning"
-      );
+    if (!invoiceData.customer_name || !invoiceData.invoice_date || !invoiceData.status) {
+      showItNotification("Customer Name, Invoice Date, and Status are required.", "warning");
       saveBtn.disabled = false;
       saveBtn.innerHTML = "Save Invoice";
       return;
@@ -1417,12 +1208,7 @@
 
     try {
       let result;
-      const isHistoricalStatus =
-        invoiceData.status === INVOICE_STATUS_PAID ||
-        invoiceData.status === INVOICE_STATUS_CANCELLED;
-
       if (invoiceId) {
-        // Editing existing invoice
         invoiceData.updated_at = new Date().toISOString();
         const { data, error } = await supabase
           .from(INVOICES_TABLE_NAME)
@@ -1432,14 +1218,10 @@
           .single();
         if (error) throw error;
         result = data;
-        showItNotification(
-          `Invoice ${result.invoice_number} updated successfully!`,
-          "success"
-        );
+        showItNotification(`Invoice ${result.invoice_number} updated successfully!`, "success");
       } else {
-        // Creating new invoice
         invoiceData.user_id = user.id;
-        invoiceData.user_email = user.email; // Store who created it
+        invoiceData.user_email = user.email;
         const { data, error } = await supabase
           .from(INVOICES_TABLE_NAME)
           .insert(invoiceData)
@@ -1447,25 +1229,11 @@
           .single();
         if (error) throw error;
         result = data;
-        showItNotification(
-          `Invoice ${result.invoice_number} created successfully!`,
-          "success"
-        );
+        showItNotification(`Invoice ${result.invoice_number} created successfully!`, "success");
       }
       closeItModal(manualInvoiceModal);
       resetManualInvoiceForm();
-
-      // Refresh main table (which shows active invoices)
-      await fetchInvoicesFromSupabase();
-
-      // If the saved invoice became historical, and history modal is open, refresh it
-      if (
-        isHistoricalStatus &&
-        invoiceHistoryModal &&
-        invoiceHistoryModal.style.display === "flex"
-      ) {
-        handleFilterHistoryInvoices();
-      }
+      // Realtime listener will handle the UI update
     } catch (error) {
       console.error("Error saving invoice:", error);
       showItNotification(`Error saving invoice: ${error.message}`, "error");
@@ -1477,67 +1245,30 @@
 
   async function handleDownloadPdf(invoiceId) {
     if (isDownloadingPdf) {
-      showItNotification(
-        "A PDF download is already in progress. Please wait.",
-        "warning"
-      );
+      showItNotification("A PDF download is already in progress. Please wait.", "warning");
       return;
     }
     isDownloadingPdf = true;
 
-    let invoice = allInvoicesData.find((inv) => inv.id === invoiceId);
-    if (!invoice) {
-      if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-        const historyTableData = $(invoiceHistoryTableHtmlElement)
-          .DataTable()
-          .rows()
-          .data()
-          .toArray();
-        invoice = historyTableData.find((inv) => inv.id === invoiceId);
-      }
-    }
-    if (!invoice) {
-      try {
-        const { data, error } = await supabase
-          .from(INVOICES_TABLE_NAME)
-          .select("*")
-          .eq("id", invoiceId)
-          .single();
-        if (error && error.code !== "PGRST116") throw error;
-        if (data) invoice = transformInvoiceDataForUI(data); // Ensure it's transformed
-      } catch (e) {
-        console.error("Error fetching specific invoice for PDF:", e);
-      }
-    }
-
+    const invoice = allInvoicesData.find((inv) => inv.id === invoiceId);
+    
     if (!invoice) {
       showItNotification("Invoice not found for PDF generation.", "error");
       isDownloadingPdf = false;
       return;
     }
-    showItNotification(
-      `Generating PDF for ${invoice.invoice_number}...`,
-      "info",
-      0 // Keep notification until process finishes or fails
-    );
+    showItNotification(`Generating PDF for ${invoice.invoice_number}...`, "info", 0);
 
     if (typeof html2pdf === "undefined") {
-      // Dynamically load html2pdf if not already available
       const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-      script.integrity =
-        "sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==";
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+      script.integrity = "sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==";
       script.crossOrigin = "anonymous";
       script.referrerPolicy = "no-referrer";
       script.onload = () => generatePdfContentAndDownload(invoice);
       script.onerror = () => {
-        showItNotification("", "info", 1); // Clear loading message
-        showItNotification(
-          "Failed to load PDF library. Please try again.",
-          "error",
-          5000
-        );
+        showItNotification("", "info", 1);
+        showItNotification("Failed to load PDF library. Please try again.", "error", 5000);
         isDownloadingPdf = false;
       };
       document.head.appendChild(script);
@@ -1548,10 +1279,9 @@
 
   async function generatePdfContentAndDownload(invoice) {
     const formatDateForDisplay = (dateString) => {
-      // YYYY-MM-DD input
       if (!dateString || dateString === "N/A") return "N/A";
-      const date = new Date(dateString + "T00:00:00Z"); // Assume UTC for date part
-      return date.toLocaleDateString(); // User's locale format
+      const date = new Date(dateString + "T00:00:00Z");
+      return date.toLocaleDateString();
     };
 
     const displayInvoiceDate = formatDateForDisplay(invoice.invoice_date);
@@ -1580,15 +1310,11 @@
         validTotals[curr] || 0
       ).toFixed(2)}</td></tr>`;
     }
-    if (
-      Object.keys(validTotals).length === 0 &&
-      (invoice.charges || []).length > 0 // Fallback if totals_by_currency is missing
-    ) {
+    if (Object.keys(validTotals).length === 0 && (invoice.charges || []).length > 0) {
       let fallbackTotals = {};
       (invoice.charges || []).forEach((charge) => {
         const currency = charge.currency || "USD";
-        fallbackTotals[currency] =
-          (fallbackTotals[currency] || 0) + (charge.amount || 0);
+        fallbackTotals[currency] = (fallbackTotals[currency] || 0) + (charge.amount || 0);
       });
       for (const curr in fallbackTotals) {
         totalsHtmlPdf += `<tr class="total-row"><td colspan="4">TOTAL (${curr}):</td><td>${parseFloat(
@@ -1597,7 +1323,7 @@
       }
     }
 
-    const logoUrl = "/assets/goldmex-logo-light.svg"; // Ensure this path is correct and accessible
+    const logoUrl = "/assets/goldmex-logo-light.svg";
 
     const invoiceHtmlContent = `
         <html>
@@ -1690,26 +1416,13 @@
                         <div class="bill-to">
                             <strong class="meta-title">Bill To:</strong>
                             ${invoice.customer_name || "N/A"}<br>
-                            ${
-                              invoice.customer_address ||
-                              "Address not available"
-                            }<br>
-                            ${
-                              invoice.customer_tax_id
-                                ? `Tax ID: ${invoice.customer_tax_id}`
-                                : ""
-                            }
+                            ${invoice.customer_address || "Address not available"}<br>
+                            ${invoice.customer_tax_id ? `Tax ID: ${invoice.customer_tax_id}` : ""}
                         </div>
                         <div class="invoice-details-wrapper">
                             <div class="invoice-details">
-                                <div class="detail-item"><strong class="detail-label">Invoice Number:</strong><span class="detail-value">${
-                                  invoice.invoice_number
-                                }</span></div>
-                                ${
-                                  invoice.service_display_id
-                                    ? `<div class="detail-item"><strong class="detail-label">Service ID:</strong><span class="detail-value">${invoice.service_display_id}</span></div>`
-                                    : ""
-                                }
+                                <div class="detail-item"><strong class="detail-label">Invoice Number:</strong><span class="detail-value">${invoice.invoice_number}</span></div>
+                                ${invoice.service_display_id ? `<div class="detail-item"><strong class="detail-label">Service ID:</strong><span class="detail-value">${invoice.service_display_id}</span></div>` : ""}
                                 <div class="detail-item"><strong class="detail-label">Invoice Date:</strong><span class="detail-value">${displayInvoiceDate}</span></div>
                                 <div class="detail-item"><strong class="detail-label">Due Date:</strong><span class="detail-value">${displayDueDate}</span></div>
                             </div>
@@ -1721,17 +1434,8 @@
                     </table>
                     <div class="footer">
                         <span class="highlight">Payment Communication:</span>
-                        ${
-                          invoice.payment_communication ||
-                          `Ref: ${invoice.invoice_number} / Service: ${
-                            invoice.service_display_id || "N/A"
-                          }`
-                        }<br>
-                        ${
-                          invoice.notes
-                            ? `<span class="highlight">Notes:</span> ${invoice.notes}<br>`
-                            : ""
-                        }
+                        ${invoice.payment_communication || `Ref: ${invoice.invoice_number} / Service: ${invoice.service_display_id || "N/A"}`}<br>
+                        ${invoice.notes ? `<span class="highlight">Notes:</span> ${invoice.notes}<br>`: ""}
                         Thank you for your business!
                     </div>
                 </div>
@@ -1739,57 +1443,39 @@
         </html>`;
 
     const opt = {
-      margin: [8, 8, 8, 8], // Margins in mm [top, left, bottom, right]
+      margin: [8, 8, 8, 8],
       filename: `Invoice-${invoice.invoice_number || "INV"}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        letterRendering: true,
-        backgroundColor: "#ffffff",
-      },
+      html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true, backgroundColor: "#ffffff" },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["avoid-all", "css", "legacy"] }, // Attempt to avoid page breaks inside elements
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
     };
 
     try {
-      // Create a temporary element to render the HTML for PDF generation
-      // This element is not added to the visible DOM but used by html2pdf
       const tempRenderElement = document.createElement("div");
-      // Styles to keep it off-screen and match PDF dimensions for better accuracy
       tempRenderElement.style.position = "absolute";
-      tempRenderElement.style.left = "-99999px"; // Way off-screen
+      tempRenderElement.style.left = "-99999px";
       tempRenderElement.style.top = "0px";
-      tempRenderElement.style.width = "210mm"; // A4 width
-      tempRenderElement.style.height = "auto"; // Auto height
-      tempRenderElement.style.overflow = "hidden"; // Prevent scrollbars
-      document.body.appendChild(tempRenderElement); // Must be in DOM for html2canvas
+      tempRenderElement.style.width = "210mm";
+      tempRenderElement.style.height = "auto";
+      tempRenderElement.style.overflow = "hidden";
+      document.body.appendChild(tempRenderElement);
       tempRenderElement.innerHTML = invoiceHtmlContent;
 
       const elementToConvert = tempRenderElement.querySelector(".invoice-box");
       if (!elementToConvert) {
-        // Sanity check
-        throw new Error(
-          ".invoice-box not found in temporary render element for PDF conversion."
-        );
+        throw new Error(".invoice-box not found in temporary render element for PDF conversion.");
       }
 
       await html2pdf().from(elementToConvert).set(opt).save();
-      showItNotification("", "info", 1); // Clear loading message
+      showItNotification("", "info", 1);
       showItNotification("PDF generated and download started!", "success");
-      document.body.removeChild(tempRenderElement); // Clean up temporary element
+      document.body.removeChild(tempRenderElement);
     } catch (pdfError) {
       console.error("Error generating PDF with html2pdf:", pdfError);
-      showItNotification("", "info", 1); // Clear loading message
-      showItNotification(
-        "Error generating PDF. Check console for details.",
-        "error"
-      );
-      // Ensure temp element is removed on error too
-      const tempElementExists = document.body.querySelector(
-        'div[style*="left: -99999px"]'
-      );
+      showItNotification("", "info", 1);
+      showItNotification("Error generating PDF. Check console for details.", "error");
+      const tempElementExists = document.body.querySelector('div[style*="left: -99999px"]');
       if (tempElementExists) document.body.removeChild(tempElementExists);
     } finally {
       isDownloadingPdf = false;
@@ -1797,21 +1483,17 @@
   }
 
   // SECTION 7: EVENT LISTENERS SETUP
-  let downloadPdfModalHandler; // To store the event handler for removal if needed
+  let downloadPdfModalHandler;
 
   function setupEventListeners() {
-    if (applyFiltersBtn)
-      applyFiltersBtn.addEventListener("click", handleFilterApply);
-    if (resetFiltersBtn)
-      resetFiltersBtn.addEventListener("click", handleFilterReset);
+    if (applyFiltersBtn) applyFiltersBtn.addEventListener("click", handleFilterApply);
+    if (resetFiltersBtn) resetFiltersBtn.addEventListener("click", handleFilterReset);
 
     if (createManualInvoiceBtn) {
       createManualInvoiceBtn.addEventListener("click", () => {
         resetManualInvoiceForm();
-        if (manualInvoiceModalTitle)
-          manualInvoiceModalTitle.innerHTML =
-            "<i class='bx bx-plus-circle'></i> Create New Invoice";
-        addChargeLine(); // Add one empty charge line for new invoices
+        if (manualInvoiceModalTitle) manualInvoiceModalTitle.innerHTML = "<i class='bx bx-plus-circle'></i> Create New Invoice";
+        addChargeLine();
         openItModal(manualInvoiceModal);
       });
     }
@@ -1820,7 +1502,6 @@
       addChargeLineBtn.addEventListener("click", () => addChargeLine());
     }
 
-    // Event delegation for remove charge line buttons
     if (manualChargesContainer) {
       manualChargesContainer.addEventListener("click", (event) => {
         if (event.target.closest(".it-remove-charge-line-btn")) {
@@ -1830,314 +1511,181 @@
       });
     }
 
-    // View Invoice Modal
-    if (closeViewInvoiceModalBtn)
-      closeViewInvoiceModalBtn.addEventListener("click", () =>
-        closeItModal(viewInvoiceModal)
-      );
-    if (closeViewInvoiceFooterBtn)
-      closeViewInvoiceFooterBtn.addEventListener("click", () =>
-        closeItModal(viewInvoiceModal)
-      );
-    if (viewInvoiceModal)
-      // Close on backdrop click
-      viewInvoiceModal.addEventListener("click", (e) => {
-        if (e.target === viewInvoiceModal) closeItModal(viewInvoiceModal);
-      });
+    if (closeViewInvoiceModalBtn) closeViewInvoiceModalBtn.addEventListener("click", () => closeItModal(viewInvoiceModal));
+    if (closeViewInvoiceFooterBtn) closeViewInvoiceFooterBtn.addEventListener("click", () => closeItModal(viewInvoiceModal));
+    if (viewInvoiceModal) viewInvoiceModal.addEventListener("click", (e) => { if (e.target === viewInvoiceModal) closeItModal(viewInvoiceModal); });
 
-    // Manual Invoice Modal
-    if (closeManualInvoiceModalBtn)
-      closeManualInvoiceModalBtn.addEventListener("click", () => {
-        closeItModal(manualInvoiceModal);
-        resetManualInvoiceForm();
-      });
-    if (cancelManualInvoiceBtn)
-      cancelManualInvoiceBtn.addEventListener("click", () => {
-        closeItModal(manualInvoiceModal);
-        resetManualInvoiceForm();
-      });
-    if (manualInvoiceModal)
-      // Close on backdrop click
-      manualInvoiceModal.addEventListener("click", (e) => {
-        if (e.target === manualInvoiceModal) {
-          closeItModal(manualInvoiceModal);
-          resetManualInvoiceForm();
-        }
-      });
-    if (manualInvoiceForm)
-      manualInvoiceForm.addEventListener("submit", handleSaveManualInvoice);
+    if (closeManualInvoiceModalBtn) closeManualInvoiceModalBtn.addEventListener("click", () => { closeItModal(manualInvoiceModal); resetManualInvoiceForm(); });
+    if (cancelManualInvoiceBtn) cancelManualInvoiceBtn.addEventListener("click", () => { closeItModal(manualInvoiceModal); resetManualInvoiceForm(); });
+    if (manualInvoiceModal) manualInvoiceModal.addEventListener("click", (e) => { if (e.target === manualInvoiceModal) { closeItModal(manualInvoiceModal); resetManualInvoiceForm(); } });
+    if (manualInvoiceForm) manualInvoiceForm.addEventListener("submit", handleSaveManualInvoice);
 
-    // Change Invoice Status Modal
-    if (closeChangeStatusModalBtn)
-      closeChangeStatusModalBtn.addEventListener("click", () =>
-        closeItModal(changeInvoiceStatusModal)
-      );
-    if (cancelChangeStatusBtn)
-      cancelChangeStatusBtn.addEventListener("click", () =>
-        closeItModal(changeInvoiceStatusModal)
-      );
-    if (changeInvoiceStatusModal)
-      // Close on backdrop click
-      changeInvoiceStatusModal.addEventListener("click", (e) => {
-        if (e.target === changeInvoiceStatusModal)
-          closeItModal(changeInvoiceStatusModal);
-      });
-    if (confirmChangeStatusBtn)
-      confirmChangeStatusBtn.addEventListener(
-        "click",
-        handleChangeInvoiceStatus
-      );
+    if (closeChangeStatusModalBtn) closeChangeStatusModalBtn.addEventListener("click", () => closeItModal(changeInvoiceStatusModal));
+    if (cancelChangeStatusBtn) cancelChangeStatusBtn.addEventListener("click", () => closeItModal(changeInvoiceStatusModal));
+    if (changeInvoiceStatusModal) changeInvoiceStatusModal.addEventListener("click", (e) => { if (e.target === changeInvoiceStatusModal) closeItModal(changeInvoiceStatusModal); });
+    if (confirmChangeStatusBtn) confirmChangeStatusBtn.addEventListener("click", handleChangeInvoiceStatus);
 
-    // Main table actions (using jQuery for DataTables event handling)
     if (invoicesTableHtmlElement) {
-      $(invoicesTableHtmlElement)
-        .off("click", "button[data-action]") // Remove previous to avoid duplicates
-        .on("click", "button[data-action]", (event) =>
-          handleTableActions(event, "main")
-        );
+      $(invoicesTableHtmlElement).off("click", "button[data-action]").on("click", "button[data-action]", (event) => handleTableActions(event, "main"));
     }
 
-    // History table actions
     if (invoiceHistoryTableHtmlElement) {
-      $(invoiceHistoryTableHtmlElement)
-        .off("click", "button[data-action]")
-        .on("click", "button[data-action]", (event) =>
-          handleTableActions(event, "history")
-        );
+      $(invoiceHistoryTableHtmlElement).off("click", "button[data-action]").on("click", "button[data-action]", (event) => handleTableActions(event, "history"));
     }
 
-    // PDF Download from View Modal
     if (downloadInvoicePdfBtn) {
-      // Remove previous handler if it exists (e.g., if setupEventListeners is called multiple times)
       if (downloadPdfModalHandler) {
-        downloadInvoicePdfBtn.removeEventListener(
-          "click",
-          downloadPdfModalHandler
-        );
+        downloadInvoicePdfBtn.removeEventListener("click", downloadPdfModalHandler);
       }
       downloadPdfModalHandler = () => {
-        // Store handler to allow removal later if needed
-        const invoiceNumberForPdf = viewInvoiceNumberSpan
-          ? viewInvoiceNumberSpan.textContent
-          : null;
+        const invoiceNumberForPdf = viewInvoiceNumberSpan ? viewInvoiceNumberSpan.textContent : null;
         if (invoiceNumberForPdf) {
-          let invoiceToDownload = allInvoicesData.find(
-            (inv) => inv.invoice_number === invoiceNumberForPdf
-          );
-          if (
-            !invoiceToDownload &&
-            $.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)
-          ) {
-            const historyTableData = $(invoiceHistoryTableHtmlElement)
-              .DataTable()
-              .rows()
-              .data()
-              .toArray();
-            invoiceToDownload = historyTableData.find(
-              (inv) => inv.invoice_number === invoiceNumberForPdf
-            );
+          const invoiceToDownload = allInvoicesData.find((inv) => inv.invoice_number === invoiceNumberForPdf);
+          if (invoiceToDownload) {
+            handleDownloadPdf(invoiceToDownload.id);
+          } else {
+            showItNotification("Could not find invoice details for PDF generation.", "error");
           }
-
-          if (invoiceToDownload) handleDownloadPdf(invoiceToDownload.id);
-          else
-            showItNotification(
-              "Could not find invoice details for PDF generation.",
-              "error"
-            );
         } else {
-          showItNotification(
-            "No invoice number found for PDF generation.",
-            "error"
-          );
+          showItNotification("No invoice number found for PDF generation.", "error");
         }
       };
       downloadInvoicePdfBtn.addEventListener("click", downloadPdfModalHandler);
     }
 
-    // --- History Modal Listeners ---
-    if (openInvoiceHistoryModalBtn) {
-      openInvoiceHistoryModalBtn.addEventListener("click", openHistoryModal);
-    }
-    if (closeInvoiceHistoryModalBtn) {
-      closeInvoiceHistoryModalBtn.addEventListener("click", closeHistoryModal);
-    }
-    if (closeInvoiceHistoryFooterBtn) {
-      // Footer close button for history modal
-      closeInvoiceHistoryFooterBtn.addEventListener("click", closeHistoryModal);
-    }
-    if (invoiceHistoryModal) {
-      // Close history modal on backdrop click
-      invoiceHistoryModal.addEventListener("click", (e) => {
-        if (e.target === invoiceHistoryModal) closeHistoryModal();
-      });
-    }
-    if (applyHistoryFiltersBtn) {
-      applyHistoryFiltersBtn.addEventListener(
-        "click",
-        handleFilterHistoryInvoices
-      );
-    }
-    if (historyFilterMonthSelect)
-      historyFilterMonthSelect.addEventListener(
-        "change",
-        handleFilterHistoryInvoices
-      );
-    if (historyFilterYearSelect)
-      historyFilterYearSelect.addEventListener(
-        "change",
-        handleFilterHistoryInvoices
-      );
-    if (historyFilterStatusSelect)
-      historyFilterStatusSelect.addEventListener(
-        "change",
-        handleFilterHistoryInvoices
-      );
-    // Consider adding a debounce/throttle if filtering on customer input text change directly for performance.
-    // For now, customer filter is applied with the "Filter History" button.
+    if (openInvoiceHistoryModalBtn) openInvoiceHistoryModalBtn.addEventListener("click", openHistoryModal);
+    if (closeInvoiceHistoryModalBtn) closeInvoiceHistoryModalBtn.addEventListener("click", closeHistoryModal);
+    if (closeInvoiceHistoryFooterBtn) closeInvoiceHistoryFooterBtn.addEventListener("click", closeHistoryModal);
+    if (invoiceHistoryModal) invoiceHistoryModal.addEventListener("click", (e) => { if (e.target === invoiceHistoryModal) closeHistoryModal(); });
+    
+    if (applyHistoryFiltersBtn) applyHistoryFiltersBtn.addEventListener("click", handleFilterHistoryInvoices);
+    if (historyFilterMonthSelect) historyFilterMonthSelect.addEventListener("change", handleFilterHistoryInvoices);
+    if (historyFilterYearSelect) historyFilterYearSelect.addEventListener("change", handleFilterHistoryInvoices);
+    if (historyFilterStatusSelect) historyFilterStatusSelect.addEventListener("change", handleFilterHistoryInvoices);
 
-    // Global Escape key listener for modals
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        if (viewInvoiceModal?.classList.contains("it-modal-open"))
-          closeItModal(viewInvoiceModal);
-        if (manualInvoiceModal?.classList.contains("it-modal-open")) {
-          closeItModal(manualInvoiceModal);
-          resetManualInvoiceForm();
-        }
-        if (changeInvoiceStatusModal?.classList.contains("it-modal-open"))
-          closeItModal(changeInvoiceStatusModal);
-        if (itCustomConfirmModal?.classList.contains("it-modal-open"))
-          hideItConfirmModal();
-        if (invoiceHistoryModal?.classList.contains("it-modal-open"))
-          closeHistoryModal();
+        if (viewInvoiceModal?.classList.contains("it-modal-open")) closeItModal(viewInvoiceModal);
+        if (manualInvoiceModal?.classList.contains("it-modal-open")) { closeItModal(manualInvoiceModal); resetManualInvoiceForm(); }
+        if (changeInvoiceStatusModal?.classList.contains("it-modal-open")) closeItModal(changeInvoiceStatusModal);
+        if (itCustomConfirmModal?.classList.contains("it-modal-open")) hideItConfirmModal();
+        if (invoiceHistoryModal?.classList.contains("it-modal-open")) closeHistoryModal();
       }
     });
 
-    // Custom Confirm Modal buttons
-    if (itCustomConfirmOkBtn)
-      itCustomConfirmOkBtn.addEventListener("click", () => {
-        if (typeof currentItConfirmCallback === "function")
-          currentItConfirmCallback();
-        hideItConfirmModal();
-      });
-    if (itCustomConfirmCancelBtn)
-      itCustomConfirmCancelBtn.addEventListener("click", hideItConfirmModal);
-    if (itCustomConfirmCloseBtn)
-      itCustomConfirmCloseBtn.addEventListener("click", hideItConfirmModal);
+    if (itCustomConfirmOkBtn) itCustomConfirmOkBtn.addEventListener("click", () => { if (typeof currentItConfirmCallback === "function") currentItConfirmCallback(); hideItConfirmModal(); });
+    if (itCustomConfirmCancelBtn) itCustomConfirmCancelBtn.addEventListener("click", hideItConfirmModal);
+    if (itCustomConfirmCloseBtn) itCustomConfirmCloseBtn.addEventListener("click", hideItConfirmModal);
   }
 
-  // SECTION 8: REALTIME SUBSCRIPTIONS
-  async function removeCurrentSubscription() {
-    if (invoiceSubscription) {
-      try {
-        await supabase.removeChannel(invoiceSubscription);
-      } catch (error) {
-        console.error("IT Module: Error during removeChannel:", error);
-      } finally {
-        invoiceSubscription = null;
+  // SECTION 8: INITIALIZATION & REALTIME
+  async function unsubscribeFromInvoiceChanges() {
+      if (invoiceSubscription) {
+          console.log("IT Module: Unsubscribing from invoice changes.");
+          try {
+              await supabase.removeChannel(invoiceSubscription);
+          } catch (error) {
+              console.error("IT Module: Error removing subscription channel.", error);
+          }
+          invoiceSubscription = null;
       }
-    }
+  }
+
+  function handleRealtimeChange(payload) {
+      if (isProcessingRealtimeUpdate) return;
+      isProcessingRealtimeUpdate = true;
+      
+      console.log(`IT Module: Realtime change on invoices:`, payload.eventType, payload);
+      const eventType = payload.eventType;
+      let changedRecord;
+      let recordIndex = -1;
+
+      switch (eventType) {
+          case 'INSERT':
+              changedRecord = transformInvoiceDataForUI(payload.new);
+              allInvoicesData.unshift(changedRecord);
+              break;
+          case 'UPDATE':
+              changedRecord = transformInvoiceDataForUI(payload.new);
+              recordIndex = allInvoicesData.findIndex(inv => inv.id === changedRecord.id);
+              if (recordIndex > -1) {
+                  allInvoicesData[recordIndex] = changedRecord;
+              } else {
+                  allInvoicesData.unshift(changedRecord);
+              }
+              break;
+          case 'DELETE':
+              const deletedId = payload.old.id;
+              if (deletedId) {
+                  allInvoicesData = allInvoicesData.filter(inv => inv.id !== deletedId);
+              }
+              break;
+          default:
+              isProcessingRealtimeUpdate = false;
+              return;
+      }
+      refreshInvoicesUI();
+      setTimeout(() => { isProcessingRealtimeUpdate = false; }, 200);
   }
 
   async function subscribeToInvoiceChanges() {
-    await removeCurrentSubscription(); // Ensure any old subscription is cleared
-
-    const channelName = "public:invoices:all-module-it";
-    invoiceSubscription = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: INVOICES_TABLE_NAME },
-        async (payload) => {
-          console.log("IT Module: Invoice change received!", payload.eventType);
-
-          // FIX: Prevent race conditions from rapid-fire updates
-          if (isProcessingRealtimeUpdate) {
-            console.log("IT Module: Another update is in progress, skipping this one.");
-            return;
-          }
-          isProcessingRealtimeUpdate = true;
-          
-          try {
-            await fetchInvoicesFromSupabase(); // Refetch active invoices
-            if (invoiceHistoryModal?.style.display === "flex") {
-              await handleFilterHistoryInvoices(); // Refresh history data if open
-            }
-          } finally {
-            isProcessingRealtimeUpdate = false; // Release the lock
-          }
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === "SUBSCRIBED") {
-          console.log(`IT Module: Successfully subscribed to ${channelName}!`);
-        } else if (err) {
-          console.error(`IT Module: Subscription to ${channelName} FAILED. Error:`, err);
-        }
-      });
+      await unsubscribeFromInvoiceChanges();
+      
+      console.log("IT Module: Setting up new realtime subscription for invoices.");
+      invoiceSubscription = supabase
+          .channel('public:invoices')
+          .on('postgres_changes', { event: '*', schema: 'public', table: INVOICES_TABLE_NAME }, handleRealtimeChange)
+          .subscribe((status, err) => {
+              if (status === 'SUBSCRIBED') {
+                  console.log(`IT Module: Successfully subscribed to invoice changes.`);
+              } else if (err) {
+                  console.error(`IT Module: Subscription to invoices FAILED.`, err);
+              }
+          });
   }
 
-  // SECTION 9: INITIALIZATION
-  let isModuleInitialized = false;
-
-  async function manageSubscriptionAndData(session) {
-    if (isInitializingModule) return;
-    isInitializingModule = true;
-
-    if (session?.user) {
-        // User is logged in. Clean up any old state and initialize.
-        if (!currentUser || currentUser.id !== session.user.id) {
-            console.log(`IT Module: New user detected or first sign-in. User: ${session.user.id}`);
-            currentUser = session.user;
-        } else {
-            console.log(`IT Module: User session refreshed. User: ${currentUser.id}`);
-        }
-        await fetchInvoicesFromSupabase();
-        await subscribeToInvoiceChanges();
-    } else {
-        // User signed out.
-        if (currentUser) {
-            console.log("IT Module: User signed out. Clearing data and subscription.");
-            currentUser = null;
-            allInvoicesData = [];
-            initializeInvoicesTable([]);
-            if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
-            updateDashboardSummary([]);
-            await removeCurrentSubscription();
-        }
-    }
-    isInitializingModule = false;
+  async function handleAuthChange(session) {
+      const userJustChanged = currentUser?.id !== session?.user?.id;
+      currentUser = session?.user || null;
+      
+      if (userJustChanged) {
+          await unsubscribeFromInvoiceChanges();
+          if (currentUser) {
+              console.log("IT Module: User logged in. Fetching data and subscribing.");
+              await fetchAllInvoices();
+              await subscribeToInvoiceChanges();
+          } else {
+              console.log("IT Module: User logged out. Clearing data.");
+              allInvoicesData = [];
+              refreshInvoicesUI();
+          }
+      }
   }
 
   function initializeApp() {
-    if (isModuleInitialized) return;
-    
-    console.log("IT Module: Initializing one-time listeners and UI...");
-    setupEventListeners();
-    initializeInvoicesTable([]);
-    updateDashboardSummary([]);
-    isModuleInitialized = true;
+      if (isModuleInitialized) return;
+      
+      console.log("IT Module: Initializing one-time listeners and UI...");
+      setupEventListeners();
+      initializeInvoicesTable([]);
+      updateDashboardSummary([]);
+      isModuleInitialized = true;
 
-    // Listen to the global auth event dispatched from script.js
-    document.addEventListener("supabaseAuthStateChange", (event) => {
-        console.log("IT Module: Received supabaseAuthStateChange event.");
-        const { session } = event.detail;
-        manageSubscriptionAndData(session);
-    });
-    
-    // Check initial auth state, in case the module loads after the event has already fired
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!currentUser && session) { // Only run if it hasn't been initialized by the event yet
-             console.log("IT Module: Initializing based on getSession() call.");
-             manageSubscriptionAndData(session);
-        }
-    });
+      document.addEventListener("supabaseAuthStateChange", (event) => {
+          const { session } = event.detail;
+          handleAuthChange(session);
+      });
+      
+      supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!currentUser && session) {
+               handleAuthChange(session);
+          }
+      });
   }
 
-  // Ensure initializeApp runs after DOM is fully loaded
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeApp);
   } else {
-    initializeApp(); // DOMContentLoaded has already fired
+    initializeApp();
   }
 })();
