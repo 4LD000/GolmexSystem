@@ -407,10 +407,18 @@
   }
 
   // SECTION 4: INVOICE TABLE INITIALIZATION AND RENDERING (MAIN TABLE)
+  // REEMPLAZA ESTA FUNCIÓN COMPLETA
   function initializeInvoicesTable(invoicesData = []) {
+    // --- INICIO DEL ARREGLO ---
+    // 1. Siempre destruir la instancia anterior si existe para evitar conflictos.
     if ($.fn.DataTable.isDataTable(invoicesTableHtmlElement)) {
-      invoicesDataTable.clear().destroy();
+      invoicesDataTable.destroy();
     }
+
+    // 2. Limpiar completamente el HTML de la tabla para eliminar encabezados/pies de página viejos.
+    $(invoicesTableHtmlElement).empty();
+    // --- FIN DEL ARREGLO ---
+
     const activeInvoices = invoicesData.filter(
       (inv) =>
         inv.status !== INVOICE_STATUS_PAID &&
@@ -432,10 +440,10 @@
           title: "Invoice Date",
           render: (
             data,
-            type // Format for display, keep YYYY-MM-DD for sorting/filtering
+            type
           ) =>
             type === "display" && data !== "N/A"
-              ? new Date(data + "T00:00:00Z").toLocaleDateString() // Use user's locale for display
+              ? new Date(data + "T00:00:00Z").toLocaleDateString()
               : data,
         },
         {
@@ -457,11 +465,10 @@
                 typeof data === "object" &&
                 Object.keys(data).length > 0
               ) {
-                let displayCurrency = "USD"; // Prefer USD
+                let displayCurrency = "USD";
                 if (!data.hasOwnProperty("USD")) {
-                  // If no USD, try MXN
                   if (data.hasOwnProperty("MXN")) displayCurrency = "MXN";
-                  else displayCurrency = Object.keys(data)[0]; // Or first available
+                  else displayCurrency = Object.keys(data)[0];
                 }
                 return `${parseFloat(data[displayCurrency] || 0).toFixed(
                   2
@@ -469,7 +476,6 @@
               }
               return "N/A";
             }
-            // For sorting/type detection, return a numeric value (e.g., USD equivalent or primary currency value)
             if (data && data.hasOwnProperty("USD")) return parseFloat(data.USD);
             if (
               data &&
@@ -536,9 +542,8 @@
         },
         emptyTable: "No active invoices found.",
       },
-      order: [[3, "desc"]], // Default sort by Invoice Date descending
+      order: [[3, "desc"]], 
       drawCallback: function (settings) {
-        // Recalculate responsive layout after draw
         var api = new $.fn.dataTable.Api(settings);
         if ($.fn.dataTable.Responsive && api.responsive)
           api.responsive.recalc();
@@ -643,10 +648,17 @@
     }
   }
 
+  // REEMPLAZA ESTA FUNCIÓN COMPLETA
   function initializeInvoiceHistoryTable(historyData = []) {
+    // --- INICIO DEL ARREGLO ---
+    // 1. Siempre destruir la instancia anterior si existe.
     if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-      invoiceHistoryDataTable.clear().destroy();
+      invoiceHistoryDataTable.destroy();
     }
+    // 2. Limpiar completamente el HTML de la tabla.
+    $(invoiceHistoryTableHtmlElement).empty();
+    // --- FIN DEL ARREGLO ---
+
     invoiceHistoryDataTable = $(invoiceHistoryTableHtmlElement).DataTable({
       data: historyData,
       columns: [
