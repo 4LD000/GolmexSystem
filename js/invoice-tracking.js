@@ -558,8 +558,18 @@
 
     if (historyFilterMonthSelect.options.length <= 1) {
       const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
       ];
       historyFilterMonthSelect.innerHTML =
         '<option value="">All Months</option>';
@@ -2053,14 +2063,17 @@
           err || ""
         );
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error(`IT Module: Subscription to ${currentTopic} FAILED or TIMED OUT. Error:`, err);
+          console.error(
+            `IT Module: Subscription to ${currentTopic} FAILED or TIMED OUT. Error:`,
+            err
+          );
           await removeCurrentSubscription();
         }
       });
   }
 
   // SECTION 9: INITIALIZATION (REFACTORED)
-  
+
   async function loadModuleDataAndSubscribe() {
     console.log("IT Module: loadModuleDataAndSubscribe called.");
     if (!currentUserIT) {
@@ -2132,34 +2145,50 @@
     isInitializingModuleIT = false;
     console.log("IT Module: manageSubscriptionAndData - Finished.");
   }
-  
-window.moduleAuthChangeHandler = async function(event) {
-    console.log(`IT Module: Global onAuthStateChange event received. Event: ${event.detail.event}`);
-    await manageSubscriptionAndData(event.detail.user ? { user: event.detail.user } : null);
-}
 
-function initializeApp() {
+  // Usamos el MISMO nombre de función global para sobreescribir el del módulo anterior.
+  window.moduleAuthChangeHandler = async function (event) {
+    console.log(
+      `IT Module: Global onAuthStateChange event received. Event: ${event.detail.event}`
+    );
+    await manageSubscriptionAndData(
+      event.detail.user ? { user: event.detail.user } : null
+    );
+  };
+
+  function initializeApp() {
     if (!isModuleInitializedIT) {
-        console.log("IT Module: Performing one-time DOM setup...");
-        setupEventListeners();
-        initializeInvoicesTable([]);
-        updateDashboardSummary([]);
-        isModuleInitializedIT = true;
+      console.log("IT Module: Performing one-time DOM setup...");
+      setupEventListeners();
+      initializeInvoicesTable([]);
+      updateDashboardSummary([]);
+      isModuleInitializedIT = true;
     }
 
     // Esta rutina asegura que el oyente del módulo anterior se elimine correctamente.
-    document.removeEventListener('supabaseAuthStateChange', window.moduleAuthChangeHandler);
-    document.addEventListener('supabaseAuthStateChange', window.moduleAuthChangeHandler);
+    document.removeEventListener(
+      "supabaseAuthStateChange",
+      window.moduleAuthChangeHandler
+    );
+    document.addEventListener(
+      "supabaseAuthStateChange",
+      window.moduleAuthChangeHandler
+    );
 
     // Simula un evento de cambio de autenticación en la carga del módulo para obtener el estado inicial
     if (supabase) {
-       supabase.auth.getSession().then(({ data: { session } }) => {
-          const detail = { user: session ? session.user : null, event: 'INITIAL_LOAD', accessDenied: false, source: 'script.js' };
-          window.moduleAuthChangeHandler({ detail });
-       });
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const detail = {
+          user: session ? session.user : null,
+          event: "INITIAL_LOAD",
+          accessDenied: false,
+          source: "script.js",
+        };
+        // Llama a la nueva función global directamente
+        window.moduleAuthChangeHandler({ detail });
+      });
     }
-}
-
+  }
 
   // Ensure initializeApp runs after the DOM is fully loaded
   if (document.readyState === "loading") {
