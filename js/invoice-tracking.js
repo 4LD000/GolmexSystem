@@ -2053,13 +2053,11 @@
 
           // FIX: Prevent race conditions from rapid-fire updates
           if (isProcessingRealtimeUpdate) {
-            console.log(
-              "IT Module: Another update is in progress, skipping this one."
-            );
+            console.log("IT Module: Another update is in progress, skipping this one.");
             return;
           }
           isProcessingRealtimeUpdate = true;
-
+          
           try {
             await fetchInvoicesFromSupabase(); // Refetch active invoices
             if (invoiceHistoryModal?.style.display === "flex") {
@@ -2074,10 +2072,7 @@
         if (status === "SUBSCRIBED") {
           console.log(`IT Module: Successfully subscribed to ${channelName}!`);
         } else if (err) {
-          console.error(
-            `IT Module: Subscription to ${channelName} FAILED. Error:`,
-            err
-          );
+          console.error(`IT Module: Subscription to ${channelName} FAILED. Error:`, err);
         }
       });
   }
@@ -2090,39 +2085,33 @@
     isInitializingModule = true;
 
     if (session?.user) {
-      // User is logged in. Clean up any old state and initialize.
-      if (!currentUser || currentUser.id !== session.user.id) {
-        console.log(
-          `IT Module: New user detected or first sign-in. User: ${session.user.id}`
-        );
-        currentUser = session.user;
-      } else {
-        console.log(
-          `IT Module: User session refreshed. User: ${currentUser.id}`
-        );
-      }
-      await fetchInvoicesFromSupabase();
-      await subscribeToInvoiceChanges();
+        // User is logged in. Clean up any old state and initialize.
+        if (!currentUser || currentUser.id !== session.user.id) {
+            console.log(`IT Module: New user detected or first sign-in. User: ${session.user.id}`);
+            currentUser = session.user;
+        } else {
+            console.log(`IT Module: User session refreshed. User: ${currentUser.id}`);
+        }
+        await fetchInvoicesFromSupabase();
+        await subscribeToInvoiceChanges();
     } else {
-      // User signed out.
-      if (currentUser) {
-        console.log(
-          "IT Module: User signed out. Clearing data and subscription."
-        );
-        currentUser = null;
-        allInvoicesData = [];
-        initializeInvoicesTable([]);
-        if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
-        updateDashboardSummary([]);
-        await removeCurrentSubscription();
-      }
+        // User signed out.
+        if (currentUser) {
+            console.log("IT Module: User signed out. Clearing data and subscription.");
+            currentUser = null;
+            allInvoicesData = [];
+            initializeInvoicesTable([]);
+            if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
+            updateDashboardSummary([]);
+            await removeCurrentSubscription();
+        }
     }
     isInitializingModule = false;
   }
 
   function initializeApp() {
     if (isModuleInitialized) return;
-
+    
     console.log("IT Module: Initializing one-time listeners and UI...");
     setupEventListeners();
     initializeInvoicesTable([]);
@@ -2131,18 +2120,17 @@
 
     // Listen to the global auth event dispatched from script.js
     document.addEventListener("supabaseAuthStateChange", (event) => {
-      console.log("IT Module: Received supabaseAuthStateChange event.");
-      const { session } = event.detail;
-      manageSubscriptionAndData(session);
+        console.log("IT Module: Received supabaseAuthStateChange event.");
+        const { session } = event.detail;
+        manageSubscriptionAndData(session);
     });
-
+    
     // Check initial auth state, in case the module loads after the event has already fired
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!currentUser && session) {
-        // Only run if it hasn't been initialized by the event yet
-        console.log("IT Module: Initializing based on getSession() call.");
-        manageSubscriptionAndData(session);
-      }
+        if (!currentUser && session) { // Only run if it hasn't been initialized by the event yet
+             console.log("IT Module: Initializing based on getSession() call.");
+             manageSubscriptionAndData(session);
+        }
     });
   }
 
