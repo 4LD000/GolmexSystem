@@ -277,6 +277,10 @@ async function loadModule(moduleName, clickedLink) {
     console.error("Main content area or Supabase client not found for loadModule.");
     return;
   }
+
+  // Notifica al módulo actual que está a punto de ser descargado.
+  document.dispatchEvent(new CustomEvent('moduleWillUnload'));
+
   if (authRequiredMessage) authRequiredMessage.style.display = "none";
   if (mainAppContent) mainAppContent.style.display = "block";
   mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
