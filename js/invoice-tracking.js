@@ -1,5 +1,6 @@
-/ js/invoice-tracking.js
 (() => {
+  console.log("Invoice Tracking Module: Script parsing started.");
+
   // SECTION 1: DOM Element Selection & Supabase Client
   const createManualInvoiceBtn = document.getElementById(
     "createManualInvoiceBtn"
@@ -130,9 +131,9 @@
   let currentEditingInvoiceId = null;
   let isDownloadingPdf = false;
   let invoiceSubscription = null;
-  let currentUserIT = null; // Changed from currentUser to avoid scope collision
-  let isInitializingModuleIT = false; // Changed from isInitializingModule
-  let isModuleInitializedIT = false; // This was the missing variable
+  let currentUserIT = null; 
+  let isInitializingModuleIT = false;
+  let isModuleInitializedIT = false;
 
   // Variable to track the highest z-index for modals
   let highestZIndex = 1100; // Base z-index for .it-modal
@@ -183,7 +184,6 @@
     }
 
     if (duration === 0) {
-      // Special case: remove existing notifications of the same message
       const existingNotifications = notificationContainer.querySelectorAll(
         `.custom-notification-st.${type}`
       );
@@ -191,7 +191,7 @@
         if (
           notif
             .querySelector("span")
-            .textContent.includes(message.substring(0, 10)) // Simple check
+            .textContent.includes(message.substring(0, 10))
         ) {
           notif.remove();
         }
@@ -207,9 +207,9 @@
 
     notification.innerHTML = `<i class='${iconClass}'></i><span>${message}</span><button class='custom-notification-st-close' aria-label="Close notification">&times;</button>`;
     notificationContainer.appendChild(notification);
-    notificationContainer.style.display = "flex"; // Ensure container is visible
+    notificationContainer.style.display = "flex"; 
 
-    void notification.offsetWidth; // Force reflow for transition
+    void notification.offsetWidth;
     notification.classList.add("show");
 
     const closeButton = notification.querySelector(
@@ -224,7 +224,7 @@
           if (notificationContainer.childElementCount === 0) {
             notificationContainer.style.display = "none";
           }
-        }, 400); // Matches transition duration
+        }, 400);
       }
     };
     closeButton.addEventListener("click", removeNotification);
@@ -242,15 +242,13 @@
       !itCustomConfirmCancelBtn ||
       !itCustomConfirmCloseBtn
     ) {
-      // Fallback to window.confirm if custom modal elements are not found
       if (window.confirm(message.replace(/<strong>|<\/strong>/g, ""))) {
-        // Basic message cleanup
         if (typeof onOkCallback === "function") onOkCallback();
       }
       return;
     }
     itCustomConfirmTitle.textContent = title;
-    itCustomConfirmMessage.innerHTML = message; // Allow HTML in message
+    itCustomConfirmMessage.innerHTML = message;
     currentItConfirmCallback = onOkCallback;
     openItModal(itCustomConfirmModal);
   }
@@ -263,22 +261,21 @@
 
   async function generateNextInvoiceNumberSupabase() {
     const now = new Date();
-    const year = String(now.getFullYear()).slice(-2); // YY
-    const month = String(now.getMonth() + 1).padStart(2, "0"); // MM
+    const year = String(now.getFullYear()).slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, "0");
     const prefix = `GMX${year}${month}-`;
 
     const { data, error } = await supabase
       .from(INVOICES_TABLE_NAME)
       .select("invoice_number")
-      .like("invoice_number", `${prefix}%`) // Filter by current year-month prefix
-      .order("invoice_number", { ascending: false }) // Get the highest number
+      .like("invoice_number", `${prefix}%`)
+      .order("invoice_number", { ascending: false })
       .limit(1)
-      .single(); // Expect at most one result
+      .single();
 
     if (error && error.code !== "PGRST116") {
-      // PGRST116: no rows found, which is fine
       console.error("Error fetching last invoice number:", error);
-      return `${prefix}ERR${Date.now().toString().slice(-3)}`; // Fallback error number
+      return `${prefix}ERR${Date.now().toString().slice(-3)}`;
     }
 
     let nextSequence = 1;
@@ -289,7 +286,7 @@
         nextSequence = lastNum + 1;
       }
     }
-    return `${prefix}${String(nextSequence).padStart(4, "0")}`; // e.g., GMX2405-0001
+    return `${prefix}${String(nextSequence).padStart(4, "0")}`;
   }
 
   // SECTION 3: SUPABASE DATA FETCHING
@@ -301,7 +298,6 @@
       let query = supabase.from(INVOICES_TABLE_NAME).select("*");
 
       if (forHistory) {
-        // Apply history-specific filters
         let statusesToFetch = [INVOICE_STATUS_PAID, INVOICE_STATUS_CANCELLED];
         if (
           historyFilters.status &&
@@ -316,11 +312,11 @@
         }
         if (historyFilters.year && historyFilters.month) {
           const year = parseInt(historyFilters.year);
-          const month = parseInt(historyFilters.month); // JS month is 0-indexed
+          const month = parseInt(historyFilters.month);
           const startDate = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
           const endDate = new Date(
             Date.UTC(year, month + 1, 0, 23, 59, 59, 999)
-          ); // Last day of month
+          );
 
           query = query.gte(
             "invoice_date",
@@ -333,7 +329,6 @@
         }
         query = query.order("invoice_date", { ascending: false });
       } else {
-        // Fetch 'active' invoices for the main table (not Paid or Cancelled)
         query = query
           .not(
             "status",
@@ -373,10 +368,8 @@
   function transformInvoiceDataForUI(invoice) {
     const toLocalDateString = (dateStr) => {
       if (!dateStr) return "N/A";
-      // Assuming dateStr is 'YYYY-MM-DD' from Supabase (date type)
-      // Create Date object assuming UTC to avoid timezone shifts when only date is relevant
       const date = new Date(dateStr + "T00:00:00Z");
-      return date.toLocaleDateString("en-CA"); // YYYY-MM-DD format for inputs
+      return date.toLocaleDateString("en-CA");
     };
 
     return {
@@ -397,7 +390,7 @@
         return defaultValue;
       }
     }
-    return field || defaultValue; // Return field if already an object, or default
+    return field || defaultValue;
   }
 
   // SECTION 4: INVOICE TABLE INITIALIZATION AND RENDERING (MAIN TABLE)
@@ -426,10 +419,10 @@
           title: "Invoice Date",
           render: (
             data,
-            type // Format for display, keep YYYY-MM-DD for sorting/filtering
+            type
           ) =>
             type === "display" && data !== "N/A"
-              ? new Date(data + "T00:00:00Z").toLocaleDateString() // Use user's locale for display
+              ? new Date(data + "T00:00:00Z").toLocaleDateString()
               : data,
         },
         {
@@ -451,11 +444,10 @@
                 typeof data === "object" &&
                 Object.keys(data).length > 0
               ) {
-                let displayCurrency = "USD"; // Prefer USD
+                let displayCurrency = "USD";
                 if (!data.hasOwnProperty("USD")) {
-                  // If no USD, try MXN
                   if (data.hasOwnProperty("MXN")) displayCurrency = "MXN";
-                  else displayCurrency = Object.keys(data)[0]; // Or first available
+                  else displayCurrency = Object.keys(data)[0];
                 }
                 return `${parseFloat(data[displayCurrency] || 0).toFixed(
                   2
@@ -463,7 +455,6 @@
               }
               return "N/A";
             }
-            // For sorting/type detection, return a numeric value (e.g., USD equivalent or primary currency value)
             if (data && data.hasOwnProperty("USD")) return parseFloat(data.USD);
             if (
               data &&
@@ -530,9 +521,8 @@
         },
         emptyTable: "No active invoices found.",
       },
-      order: [[3, "desc"]], // Default sort by Invoice Date descending
+      order: [[3, "desc"]],
       drawCallback: function (settings) {
-        // Recalculate responsive layout after draw
         var api = new $.fn.dataTable.Api(settings);
         if ($.fn.dataTable.Responsive && api.responsive)
           api.responsive.recalc();
@@ -544,7 +534,7 @@
   function openHistoryModal() {
     if (!invoiceHistoryModal) return;
     populateHistoryFilterDropdowns();
-    handleFilterHistoryInvoices(); // Initial load
+    handleFilterHistoryInvoices();
     openItModal(invoiceHistoryModal);
   }
 
@@ -565,7 +555,7 @@
         '<option value="">All Months</option>';
       months.forEach((month, index) => {
         const option = document.createElement("option");
-        option.value = index; // 0-11 for JS Date month
+        option.value = index;
         option.textContent = month;
         historyFilterMonthSelect.appendChild(option);
       });
@@ -575,14 +565,13 @@
       const currentYear = new Date().getFullYear();
       historyFilterYearSelect.innerHTML = '<option value="">All Years</option>';
       for (let i = 0; i < 5; i++) {
-        // Current year and past 4 years
         const year = currentYear - i;
         const option = document.createElement("option");
         option.value = year;
         option.textContent = year;
         historyFilterYearSelect.appendChild(option);
       }
-      historyFilterYearSelect.value = currentYear; // Default to current year
+      historyFilterYearSelect.value = currentYear;
       historyYearsPopulated = true;
     }
   }
@@ -605,7 +594,6 @@
       status: historyFilterStatusSelect.value,
     };
 
-    // Feedback for the button
     const originalButtonText = applyHistoryFiltersBtn.innerHTML;
     applyHistoryFiltersBtn.innerHTML =
       "<i class='bx bx-loader-alt bx-spin'></i> Filtering...";
@@ -613,7 +601,6 @@
 
     const historicalInvoices = await fetchInvoicesFromSupabase(true, filters);
 
-    // Restore button
     applyHistoryFiltersBtn.innerHTML = originalButtonText;
     applyHistoryFiltersBtn.disabled = false;
 
@@ -750,7 +737,7 @@
 
     let paidCount = activeInvoices.filter(
       (inv) => inv.status === INVOICE_STATUS_PAID
-    ).length; // This will be 0 based on filter
+    ).length;
     if (dbPaidInvoicesEl) dbPaidInvoicesEl.textContent = paidCount;
 
     let pendingCount = 0,
@@ -779,7 +766,7 @@
         }" required>
         <select name="charge_currency[]" required>
             <option value="USD" ${
-              chargeData?.currency === "USD" || (!chargeData && "USD") // Default to USD
+              chargeData?.currency === "USD" || (!chargeData && "USD")
                 ? "selected"
                 : ""
             }>USD</option>
@@ -807,7 +794,7 @@
     });
 
     if (chargeData) calculateAndUpdateChargeLineAmount(chargeLineDiv);
-    else calculateAndUpdateChargeLineAmount(chargeLineDiv); // Calculate for new lines too
+    else calculateAndUpdateChargeLineAmount(chargeLineDiv);
     updateManualTotals();
   }
 
@@ -880,16 +867,16 @@
     const manualInvoiceDateInput = document.getElementById("manualInvoiceDate");
     if (manualInvoiceDateInput) manualInvoiceDateInput.value = today;
     const manualStatusSelect = document.getElementById("manualStatus");
-    if (manualStatusSelect) manualStatusSelect.value = "Pending"; // Default status
+    if (manualStatusSelect) manualStatusSelect.value = "Pending";
   }
 
   // SECTION 6: EVENT HANDLERS
 
   function handleFilterApply() {
     const customerFilter = filterCustomerInput.value.toLowerCase().trim();
-    const dateStartFilter = filterDateStartInput.value; // YYYY-MM-DD
-    const dateEndFilter = filterDateEndInput.value; // YYYY-MM-DD
-    const statusFilter = filterStatusSelect.value; // "all", "Pending", "Overdue" etc.
+    const dateStartFilter = filterDateStartInput.value;
+    const dateEndFilter = filterDateEndInput.value;
+    const statusFilter = filterStatusSelect.value;
     const currencyFilter = filterCurrencySelect.value;
 
     let filteredData = allInvoicesData.filter((inv) => {
@@ -900,7 +887,7 @@
       )
         match = false;
 
-      const invDate = inv.invoice_date; // Already YYYY-MM-DD from transform
+      const invDate = inv.invoice_date;
       if (dateStartFilter && invDate !== "N/A" && invDate < dateStartFilter)
         match = false;
       if (dateEndFilter && invDate !== "N/A" && invDate > dateEndFilter)
@@ -908,7 +895,7 @@
 
       if (
         statusFilter !== ALL_STATUSES_FILTER &&
-        (inv.status || "").toLowerCase() !== statusFilter.toLowerCase() // Case-insensitive match
+        (inv.status || "").toLowerCase() !== statusFilter.toLowerCase()
       )
         match = false;
 
@@ -923,7 +910,7 @@
       return match;
     });
     initializeInvoicesTable(filteredData);
-    updateDashboardSummary(filteredData); // Update dashboard with filtered active invoices
+    updateDashboardSummary(filteredData);
   }
 
   function handleFilterReset() {
@@ -932,7 +919,7 @@
     filterDateEndInput.value = "";
     filterStatusSelect.value = ALL_STATUSES_FILTER;
     filterCurrencySelect.value = ALL_STATUSES_FILTER;
-    initializeInvoicesTable(allInvoicesData); // Show all (active) data
+    initializeInvoicesTable(allInvoicesData);
     updateDashboardSummary(allInvoicesData);
   }
 
@@ -955,7 +942,7 @@
 
     if (!invoice) {
       invoiceContentContainer.innerHTML = "<p>Invoice details not found.</p>";
-      openItModal(viewInvoiceModal); // Open modal even if not found to show message
+      openItModal(viewInvoiceModal);
       return;
     }
 
@@ -985,7 +972,6 @@
       Object.keys(invoice.totals_by_currency).length > 0
         ? invoice.totals_by_currency
         : (invoice.charges || []).reduce((acc, charge) => {
-            // Fallback if totals_by_currency is empty but charges exist
             const currency = charge.currency || "USD";
             acc[currency] = (acc[currency] || 0) + (charge.amount || 0);
             return acc;
@@ -997,7 +983,6 @@
       ).toFixed(2)}</td></tr>`;
     }
 
-    // Use toLocaleDateString for user-friendly display format
     const displayInvoiceDate =
       invoice.invoice_date !== "N/A"
         ? new Date(invoice.invoice_date + "T00:00:00Z").toLocaleDateString()
@@ -1090,19 +1075,17 @@
           .find((inv) => inv.id === invoiceId);
       }
     } else {
-      // 'main' table
       invoiceRow = allInvoicesData.find((inv) => inv.id === invoiceId);
     }
 
     if (!invoiceRow) {
-      // As a last resort, try to fetch the single invoice if not found in caches
       try {
         const { data, error } = await supabase
           .from(INVOICES_TABLE_NAME)
           .select("*")
           .eq("id", invoiceId)
           .single();
-        if (error && error.code !== "PGRST116") throw error; // PGRST116: no rows, handle below
+        if (error && error.code !== "PGRST116") throw error;
         if (data) {
           invoiceRow = transformInvoiceDataForUI(data);
         } else {
@@ -1121,11 +1104,10 @@
 
     switch (action) {
       case "view":
-        renderInvoiceDetail(invoiceId); // renderInvoiceDetail can handle finding/fetching again if needed
+        renderInvoiceDetail(invoiceId);
         break;
       case "edit":
         if (tableType === "history") {
-          // Editing generally not allowed for historical (Paid/Cancelled)
           showItNotification(
             "Historical invoices typically cannot be edited directly. Consider creating a credit note or new invoice.",
             "info"
@@ -1144,7 +1126,6 @@
           invoiceRow.customer_address || "";
         document.getElementById("manualCustomerTaxId").value =
           invoiceRow.customer_tax_id || "";
-        // invoiceRow.invoice_date and due_date are already YYYY-MM-DD from transform
         document.getElementById("manualInvoiceDate").value =
           invoiceRow.invoice_date !== "N/A"
             ? invoiceRow.invoice_date
@@ -1162,7 +1143,7 @@
         document.getElementById("manualNotes").value = invoiceRow.notes || "";
 
         (invoiceRow.charges || []).forEach((charge) => addChargeLine(charge));
-        if ((invoiceRow.charges || []).length === 0) addChargeLine(); // Add one empty line if no charges
+        if ((invoiceRow.charges || []).length === 0) addChargeLine();
 
         updateManualTotals();
         openItModal(manualInvoiceModal);
@@ -1231,7 +1212,7 @@
       showItNotification(
         `Updating invoice status to ${newStatus}...`,
         "info",
-        0 // Keep notification until success/failure
+        0
       );
       const { data, error } = await supabase
         .from(INVOICES_TABLE_NAME)
@@ -1243,12 +1224,11 @@
       if (error) throw error;
 
       if (data) {
-        showItNotification("", "info", 1); // Clear loading notification
+        showItNotification("", "info", 1);
         showItNotification(
           `Invoice ${data.invoice_number} status updated to ${newStatus}.`,
           "success"
         );
-        // If status is Paid or Cancelled, it should be removed from main active table
         if (
           newStatus === INVOICE_STATUS_PAID ||
           newStatus === INVOICE_STATUS_CANCELLED
@@ -1262,11 +1242,9 @@
             invoiceHistoryModal &&
             invoiceHistoryModal.style.display === "flex"
           ) {
-            // Check if history modal is open
-            handleFilterHistoryInvoices(); // Refresh history if it's open
+            handleFilterHistoryInvoices();
           }
         } else {
-          // For other status changes (e.g., Pending to Overdue), update in place
           const invoiceIndex = allInvoicesData.findIndex(
             (inv) => inv.id === invoiceId
           );
@@ -1275,14 +1253,13 @@
             initializeInvoicesTable(allInvoicesData);
             updateDashboardSummary(allInvoicesData);
           } else {
-            // Fallback: If not found in active (should not happen unless it was already historical)
-            await fetchInvoicesFromSupabase(); // Refetch all active
+            await fetchInvoicesFromSupabase();
           }
         }
       }
     } catch (e) {
       console.error("Error updating invoice status:", e);
-      showItNotification("", "info", 1); // Clear loading notification
+      showItNotification("", "info", 1);
       showItNotification(`Failed to update status: ${e.message}`, "error");
     } finally {
       closeItModal(changeInvoiceStatusModal);
@@ -1307,7 +1284,7 @@
     }
     const user = userResponse.data.user;
     const formData = new FormData(manualInvoiceForm);
-    const invoiceId = formData.get("manualInvoiceId"); // For editing
+    const invoiceId = formData.get("manualInvoiceId");
 
     const charges = [];
     manualChargesContainer
@@ -1354,32 +1331,30 @@
 
     let invoice_number = formData.get("invoice_number").trim();
     if (!invoice_number && !invoiceId) {
-      // New invoice, no number provided
       invoice_number = await generateNextInvoiceNumberSupabase();
     } else if (!invoice_number && invoiceId) {
-      // Editing, number cleared by user (retain original or generate new if policy dictates)
       const originalInvoice = allInvoicesData.find(
         (inv) => inv.id === invoiceId
       );
       invoice_number = originalInvoice
         ? originalInvoice.invoice_number
-        : await generateNextInvoiceNumberSupabase(); // Or show error if number must be kept
+        : await generateNextInvoiceNumberSupabase();
     }
 
     const invoiceData = {
       customer_name: formData.get("customer_name").trim(),
       customer_address: formData.get("customer_address").trim() || null,
       customer_tax_id: formData.get("customer_tax_id").trim() || null,
-      invoice_date: formData.get("invoice_date"), // Should be YYYY-MM-DD
-      due_date: formData.get("due_date") || null, // Should be YYYY-MM-DD
+      invoice_date: formData.get("invoice_date"),
+      due_date: formData.get("due_date") || null,
       service_display_id: formData.get("service_display_id").trim() || null,
       invoice_number: invoice_number,
       status: formData.get("status"),
       payment_communication:
         formData.get("payment_communication").trim() || null,
       notes: formData.get("notes").trim() || null,
-      charges: charges, // Array of charge objects
-      totals_by_currency: totals_by_currency, // Object with currency totals
+      charges: charges,
+      totals_by_currency: totals_by_currency,
     };
 
     if (
@@ -1403,7 +1378,6 @@
         invoiceData.status === INVOICE_STATUS_CANCELLED;
 
       if (invoiceId) {
-        // Editing existing invoice
         invoiceData.updated_at = new Date().toISOString();
         const { data, error } = await supabase
           .from(INVOICES_TABLE_NAME)
@@ -1418,9 +1392,8 @@
           "success"
         );
       } else {
-        // Creating new invoice
         invoiceData.user_id = user.id;
-        invoiceData.user_email = user.email; // Store who created it
+        invoiceData.user_email = user.email;
         const { data, error } = await supabase
           .from(INVOICES_TABLE_NAME)
           .insert(invoiceData)
@@ -1436,10 +1409,8 @@
       closeItModal(manualInvoiceModal);
       resetManualInvoiceForm();
 
-      // Refresh main table (which shows active invoices)
       await fetchInvoicesFromSupabase();
 
-      // If the saved invoice became historical, and history modal is open, refresh it
       if (
         isHistoricalStatus &&
         invoiceHistoryModal &&
@@ -1485,7 +1456,7 @@
           .eq("id", invoiceId)
           .single();
         if (error && error.code !== "PGRST116") throw error;
-        if (data) invoice = transformInvoiceDataForUI(data); // Ensure it's transformed
+        if (data) invoice = transformInvoiceDataForUI(data);
       } catch (e) {
         console.error("Error fetching specific invoice for PDF:", e);
       }
@@ -1499,11 +1470,10 @@
     showItNotification(
       `Generating PDF for ${invoice.invoice_number}...`,
       "info",
-      0 // Keep notification until process finishes or fails
+      0
     );
 
     if (typeof html2pdf === "undefined") {
-      // Dynamically load html2pdf if not already available
       const script = document.createElement("script");
       script.src =
         "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
@@ -1513,7 +1483,7 @@
       script.referrerPolicy = "no-referrer";
       script.onload = () => generatePdfContentAndDownload(invoice);
       script.onerror = () => {
-        showItNotification("", "info", 1); // Clear loading message
+        showItNotification("", "info", 1);
         showItNotification(
           "Failed to load PDF library. Please try again.",
           "error",
@@ -1529,10 +1499,9 @@
 
   async function generatePdfContentAndDownload(invoice) {
     const formatDateForDisplay = (dateString) => {
-      // YYYY-MM-DD input
       if (!dateString || dateString === "N/A") return "N/A";
-      const date = new Date(dateString + "T00:00:00Z"); // Assume UTC for date part
-      return date.toLocaleDateString(); // User's locale format
+      const date = new Date(dateString + "T00:00:00Z");
+      return date.toLocaleDateString();
     };
 
     const displayInvoiceDate = formatDateForDisplay(invoice.invoice_date);
@@ -1563,7 +1532,7 @@
     }
     if (
       Object.keys(validTotals).length === 0 &&
-      (invoice.charges || []).length > 0 // Fallback if totals_by_currency is missing
+      (invoice.charges || []).length > 0
     ) {
       let fallbackTotals = {};
       (invoice.charges || []).forEach((charge) => {
@@ -1578,7 +1547,7 @@
       }
     }
 
-    const logoUrl = "/assets/goldmex-logo-light.svg"; // Ensure this path is correct and accessible
+    const logoUrl = "/assets/goldmex-logo-light.svg";
 
     const invoiceHtmlContent = `
         <html>
@@ -1720,7 +1689,7 @@
         </html>`;
 
     const opt = {
-      margin: [8, 8, 8, 8], // Margins in mm [top, left, bottom, right]
+      margin: [8, 8, 8, 8],
       filename: `Invoice-${invoice.invoice_number || "INV"}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
@@ -1731,18 +1700,18 @@
         backgroundColor: "#ffffff",
       },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["avoid-all", "css", "legacy"] }, // Attempt to avoid page breaks inside elements
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
     };
 
     try {
       const tempRenderElement = document.createElement("div");
       tempRenderElement.style.position = "absolute";
-      tempRenderElement.style.left = "-99999px"; // Way off-screen
+      tempRenderElement.style.left = "-99999px";
       tempRenderElement.style.top = "0px";
-      tempRenderElement.style.width = "210mm"; // A4 width
-      tempRenderElement.style.height = "auto"; // Auto height
-      tempRenderElement.style.overflow = "hidden"; // Prevent scrollbars
-      document.body.appendChild(tempRenderElement); // Must be in DOM for html2canvas
+      tempRenderElement.style.width = "210mm";
+      tempRenderElement.style.height = "auto";
+      tempRenderElement.style.overflow = "hidden";
+      document.body.appendChild(tempRenderElement);
       tempRenderElement.innerHTML = invoiceHtmlContent;
 
       const elementToConvert = tempRenderElement.querySelector(".invoice-box");
@@ -1753,12 +1722,12 @@
       }
 
       await html2pdf().from(elementToConvert).set(opt).save();
-      showItNotification("", "info", 1); // Clear loading message
+      showItNotification("", "info", 1);
       showItNotification("PDF generated and download started!", "success");
-      document.body.removeChild(tempRenderElement); // Clean up temporary element
+      document.body.removeChild(tempRenderElement);
     } catch (pdfError) {
       console.error("Error generating PDF with html2pdf:", pdfError);
-      showItNotification("", "info", 1); // Clear loading message
+      showItNotification("", "info", 1);
       showItNotification(
         "Error generating PDF. Check console for details.",
         "error"
@@ -1773,7 +1742,7 @@
   }
 
   // SECTION 7: EVENT LISTENERS SETUP
-  let downloadPdfModalHandler; // To store the event handler for removal if needed
+  let downloadPdfModalHandler;
 
   function setupEventListeners() {
     if (applyFiltersBtn)
@@ -1787,7 +1756,7 @@
         if (manualInvoiceModalTitle)
           manualInvoiceModalTitle.innerHTML =
             "<i class='bx bx-plus-circle'></i> Create New Invoice";
-        addChargeLine(); // Add one empty charge line for new invoices
+        addChargeLine();
         openItModal(manualInvoiceModal);
       });
     }
@@ -2019,9 +1988,9 @@
       );
       return;
     }
-    await removeCurrentSubscription(); // Ensure any old subscription is cleared
+    await removeCurrentSubscription();
 
-    const channelName = "public:invoices:all-module-it"; // Unique channel name
+    const channelName = "public:invoices:all-module-it";
     console.log(`IT Module: Creating new channel: ${channelName}`);
     invoiceSubscription = supabase.channel(channelName);
 
@@ -2035,12 +2004,12 @@
             payload.eventType,
             payload
           );
-          await fetchInvoicesFromSupabase(); // Refetch active invoices for main table
+          await fetchInvoicesFromSupabase();
           if (
             invoiceHistoryModal &&
             invoiceHistoryModal.style.display === "flex"
           ) {
-            handleFilterHistoryInvoices(); // Refresh history data too
+            handleFilterHistoryInvoices();
           }
         }
       )
@@ -2069,7 +2038,7 @@
       );
       return;
     }
-    await fetchInvoicesFromSupabase(); // Fetches active data for main table
+    await fetchInvoicesFromSupabase();
     await subscribeToInvoiceChanges();
   }
 
@@ -2134,24 +2103,22 @@
   }
   
   async function globalAuthChangeHandlerInvoice(event) {
-    console.log(`IT Module: Global onAuthStateChange event received. Event: ${event.detail.event}`);
+    console.log(`IT Module: Global supabaseAuthStateChange event received. Event: ${event.detail.event}`);
     await manageSubscriptionAndData(event.detail.user ? { user: event.detail.user } : null);
   }
 
   function initializeApp() {
-    if (!isModuleInitializedIT) { // Corrected variable name
+    if (!isModuleInitializedIT) {
         console.log("IT Module: Performing one-time DOM setup...");
         setupEventListeners();
         initializeInvoicesTable([]);
         updateDashboardSummary([]);
-        isModuleInitializedIT = true; // Corrected variable name
+        isModuleInitializedIT = true;
     }
 
-    // Register the listener for the custom global event from script.js
     document.removeEventListener('supabaseAuthStateChange', globalAuthChangeHandlerInvoice);
     document.addEventListener('supabaseAuthStateChange', globalAuthChangeHandlerInvoice);
 
-    // Simulate an auth change event on module load to get the initial state
     if (supabase) {
        supabase.auth.getSession().then(({ data: { session } }) => {
           const detail = { user: session ? session.user : null, event: 'INITIAL_LOAD', accessDenied: false, source: 'script.js' };
@@ -2160,10 +2127,9 @@
     }
   }
 
-  // Ensure initializeApp runs after the DOM is fully loaded
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeApp);
   } else {
-    initializeApp(); // DOMContentLoaded has already fired
+    initializeApp();
   }
 })();
