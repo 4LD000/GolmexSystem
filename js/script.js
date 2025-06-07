@@ -42,7 +42,10 @@ try {
 
 // --- Domain and Exception Configuration for Login ---
 const ALLOWED_DOMAINS_MAIN = ["@gmxecommerce.com", "@goldmexintl.com"];
-const ALLOWED_EXCEPTIONS_MAIN = ["kikecanfir@gmail.com", "testuser@example.com"];
+const ALLOWED_EXCEPTIONS_MAIN = [
+  "kikecanfir@gmail.com",
+  "testuser@example.com",
+];
 
 // --- Inactivity Logout Configuration ---
 let inactivityTimer;
@@ -60,8 +63,14 @@ function isUserAllowed(email) {
   if (!email) return false;
   const lowerEmail = email.toLowerCase();
   const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
-  if (ALLOWED_DOMAINS_MAIN.includes(domain) || ALLOWED_EXCEPTIONS_MAIN.includes(lowerEmail)) return true;
-  console.warn(`Email ${lowerEmail} (domain: ${domain}) is not allowed (checked in script.js).`);
+  if (
+    ALLOWED_DOMAINS_MAIN.includes(domain) ||
+    ALLOWED_EXCEPTIONS_MAIN.includes(lowerEmail)
+  )
+    return true;
+  console.warn(
+    `Email ${lowerEmail} (domain: ${domain}) is not allowed (checked in script.js).`
+  );
   return false;
 }
 
@@ -76,7 +85,10 @@ async function signOut(isDueToInactivity = false) {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error signing out:", error.message);
-      showCustomNotificationST(`Error al cerrar sesión: ${error.message}`, "error");
+      showCustomNotificationST(
+        `Error al cerrar sesión: ${error.message}`,
+        "error"
+      );
     } else {
       console.log("Signed out successfully.");
       if (isDueToInactivity) {
@@ -86,7 +98,10 @@ async function signOut(isDueToInactivity = false) {
     }
   } catch (error) {
     console.error("Exception during sign out:", error);
-    showCustomNotificationST("Ocurrió un error inesperado al cerrar sesión.", "error");
+    showCustomNotificationST(
+      "Ocurrió un error inesperado al cerrar sesión.",
+      "error"
+    );
   }
 }
 
@@ -94,7 +109,11 @@ async function signOut(isDueToInactivity = false) {
 function logoutDueToInactivity() {
   console.log("Inactivity timeout reached. Logging out user...");
   // Notificación opcional, pero puede ser útil si el usuario regresa justo cuando sucede.
-  showCustomNotificationST("Has sido desconectado por inactividad.", "info", 7000);
+  showCustomNotificationST(
+    "Has sido desconectado por inactividad.",
+    "info",
+    7000
+  );
   signOut(true);
 }
 
@@ -105,25 +124,29 @@ function resetInactivityTimer() {
 
 function startInactivityTimer() {
   stopInactivityTimer();
-  console.log(`script.js: Starting inactivity timer for ${INACTIVITY_TIMEOUT_MS / 60000} minutes.`);
+  console.log(
+    `script.js: Starting inactivity timer for ${
+      INACTIVITY_TIMEOUT_MS / 60000
+    } minutes.`
+  );
   resetInactivityTimer();
-  window.addEventListener('mousemove', resetInactivityTimer, { passive: true });
-  window.addEventListener('keydown', resetInactivityTimer, { passive: true });
-  window.addEventListener('scroll', resetInactivityTimer, { passive: true });
-  window.addEventListener('click', resetInactivityTimer, { passive: true });
-  window.addEventListener('focus', resetInactivityTimer);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener("mousemove", resetInactivityTimer, { passive: true });
+  window.addEventListener("keydown", resetInactivityTimer, { passive: true });
+  window.addEventListener("scroll", resetInactivityTimer, { passive: true });
+  window.addEventListener("click", resetInactivityTimer, { passive: true });
+  window.addEventListener("focus", resetInactivityTimer);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 }
 
 function stopInactivityTimer() {
   clearTimeout(inactivityTimer);
   console.log("script.js: Inactivity timer stopped.");
-  window.removeEventListener('mousemove', resetInactivityTimer);
-  window.removeEventListener('keydown', resetInactivityTimer);
-  window.removeEventListener('scroll', resetInactivityTimer);
-  window.removeEventListener('click', resetInactivityTimer);
-  window.removeEventListener('focus', resetInactivityTimer);
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  window.removeEventListener("mousemove", resetInactivityTimer);
+  window.removeEventListener("keydown", resetInactivityTimer);
+  window.removeEventListener("scroll", resetInactivityTimer);
+  window.removeEventListener("click", resetInactivityTimer);
+  window.removeEventListener("focus", resetInactivityTimer);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
 }
 
 function handleVisibilityChange() {
@@ -139,11 +162,18 @@ function handleVisibilityChange() {
 
 // --- UI Update based on Authentication State ---
 function updateUserUI(user) {
-  console.log("script.js: updateUserUI called with user:", user ? user.id : "null");
+  console.log(
+    "script.js: updateUserUI called with user:",
+    user ? user.id : "null"
+  );
   if (user) {
-    if (userNameElement) userNameElement.textContent = user.user_metadata?.full_name || user.email.split("@")[0];
+    if (userNameElement)
+      userNameElement.textContent =
+        user.user_metadata?.full_name || user.email.split("@")[0];
     if (userEmailElement) userEmailElement.textContent = user.email;
-    if (userAvatarElement) userAvatarElement.src = user.user_metadata?.avatar_url || "assets/user-placeholder.jpg";
+    if (userAvatarElement)
+      userAvatarElement.src =
+        user.user_metadata?.avatar_url || "assets/user-placeholder.jpg";
     if (authButton) {
       authButton.innerHTML = "<i class='bx bx-log-out'></i>";
       authButton.title = "Sign Out";
@@ -155,11 +185,17 @@ function updateUserUI(user) {
 
     const homeLink = document.querySelector('.menu-link[data-module="home"]');
     if (
-      homeLink && mainContent &&
-      (!mainContent.dataset.currentModule || ["auth-required", "access-denied", ""].includes(mainContent.dataset.currentModule) || mainContent.querySelector("#auth-required-message"))
+      homeLink &&
+      mainContent &&
+      (!mainContent.dataset.currentModule ||
+        ["auth-required", "access-denied", ""].includes(
+          mainContent.dataset.currentModule
+        ) ||
+        mainContent.querySelector("#auth-required-message"))
     ) {
       if (mainContent) {
-        mainContent.innerHTML = "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
+        mainContent.innerHTML =
+          "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
         mainContent.dataset.currentModule = "home";
       }
       setActiveMenuItem(homeLink);
@@ -167,7 +203,8 @@ function updateUserUI(user) {
   } else {
     if (userNameElement) userNameElement.textContent = "Guest";
     if (userEmailElement) userEmailElement.textContent = "Please sign in";
-    if (userAvatarElement) userAvatarElement.src = "assets/user-placeholder.jpg";
+    if (userAvatarElement)
+      userAvatarElement.src = "assets/user-placeholder.jpg";
     if (authButton) {
       authButton.innerHTML = "<i class='bx bx-log-in'></i>";
       authButton.title = "Sign In";
@@ -182,7 +219,10 @@ function updateUserUI(user) {
 if (darkModeBtn) {
   darkModeBtn.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
-    localStorage.setItem("darkMode", document.body.classList.contains("dark-mode") ? "enabled" : "disabled");
+    localStorage.setItem(
+      "darkMode",
+      document.body.classList.contains("dark-mode") ? "enabled" : "disabled"
+    );
   });
   if (localStorage.getItem("darkMode") === "enabled") {
     document.body.classList.add("dark-mode");
@@ -245,9 +285,11 @@ menusItemsDropDown.forEach((menuItem) => {
 if (authButton) {
   authButton.addEventListener("click", async () => {
     if (!supabase) return;
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session?.user) await signOut();
-    else window.location.href = 'login.html';
+    else window.location.href = "login.html";
   });
 }
 
@@ -260,7 +302,11 @@ function setActiveMenuItem(clickedLinkElement) {
     const parentDropdown = clickedLinkElement.closest(".menu-item-dropdown");
     if (parentDropdown) {
       parentDropdown.classList.add("parent-active");
-      if (sidebar && !sidebar.classList.contains("minimize") && !parentDropdown.classList.contains("sub-menu-toggle")) {
+      if (
+        sidebar &&
+        !sidebar.classList.contains("minimize") &&
+        !parentDropdown.classList.contains("sub-menu-toggle")
+      ) {
         parentDropdown.classList.add("sub-menu-toggle");
         const subMenu = parentDropdown.querySelector(".sub-menu");
         if (subMenu) {
@@ -274,29 +320,62 @@ function setActiveMenuItem(clickedLinkElement) {
 
 // En js/script.js
 
-// Reemplaza la función loadModule completa con esta versión mejorada
+// REEMPLAZA ESTA FUNCIÓN COMPLETA
 async function loadModule(moduleName, clickedLink) {
   if (!mainContent || !supabase) {
-    console.error("Main content area or Supabase client not found for loadModule.");
+    console.error(
+      "Main content area or Supabase client not found for loadModule."
+    );
     return;
   }
-  
+
   mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
   mainContent.dataset.currentModule = `loading-${moduleName}`;
 
   try {
     const response = await fetch(`${moduleName}.html`);
-    if (!response.ok) throw new Error(`Could not load ${moduleName}.html. Status: ${response.status}`);
-    
+    if (!response.ok)
+      throw new Error(
+        `Could not load ${moduleName}.html. Status: ${response.status}`
+      );
+
     const htmlContent = await response.text();
     mainContent.innerHTML = htmlContent;
     mainContent.dataset.currentModule = moduleName;
     setActiveMenuItem(clickedLink);
-    
-    // Dispara un evento global para notificar que el módulo está listo para inicializarse
-    console.log(`SCRIPT.JS: Dispatching module_loaded event for [${moduleName}]`);
-    document.dispatchEvent(new CustomEvent('module_loaded', { detail: { moduleName } }));
 
+    // --- INICIO DE LA CORRECCIÓN CLAVE ---
+
+    // 1. Eliminar cualquier script de módulo cargado anteriormente para evitar conflictos.
+    const oldScript = document.getElementById("module-script");
+    if (oldScript) {
+      oldScript.remove();
+    }
+
+    // 2. Crear y añadir dinámicamente el script del nuevo módulo.
+    const newScript = document.createElement("script");
+    newScript.id = "module-script"; // Un ID para encontrarlo y eliminarlo en la siguiente carga.
+    newScript.src = `js/${moduleName}.js`;
+
+    // 3. El evento 'module_loaded' SOLO se dispara DESPUÉS de que el script se haya cargado y ejecutado.
+    // Esto resuelve la condición de carrera (race condition).
+    newScript.onload = () => {
+      console.log(
+        `SCRIPT.JS: Script 'js/${moduleName}.js' loaded. Dispatching module_loaded event.`
+      );
+      document.dispatchEvent(
+        new CustomEvent("module_loaded", { detail: { moduleName } })
+      );
+    };
+
+    newScript.onerror = () => {
+      console.error(`Failed to load script: js/${moduleName}.js`);
+      mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module script: ${moduleName}.js</h2></div>`;
+    };
+
+    document.body.appendChild(newScript);
+
+    // --- FIN DE LA CORRECCIÓN CLAVE ---
   } catch (error) {
     console.error("Error loading module:", error);
     mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module: ${moduleName}</h2><p style="color: var(--goldmex-accent-color);">${error.message}</p></div>`;
@@ -312,14 +391,19 @@ allMenuLinks.forEach((link) => {
       event.preventDefault();
       if (moduleName === "home") {
         if (mainContent) {
-          mainContent.innerHTML = "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
+          mainContent.innerHTML =
+            "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
           mainContent.dataset.currentModule = "home";
         }
         setActiveMenuItem(this);
       } else {
         loadModule(moduleName, this);
       }
-      if (window.innerWidth <= 768 && sidebar && !document.body.classList.contains("sidebar-hidden")) {
+      if (
+        window.innerWidth <= 768 &&
+        sidebar &&
+        !document.body.classList.contains("sidebar-hidden")
+      ) {
         if (sidebarBtnMobile) sidebarBtnMobile.click();
       }
     });
@@ -336,19 +420,30 @@ function handleResize() {
 document.addEventListener("DOMContentLoaded", async () => {
   handleResize();
   if (!supabase) {
-    console.error("script.js: Supabase client not available on DOMContentLoaded.");
-    if (!window.location.pathname.includes('/login.html')) window.location.href = 'login.html';
+    console.error(
+      "script.js: Supabase client not available on DOMContentLoaded."
+    );
+    if (!window.location.pathname.includes("/login.html"))
+      window.location.href = "login.html";
     return;
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log(`script.js: Auth state change event: ${event}`, session ? `User: ${session.user?.id}` : "No session");
+    console.log(
+      `script.js: Auth state change event: ${event}`,
+      session ? `User: ${session.user?.id}` : "No session"
+    );
     const newUser = session ? session.user : null;
     let accessDenied = false;
-    let userChanged = (!currentGlobalUserId && newUser) || (currentGlobalUserId && !newUser) || (currentGlobalUserId && newUser && currentGlobalUserId !== newUser.id);
+    let userChanged =
+      (!currentGlobalUserId && newUser) ||
+      (currentGlobalUserId && !newUser) ||
+      (currentGlobalUserId && newUser && currentGlobalUserId !== newUser.id);
 
     if (newUser && !isUserAllowed(newUser.email)) {
-      console.warn(`script.js: User ${newUser.email} logged in but is NOT allowed. Forcing sign out.`);
+      console.warn(
+        `script.js: User ${newUser.email} logged in but is NOT allowed. Forcing sign out.`
+      );
       await supabase.auth.signOut(); // This will trigger another onAuthStateChange with session=null
       // currentGlobalUserId will be cleared in the subsequent event.
       // No need to update UI here as the signOut will lead to it.
@@ -356,61 +451,89 @@ document.addEventListener("DOMContentLoaded", async () => {
       userChanged = true; // Treat as a change for dispatching
     }
 
-    if (userChanged && !accessDenied) { // Only update UI and timer if user state genuinely changed and access is not denied
-        console.log("script.js: User state changed. Updating UI and global user ID.");
-        currentGlobalUserId = newUser ? newUser.id : null;
-        updateUserUI(newUser); // This will start/stop inactivity timer appropriately
+    if (userChanged && !accessDenied) {
+      // Only update UI and timer if user state genuinely changed and access is not denied
+      console.log(
+        "script.js: User state changed. Updating UI and global user ID."
+      );
+      currentGlobalUserId = newUser ? newUser.id : null;
+      updateUserUI(newUser); // This will start/stop inactivity timer appropriately
     } else if (!userChanged && newUser && !accessDenied) {
-        console.log("script.js: Auth state confirmed, user is the same. Inactivity timer NOT restarted by updateUserUI.");
-        // If user is same, but maybe token refreshed, we still want to ensure inactivity timer IS running IF it should be.
-        // updateUserUI already handles this by calling startInactivityTimer if user is present.
-        // The key is not calling updateUserUI if user ID hasn't changed.
-        // However, ensure inactivity timer IS running if currentGlobalUserId is set.
-        if (currentGlobalUserId && inactivityTimer) { // Check if timer exists, implies it should be running
-           // resetInactivityTimer(); // Optionally reset on any SIGNED_IN, even if user is same, for extra safety on token refresh
-           // For now, let's stick to resetting only on genuine activity or focus.
-        } else if (currentGlobalUserId && !inactivityTimer) {
-            // This case should ideally not happen if logic is correct. But as a safeguard:
-            console.warn("script.js: User is current, but inactivity timer was not running. Restarting.");
-            startInactivityTimer();
-        }
-    } else if (accessDenied && currentGlobalUserId) { // Access was denied for a previously logged-in user
-        console.log("script.js: Access denied for previously logged in user. UI should reflect no user soon via next auth event.");
-        // currentGlobalUserId will be cleared when signOut's onAuthStateChange event comes.
+      console.log(
+        "script.js: Auth state confirmed, user is the same. Inactivity timer NOT restarted by updateUserUI."
+      );
+      // If user is same, but maybe token refreshed, we still want to ensure inactivity timer IS running IF it should be.
+      // updateUserUI already handles this by calling startInactivityTimer if user is present.
+      // The key is not calling updateUserUI if user ID hasn't changed.
+      // However, ensure inactivity timer IS running if currentGlobalUserId is set.
+      if (currentGlobalUserId && inactivityTimer) {
+        // Check if timer exists, implies it should be running
+        // resetInactivityTimer(); // Optionally reset on any SIGNED_IN, even if user is same, for extra safety on token refresh
+        // For now, let's stick to resetting only on genuine activity or focus.
+      } else if (currentGlobalUserId && !inactivityTimer) {
+        // This case should ideally not happen if logic is correct. But as a safeguard:
+        console.warn(
+          "script.js: User is current, but inactivity timer was not running. Restarting."
+        );
+        startInactivityTimer();
+      }
+    } else if (accessDenied && currentGlobalUserId) {
+      // Access was denied for a previously logged-in user
+      console.log(
+        "script.js: Access denied for previously logged in user. UI should reflect no user soon via next auth event."
+      );
+      // currentGlobalUserId will be cleared when signOut's onAuthStateChange event comes.
     }
-
 
     // Always dispatch the custom event for modules to react if they need to.
     // Modules have their own logic to decide if they need to re-subscribe or reload data.
-    console.log("script.js: Dispatching supabaseAuthStateChange event to modules. User:", newUser ? newUser.id : "null", "Access Denied:", accessDenied);
+    console.log(
+      "script.js: Dispatching supabaseAuthStateChange event to modules. User:",
+      newUser ? newUser.id : "null",
+      "Access Denied:",
+      accessDenied
+    );
     document.dispatchEvent(
       new CustomEvent("supabaseAuthStateChange", {
-        detail: { user: newUser, event, accessDenied, source: 'script.js' },
+        detail: { user: newUser, event, accessDenied, source: "script.js" },
       })
     );
 
     // Handle redirection to login if no user, after dispatching event
-    if (!newUser && !window.location.pathname.includes('/login.html')) {
-        console.log("script.js: No user session, redirecting to login.html");
-        window.location.href = 'login.html';
-    } else if (newUser && window.location.pathname.includes('/login.html') && !accessDenied) {
-        // If user is logged in and on login page (and not just denied access), redirect to index
-        console.log("script.js: User authenticated on login page, redirecting to index.html");
-        window.location.href = 'index.html';
+    if (!newUser && !window.location.pathname.includes("/login.html")) {
+      console.log("script.js: No user session, redirecting to login.html");
+      window.location.href = "login.html";
+    } else if (
+      newUser &&
+      window.location.pathname.includes("/login.html") &&
+      !accessDenied
+    ) {
+      // If user is logged in and on login page (and not just denied access), redirect to index
+      console.log(
+        "script.js: User authenticated on login page, redirecting to index.html"
+      );
+      window.location.href = "index.html";
     }
   });
 
   // Initial session check
   console.log("script.js: Performing initial session check...");
-  const { data: { session: initialSession }, error: initialSessionError } = await supabase.auth.getSession();
+  const {
+    data: { session: initialSession },
+    error: initialSessionError,
+  } = await supabase.auth.getSession();
   if (initialSessionError) {
-    console.error("script.js: Error getting initial session:", initialSessionError.message);
+    console.error(
+      "script.js: Error getting initial session:",
+      initialSessionError.message
+    );
   }
   // The onAuthStateChange listener will be triggered by getSession(),
   // so it will handle the initial UI update and redirection if necessary.
   // No need to duplicate logic here.
-  console.log("script.js: Initial session check completed. onAuthStateChange will handle the result.");
-
+  console.log(
+    "script.js: Initial session check completed. onAuthStateChange will handle the result."
+  );
 });
 
 window.addEventListener("resize", handleResize);
@@ -458,7 +581,8 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     iconClass = "bx bx-error-circle";
     notification.style.backgroundColor = "#ffc107";
     notification.style.color = "#212529";
-  } else { // info
+  } else {
+    // info
     notification.style.backgroundColor = "#17a2b8";
   }
 
@@ -469,7 +593,9 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
   notification.style.opacity = "1";
   notification.style.transform = "translateX(0)";
 
-  const closeButton = notification.querySelector(".custom-notification-st-close-global");
+  const closeButton = notification.querySelector(
+    ".custom-notification-st-close-global"
+  );
   const removeNotification = () => {
     if (notification.parentNode) {
       notification.style.opacity = "0";
