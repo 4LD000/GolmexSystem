@@ -272,32 +272,31 @@ function setActiveMenuItem(clickedLinkElement) {
   }
 }
 
+// En js/script.js
+
+// Reemplaza la función loadModule completa con esta versión mejorada
 async function loadModule(moduleName, clickedLink) {
   if (!mainContent || !supabase) {
     console.error("Main content area or Supabase client not found for loadModule.");
     return;
   }
-  if (authRequiredMessage) authRequiredMessage.style.display = "none";
-  if (mainAppContent) mainAppContent.style.display = "block";
+  
   mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
   mainContent.dataset.currentModule = `loading-${moduleName}`;
 
   try {
     const response = await fetch(`${moduleName}.html`);
     if (!response.ok) throw new Error(`Could not load ${moduleName}.html. Status: ${response.status}`);
+    
     const htmlContent = await response.text();
     mainContent.innerHTML = htmlContent;
     mainContent.dataset.currentModule = moduleName;
     setActiveMenuItem(clickedLink);
-    document.dispatchEvent(new CustomEvent('moduleContentLoaded', { detail: { moduleName } }));
-    Array.from(mainContent.querySelectorAll("script")).forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-      if (oldScript.textContent) newScript.textContent = oldScript.textContent;
-      if (oldScript.parentNode) oldScript.parentNode.replaceChild(newScript, oldScript);
-      else document.body.appendChild(newScript).remove();
-      console.log(`script.js: Script ${newScript.src || "inline"} from module ${moduleName} processed.`);
-    });
+    
+    // Dispara un evento global para notificar que el módulo está listo para inicializarse
+    console.log(`SCRIPT.JS: Dispatching module_loaded event for [${moduleName}]`);
+    document.dispatchEvent(new CustomEvent('module_loaded', { detail: { moduleName } }));
+
   } catch (error) {
     console.error("Error loading module:", error);
     mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module: ${moduleName}</h2><p style="color: var(--goldmex-accent-color);">${error.message}</p></div>`;
