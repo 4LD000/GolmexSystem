@@ -134,6 +134,9 @@
   let isInitializingModule = false;
   let mainAuthListener = null;
 
+  // NEW: Flag to prevent realtime update race conditions
+  let isProcessingRealtimeUpdate = false;
+
   // Variable to track the highest z-index for modals
   let highestZIndex = 1100; // Base z-index for .it-modal
 
@@ -2026,102 +2029,50 @@
   // SECTION 8: REALTIME SUBSCRIPTIONS
   async function removeCurrentSubscription() {
     if (invoiceSubscription) {
-      const channelTopic = invoiceSubscription.topic;
-      console.log(
-        `IT Module: Attempting to remove existing subscription to ${channelTopic}`
-      );
       try {
-        if (
-          invoiceSubscription.state === "joined" ||
-          invoiceSubscription.state === "joining"
-        ) {
-          console.log(
-            `IT Module: Unsubscribing from ${channelTopic}... Current state: ${invoiceSubscription.state}`
-          );
-          await invoiceSubscription.unsubscribe();
-          console.log(
-            `IT Module: Unsubscribed from ${channelTopic}. New state after unsubscribe: ${invoiceSubscription?.state}`
-          );
-        } else {
-          console.log(
-            `IT Module: Subscription to ${channelTopic} not in 'joined' or 'joining' state (${invoiceSubscription.state}), skipping explicit unsubscribe.`
-          );
-        }
-        // After unsubscribing, remove the channel instance.
-        const status = await supabase.removeChannel(invoiceSubscription);
-        console.log(
-          `IT Module: supabase.removeChannel call for ${channelTopic} completed. Status:`,
-          status
-        );
+        await supabase.removeChannel(invoiceSubscription);
       } catch (error) {
-        console.error(
-          `IT Module: Error during unsubscribe/removeChannel for ${channelTopic}:`,
-          error
-        );
+        console.error("IT Module: Error during removeChannel:", error);
       } finally {
-        invoiceSubscription = null; // Ensure it's nulled after attempt
-        console.log(
-          `IT Module: invoiceSubscription variable nulled for ${channelTopic}.`
-        );
+        invoiceSubscription = null;
       }
     }
   }
 
   async function subscribeToInvoiceChanges() {
-    if (!supabase) {
-      console.error(
-        "Supabase client not available for realtime subscriptions."
-      );
-      return;
-    }
     await removeCurrentSubscription(); // Ensure any old subscription is cleared
 
-    const channelName = "public:invoices:all-module-it"; // Unique channel name
-    console.log(`IT Module: Creating new channel: ${channelName}`);
-    invoiceSubscription = supabase.channel(channelName);
-
-    invoiceSubscription
+    const channelName = "public:invoices:all-module-it";
+    invoiceSubscription = supabase
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: INVOICES_TABLE_NAME },
         async (payload) => {
-          console.log(
-            "IT Module: Invoice change received!",
-            payload.eventType,
-            payload
-          );
-          await fetchInvoicesFromSupabase(); // Refetch active invoices for main table
-          if (
-            invoiceHistoryModal &&
-            invoiceHistoryModal.style.display === "flex"
-          ) {
-            // If history modal is open
-            handleFilterHistoryInvoices(); // Refresh history data too
+          console.log("IT Module: Invoice change received!", payload.eventType);
+
+          // FIX: Prevent race conditions from rapid-fire updates
+          if (isProcessingRealtimeUpdate) {
+            console.log("IT Module: Another update is in progress, skipping this one.");
+            return;
+          }
+          isProcessingRealtimeUpdate = true;
+          
+          try {
+            await fetchInvoicesFromSupabase(); // Refetch active invoices
+            if (invoiceHistoryModal?.style.display === "flex") {
+              await handleFilterHistoryInvoices(); // Refresh history data if open
+            }
+          } finally {
+            isProcessingRealtimeUpdate = false; // Release the lock
           }
         }
       )
-      .subscribe(async (status, err) => {
-        const currentTopic = invoiceSubscription
-          ? invoiceSubscription.topic
-          : channelName;
-        console.log(
-          `IT Module: Channel ${currentTopic} subscription status: ${status}`,
-          err || ""
-        );
+      .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
-          console.log(`IT Module: Successfully subscribed to ${currentTopic}!`);
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error(
-            `IT Module: Subscription to ${currentTopic} FAILED or TIMED OUT. Error:`,
-            err
-          );
-          await removeCurrentSubscription(); // Attempt to clean up
-          // Optionally, attempt to re-subscribe after a delay
-        } else if (status === "CLOSED") {
-          console.warn(
-            `IT Module: Subscription to ${currentTopic} was CLOSED.`
-          );
-          // Might attempt to re-subscribe if closure was unexpected
+          console.log(`IT Module: Successfully subscribed to ${channelName}!`);
+        } else if (err) {
+          console.error(`IT Module: Subscription to ${channelName} FAILED. Error:`, err);
         }
       });
   }
@@ -2129,125 +2080,62 @@
   // SECTION 9: INITIALIZATION
   let isModuleInitialized = false;
 
-  async function loadModuleDataAndSubscribe() {
-    console.log("IT Module: loadModuleDataAndSubscribe called.");
-    if (!currentUser) {
-      console.warn(
-        "IT Module: No current user, skipping data load and subscription."
-      );
-      return;
-    }
-    await fetchInvoicesFromSupabase(); // Fetches active data for main table
-    await subscribeToInvoiceChanges();
-  }
-
   async function manageSubscriptionAndData(session) {
-    if (isInitializingModule) {
-      console.log(
-        "IT Module: manageSubscriptionAndData - Initialization already in progress, skipping."
-      );
-      return;
-    }
+    if (isInitializingModule) return;
     isInitializingModule = true;
-    console.log("IT Module: manageSubscriptionAndData - Starting.");
 
     if (session?.user) {
-      if (!currentUser || currentUser.id !== session.user.id) {
-        // User changed or first sign-in
-        console.log(
-          `IT Module: User state changed or first sign-in. New User: ${session.user.id}, Old User: ${currentUser?.id}. Loading data and subscribing.`
-        );
-        currentUser = session.user;
-        await loadModuleDataAndSubscribe();
-      } else {
-        // Same user session confirmed
-        console.log(
-          `IT Module: User session confirmed (same user: ${currentUser.id}). Ensuring subscription is healthy.`
-        );
-        if (
-          // Check if subscription is not active
-          !invoiceSubscription ||
-          (invoiceSubscription.state !== "joined" &&
-            invoiceSubscription.state !== "joining")
-        ) {
-          console.log(
-            `IT Module: Subscription for user ${currentUser.id} is not active (state: ${invoiceSubscription?.state}). Attempting to re-subscribe.`
-          );
-          await subscribeToInvoiceChanges(); // Re-establish subscription
+        // User is logged in. Clean up any old state and initialize.
+        if (!currentUser || currentUser.id !== session.user.id) {
+            console.log(`IT Module: New user detected or first sign-in. User: ${session.user.id}`);
+            currentUser = session.user;
         } else {
-          console.log(
-            `IT Module: Subscription for user ${currentUser.id} is already active (state: ${invoiceSubscription.state}). No action needed.`
-          );
+            console.log(`IT Module: User session refreshed. User: ${currentUser.id}`);
         }
-      }
+        await fetchInvoicesFromSupabase();
+        await subscribeToInvoiceChanges();
     } else {
-      // No active session (user signed out)
-      if (currentUser) {
-        // If there was a previously logged-in user
-        console.log(
-          "IT Module: User signed out. Clearing data and removing subscription."
-        );
-        currentUser = null;
-        allInvoicesData = [];
-        initializeInvoicesTable([]);
-        if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
-        updateDashboardSummary([]);
-        await removeCurrentSubscription();
-      } else {
-        console.log(
-          "IT Module: No active session and no previous user. Ensuring no subscription."
-        );
-        await removeCurrentSubscription(); // Ensure clean state
-      }
+        // User signed out.
+        if (currentUser) {
+            console.log("IT Module: User signed out. Clearing data and subscription.");
+            currentUser = null;
+            allInvoicesData = [];
+            initializeInvoicesTable([]);
+            if (invoiceHistoryDataTable) invoiceHistoryDataTable.clear().draw();
+            updateDashboardSummary([]);
+            await removeCurrentSubscription();
+        }
     }
     isInitializingModule = false;
-    console.log("IT Module: manageSubscriptionAndData - Finished.");
   }
 
-  async function initializeApp() {
-    if (!isModuleInitialized) {
-      console.log(
-        "IT Module: Performing one-time DOM setup (event listeners, initial table/dashboard)..."
-      );
-      setupEventListeners();
-      initializeInvoicesTable([]); // Initialize main table empty
-      updateDashboardSummary([]);
-      // History table is initialized when its modal is opened or filters applied.
-      isModuleInitialized = true;
-    }
+  function initializeApp() {
+    if (isModuleInitialized) return;
+    
+    console.log("IT Module: Initializing one-time listeners and UI...");
+    setupEventListeners();
+    initializeInvoicesTable([]);
+    updateDashboardSummary([]);
+    isModuleInitialized = true;
 
-    // Remove previous listener before setting a new one to prevent duplicates
-    if (
-      mainAuthListener &&
-      typeof mainAuthListener.unsubscribe === "function"
-    ) {
-      console.log(
-        "IT Module: Removing existing main auth state listener before setting new one."
-      );
-      mainAuthListener.unsubscribe();
-      mainAuthListener = null;
-    }
-
-    console.log("IT Module: Setting up main Supabase auth state listener.");
-    // Store the subscription object returned by onAuthStateChange to allow unsubscribing
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(
-        `IT Module: Main onAuthStateChange event: ${event}`,
-        session ? `User: ${session.user?.id}` : "No session"
-      );
-      await manageSubscriptionAndData(session);
+    // Listen to the global auth event dispatched from script.js
+    document.addEventListener("supabaseAuthStateChange", (event) => {
+        console.log("IT Module: Received supabaseAuthStateChange event.");
+        const { session } = event.detail;
+        manageSubscriptionAndData(session);
     });
-    mainAuthListener = subscription; // Store the subscription object
-    console.log(
-      "IT Module: Main auth listener set. It will handle the initial auth state and subsequent changes."
-    );
+    
+    // Check initial auth state, in case the module loads after the event has already fired
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!currentUser && session) { // Only run if it hasn't been initialized by the event yet
+             console.log("IT Module: Initializing based on getSession() call.");
+             manageSubscriptionAndData(session);
+        }
+    });
   }
 
   // Ensure initializeApp runs after DOM is fully loaded
   if (document.readyState === "loading") {
-    document.removeEventListener("DOMContentLoaded", initializeApp); // Remove if already added to be safe
     document.addEventListener("DOMContentLoaded", initializeApp);
   } else {
     initializeApp(); // DOMContentLoaded has already fired
