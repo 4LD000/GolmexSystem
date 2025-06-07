@@ -1022,7 +1022,7 @@
       <div class="invoice-preview" style="padding:15px; background: #fff; border: 1px solid #eee; border-radius: 5px;">
         <div class="invoice-header" style="display:flex; justify-content:space-between; margin-bottom:20px; padding-bottom:10px; border-bottom:1px solid #eee;">
           <div class="invoice-logo">
-            <img src="/assets/goldmex-logo-light.svg" alt="Goldmex Logo" style="height: 50px; max-width: 180px;" onerror="this.style.display='none'; this.outerHTML='<span>Goldmex Logo</span>'"/>
+            <img src="/assets/logo.png" alt="Goldmex Logo" style="height: 50px; max-width: 180px;" onerror="this.style.display='none'; this.outerHTML='<span>Goldmex Logo</span>'"/>
             <p style="font-size:0.8em; color:#777; margin-top:5px;">GMX E-Commerce Services, LLC</p>
           </div>
           <div class="invoice-company-details" style="text-align:right; font-size:0.9em;">
@@ -1589,7 +1589,7 @@
       }
     }
 
-    const logoUrl = "/assets/goldmex-logo-light.svg"; // Ensure this path is correct and accessible
+    const logoUrl = "/assets/logo.png"; // Ensure this path is correct and accessible
 
     const invoiceHtmlContent = `
         <html>
