@@ -1769,65 +1769,46 @@
     updateDashboard(allServicesData);
   }
 
+  // REEMPLAZA ESTA FUNCIÓN COMPLETA
   function initializeOrUpdateTable(viewType = "all", tableElement = servicesTableHtmlElement, columns = null, dataToLoad = null, orderByIdx = null) {
     if (!tableElement) {
         console.warn("ST Module: initializeOrUpdateTable - Table element not found for view:", viewType);
         return null;
     }
-    
-    const isMainServicesTable = (tableElement === servicesTableHtmlElement);
-    const currentDtInstance = $.fn.DataTable.isDataTable(tableElement) ? $(tableElement).DataTable() : null;
+
+    // --- INICIO DEL ARREGLO ---
+    // 1. Siempre destruir la instancia anterior si existe.
+    if ($.fn.DataTable.isDataTable(tableElement)) {
+        // Obtenemos la instancia antes de destruirla para no depender de la variable global
+        $(tableElement).DataTable().destroy();
+    }
+
+    // 2. Limpiar completamente el contenido HTML de la tabla.
+    $(tableElement).empty();
+    // --- FIN DEL ARREGLO ---
+
     const newColumnsDefinition = columns || columnDefinitions[viewType] || columnDefinitions.all;
-    
-    // Check if the table structure (columns) has actually changed.
-    const isStructuralChange = !currentDtInstance || currentDtInstance.columns().count() !== newColumnsDefinition.length;
+    let tableDataForProcessing = dataToLoad || [];
 
-    let tableDataForProcessing;
-
-    if (dataToLoad !== null) {
-        tableDataForProcessing = dataToLoad;
-    } else {
-        // Fallback to filtering all data if dataToLoad is not provided
-        tableDataForProcessing = allServicesData.filter(s => {
-            if (isMainServicesTable && (COMPLETED_STATUSES.includes(s.status) || s.status === CANCELLED_STATUS)) return false;
-            if (viewType !== "all" && s.serviceCategoryInternal !== viewType) return false;
-            if (isMainServicesTable) return filterServicesForCurrentMonthDisplay([s]).length > 0;
-            return true;
-        });
-    }
-
-    if (currentDtInstance && !isStructuralChange) {
-        // *** CORE FIX: If table exists and columns are the same, JUST update data.
-        console.log(`ST Module: Refreshing data only for table ${tableElement.id}`);
-        currentDtInstance.clear().rows.add(tableDataForProcessing).draw(false);
-        return currentDtInstance;
-    }
-
-    // --- Full Re-initialization Logic ---
-    console.log(`ST Module: Full (Re)Initialization of table for ${tableElement.id}. Structural Change: ${isStructuralChange}`);
-    
-    if (currentDtInstance) {
-        currentDtInstance.destroy();
-        $(tableElement).empty(); // More aggressive cleanup to prevent duplication
-    }
-    
-    // Rebuild the header
-    const thead = tableElement.querySelector("thead") || document.createElement('thead');
-    tableElement.appendChild(thead);
+    // Reconstruir el thead ya que .empty() lo eliminó
+    const thead = document.createElement('thead');
     let headerHtml = "<tr>";
     newColumnsDefinition.forEach(col => {
-        if (col.visible !== false) headerHtml += `<th>${col.title}</th>`;
+        if (col.visible !== false) {
+            headerHtml += `<th>${col.title}</th>`;
+        }
     });
     headerHtml += "</tr>";
     thead.innerHTML = headerHtml;
-    
-    // Ensure tbody exists
+    tableElement.appendChild(thead);
+
+    // Asegurar que tbody exista
     if (!tableElement.querySelector("tbody")) {
         tableElement.appendChild(document.createElement('tbody'));
     }
 
-    const defaultOrderIdx = orderByIdx !== null ? orderByIdx : newColumnsDefinition.findIndex(c => c.data === 'service_display_id' || c.data === 'etd' || c.data === 'created_at');
-    const orderDirection = (newColumnsDefinition[defaultOrderIdx]?.data === 'etd' && viewType === 'all' && isMainServicesTable) ? 'asc' : 'desc';
+    const defaultOrderIdx = orderByIdx !== null ? orderByIdx : newColumnsDefinition.findIndex(c => c.data === 'service_display_id');
+    const orderDirection = 'desc';
 
     let dtInstance = $(tableElement).DataTable({
         data: tableDataForProcessing,
@@ -1835,12 +1816,12 @@
         scrollX: true,
         autoWidth: false,
         responsive: true,
-        language: { search: "Search:", lengthMenu: "Show _MENU_ entries", info: "Showing _START_ to _END_ of _TOTAL_ entries", infoEmpty: "No services to display", infoFiltered: "(filtered from _MAX_ total)", paginate: { first: "<i class='bx bx-chevrons-left'></i>", last: "<i class='bx bx-chevrons-right'></i>", next: "<i class='bx bx-chevron-right'></i>", previous: "<i class='bx bx-chevron-left'></i>" }, emptyTable: `No ${viewType !== 'all' ? viewType : ''} services found${isMainServicesTable ? ' for the current month' : ''}.`},
+        language: { search: "Search:", lengthMenu: "Show _MENU_ entries", info: "Showing _START_ to _END_ of _TOTAL_ entries", infoEmpty: "No services to display", infoFiltered: "(filtered from _MAX_ total)", paginate: { first: "<i class='bx bx-chevrons-left'></i>", last: "<i class='bx bx-chevrons-right'></i>", next: "<i class='bx bx-chevron-right'></i>", previous: "<i class='bx bx-chevron-left'></i>" }, emptyTable: `No ${viewType !== 'all' ? viewType : ''} services found.`},
         order: [[defaultOrderIdx >= 0 ? defaultOrderIdx : 0, orderDirection]],
-        createdRow: function (row, data, dataIndex) { 
+        createdRow: function (row, data, dataIndex) {
           if (data && data.serviceCategoryInternal) $(row).addClass(getCategoryTextAndClass(data.serviceCategoryInternal).rowClass);
         },
-        drawCallback: function (settings) { 
+        drawCallback: function (settings) {
           var api = new $.fn.dataTable.Api(settings);
           api.columns.adjust();
           if ($.fn.dataTable.Responsive && api.responsive && typeof api.responsive.recalc === 'function') {
@@ -1849,14 +1830,16 @@
         },
     });
 
-    if (isMainServicesTable) {
+    if (tableElement === servicesTableHtmlElement) {
         servicesDataTable = dtInstance;
     } else if (tableElement === archiveServicesTableHtmlElement) {
         archiveServicesDataTable = dtInstance;
     }
-    
+
     setTimeout(() => {
-        dtInstance.columns.adjust().responsive.recalc();
+        if ($.fn.DataTable.isDataTable(tableElement)) {
+            dtInstance.columns.adjust().responsive.recalc();
+        }
     }, 150);
 
     return dtInstance;
