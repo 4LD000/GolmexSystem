@@ -2378,20 +2378,20 @@
     }
   }
 
-  async function globalAuthChangeHandler(event) {
-      console.log("ST Module: Detected global supabaseAuthStateChange event. Source:", event.detail?.source);
-      const sessionUser = event.detail?.user;
-      const accessDenied = event.detail?.accessDenied || false;
+window.moduleAuthChangeHandler = async function(event) {
+    console.log("ST Module: Detected global supabaseAuthStateChange event. Source:", event.detail?.source);
+    const sessionUser = event.detail?.user;
+    const accessDenied = event.detail?.accessDenied || false;
 
-      if (accessDenied) {
-          console.warn("ST Module: Access denied. Module will reflect no user state.");
-          await handleServiceTrackingAuthChange(null);
-      } else {
-          await handleServiceTrackingAuthChange(sessionUser);
-      }
-  }
+    if (accessDenied) {
+        console.warn("ST Module: Access denied. Module will reflect no user state.");
+        await handleServiceTrackingAuthChange(null);
+    } else {
+        await handleServiceTrackingAuthChange(sessionUser);
+    }
+}
 
-  function initializeServiceTrackingModule() {
+function initializeServiceTrackingModule() {
       console.log("ST Module: Initializing module...");
       if (!isServiceTrackingInitialized) {
           console.log("ST Module: Performing one-time DOM setup...");
@@ -2404,15 +2404,15 @@
           isServiceTrackingInitialized = true;
       }
 
-      // Register the listener for the custom global event
-      document.removeEventListener('supabaseAuthStateChange', globalAuthChangeHandler);
-      document.addEventListener('supabaseAuthStateChange', globalAuthChangeHandler);
+      // Esta rutina asegura que solo el oyente de este módulo esté activo.
+      document.removeEventListener('supabaseAuthStateChange', window.moduleAuthChangeHandler);
+      document.addEventListener('supabaseAuthStateChange', window.moduleAuthChangeHandler);
 
-      // Simulate an auth change event on module load to get the initial state
+      // Simula un evento de cambio de autenticación en la carga del módulo para obtener el estado inicial
       if (supabase) {
          supabase.auth.getSession().then(({ data: { session } }) => {
             const detail = { user: session ? session.user : null, event: 'INITIAL_LOAD', accessDenied: false, source: 'script.js' };
-            globalAuthChangeHandler({ detail });
+            window.moduleAuthChangeHandler({ detail });
          });
       }
 
@@ -2428,7 +2428,7 @@
               }
           }, 150);
       });
-  }
+}
 
   // Ensure the module initializes when the DOM is ready
   if (document.readyState === 'loading') {
