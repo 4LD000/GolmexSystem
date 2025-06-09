@@ -3587,12 +3587,15 @@
       docManagementModal.addEventListener("click", (event) => {
         if (event.target === docManagementModal) closeModal(docManagementModal);
       });
-
+    
     if (docCategorySelect)
       docCategorySelect.addEventListener("change", handleDocCategoryChange);
-
     if (uploadDocBtn)
       uploadDocBtn.addEventListener("click", handleDocumentUpload);
+
+    if (docListContainer) {
+      docListContainer.addEventListener("click", handleDocumentAction);
+    }
   }
   function initArchiveModalListeners() {
     if (openArchiveModalBtn) {
