@@ -1051,9 +1051,11 @@
   }
 
   // ===== REEMPLAZAR FUNCIÓN COMPLETA =====
+  // ===== REEMPLAZAR FUNCIÓN COMPLETA =====
   function renderInvoiceDetail(invoiceId) {
     let invoice = allInvoicesData.find((inv) => inv.id === invoiceId);
 
+    // Intenta encontrar la factura en los datos de la tabla de historial si no se encuentra en la principal
     if (
       !invoice &&
       $.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)
@@ -1077,20 +1079,24 @@
       viewInvoiceNumberSpan.textContent = invoice.invoice_number;
 
     let chargesHtml = "";
-    const firstCharge = (invoice.charges || [])[0];
+    // Condición para determinar si es una factura de servicio (con datos internos)
     const isServiceInvoice =
-      firstCharge && firstCharge.internal_cost !== undefined;
+      !!invoice.service_id_fk &&
+      (invoice.charges || []).some((charge) =>
+        charge.hasOwnProperty("internal_cost")
+      );
 
     if (isServiceInvoice) {
-      // --- VISTA DETALLADA CON TABLA REAL ---
+      // --- NUEVO: VISTA INTERNA DETALLADA CON 5 COLUMNAS ---
       chargesHtml = `
       <table class="invoice-items-table">
         <thead>
           <tr>
             <th style="text-align:left;">Description</th>
-            <th style="text-align:right;">Internal Cost</th>
-            <th style="text-align:right;">Margin %</th>
-            <th style="text-align:right;">Final Price</th>
+            <th style="text-align:left;">Proveedor</th>
+            <th style="text-align:right;">Costo Proveedor</th>
+            <th style="text-align:right;">Margen %</th>
+            <th style="text-align:right;">Precio Final</th>
           </tr>
         </thead>
         <tbody>`;
@@ -1098,18 +1104,27 @@
         chargesHtml += `
             <tr>
               <td>${charge.name || "N/A"}</td>
+              <td>${charge.provider_name || "N/A"}</td>
               <td style="text-align:right;">${(
                 charge.internal_cost || 0
               ).toFixed(2)} ${charge.currency}</td>
-              <td style="text-align:right;">${charge.margin_percent || 0}%</td>
+              <td style="text-align:right;">${(
+                charge.margin_percent || 0
+              ).toFixed(2)}%</td>
               <td style="text-align:right;" class="charge-final">${(
                 charge.amount || 0
               ).toFixed(2)} ${charge.currency}</td>
             </tr>`;
       });
-      chargesHtml += `</tbody></table>`;
+      let totalsHtmlDetailed = "";
+      for (const curr in invoice.totals_by_currency) {
+        totalsHtmlDetailed += `<tr><td colspan="4" style="text-align:right; font-weight:bold;">TOTAL (${curr}):</td><td style="text-align:right; font-weight:bold;">${parseFloat(
+          invoice.totals_by_currency[curr] || 0
+        ).toFixed(2)}</td></tr>`;
+      }
+      chargesHtml += `</tbody><tfoot>${totalsHtmlDetailed}</tfoot></table>`;
     } else {
-      // --- VISTA SIMPLE PARA FACTURAS MANUALES (SIN CAMBIOS) ---
+      // --- VISTA SIMPLE PARA FACTURAS MANUALES (CÓDIGO ORIGINAL) ---
       chargesHtml = `
       <table class="invoice-items-table">
         <thead>
@@ -1124,17 +1139,19 @@
         <tbody>`;
       (invoice.charges || []).forEach((charge) => {
         chargesHtml += `
-        <tr>
-          <td>${charge.name || "N/A"}</td>
-          <td style="text-align:right;">${(charge.quantity || 0).toFixed(
-            2
-          )}</td>
-          <td style="text-align:right;">${(charge.unit_price || 0).toFixed(
-            2
-          )}</td>
-          <td style="text-align:center;">${charge.currency || "USD"}</td>
-          <td style="text-align:right;">${(charge.amount || 0).toFixed(2)}</td>
-        </tr>`;
+            <tr>
+              <td>${charge.name || "N/A"}</td>
+              <td style="text-align:right;">${(charge.quantity || 0).toFixed(
+                2
+              )}</td>
+              <td style="text-align:right;">${(charge.unit_price || 0).toFixed(
+                2
+              )}</td>
+              <td style="text-align:center;">${charge.currency || "USD"}</td>
+              <td style="text-align:right;">${(charge.amount || 0).toFixed(
+                2
+              )}</td>
+            </tr>`;
       });
       let totalsHtmlSimple = "";
       for (const curr in invoice.totals_by_currency) {
@@ -1154,15 +1171,7 @@
         ? new Date(invoice.due_date + "T00:00:00Z").toLocaleDateString()
         : "N/A";
 
-    let totalsHtmlDetailed = "";
-    if (isServiceInvoice) {
-      for (const curr in invoice.totals_by_currency) {
-        totalsHtmlDetailed += `<div class="invoice-total-line"><strong>TOTAL (${curr}):</strong> <strong>${parseFloat(
-          invoice.totals_by_currency[curr] || 0
-        ).toFixed(2)}</strong></div>`;
-      }
-    }
-
+    // Contenido del contenedor del modal (común para ambas vistas)
     invoiceContentContainer.innerHTML = `
       <div class="invoice-preview" style="padding:15px; background: #fff; border: 1px solid #eee; border-radius: 5px;">
         <div class="invoice-header" style="display:flex; justify-content:space-between; margin-bottom:20px; padding-bottom:10px; border-bottom:1px solid #eee;">
@@ -1199,11 +1208,6 @@
         <div class="it-charges-wrapper">
             ${chargesHtml}
         </div>
-        ${
-          isServiceInvoice
-            ? `<div class="invoice-totals">${totalsHtmlDetailed}</div>`
-            : ""
-        }
         <div class="invoice-footer" style="margin-top:20px; font-size:0.8em; text-align:center; color:#777;">
             ${
               invoice.payment_communication
@@ -1220,7 +1224,6 @@
       </div>`;
     openItModal(viewInvoiceModal);
   }
-
   async function handleTableActions(event, tableType = "main") {
     const button = event.target.closest("button[data-action]");
     if (!button) return;
