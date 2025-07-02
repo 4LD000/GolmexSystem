@@ -1421,3 +1421,117 @@ body.dark-mode .it-required {
     margin-bottom: 1rem;
   }
 }
+
+/* ===== INICIA ESTILOS PARA VISTA DE FACTURA DETALLADA (VERSIÓN CORREGIDA) ===== */
+
+.it-charges-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.it-charges-wrapper {
+  border: 1px solid var(--color-border);
+  border-radius: 0.4rem;
+  overflow: hidden; /* Clave para que los bordes internos se vean bien */
+}
+
+/* Estilo para el encabezado de la tabla */
+.it-charge-details-header {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1fr;
+  background-color: rgba(var(--color-bg-rgb), 0.4);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Estilo para cada fila de cargos */
+.it-charge-details-row {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1fr;
+  background-color: var(--color-surface);
+}
+
+/* Estilo para todas las "celdas" (los span) */
+.it-charge-details-header span,
+.it-charge-details-row span {
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  align-items: center;
+  /* Línea vertical divisoria para todas las celdas menos la primera */
+  border-left: 1px solid var(--color-border-very-soft);
+}
+
+/* Quitamos el borde izquierdo de la primera celda en cada fila */
+.it-charge-details-header span:first-child,
+.it-charge-details-row span:first-child {
+  border-left: none;
+}
+
+/* Alineación del texto en las celdas */
+.it-charge-details-header span:not(:first-child),
+.it-charge-details-row span:not(:first-child) {
+  justify-content: flex-end; /* Alinea el contenido a la derecha */
+  text-align: right;
+}
+
+/* Estilo específico para el precio final */
+.it-charge-details-row .charge-final {
+  font-weight: 600;
+  color: var(--goldmex-success-color);
+}
+body.dark-mode .it-charge-details-row .charge-final {
+  color: var(--goldmex-success-color-dark);
+}
+
+/* Estilo para la sección de totales */
+.invoice-totals {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.invoice-total-line {
+  font-size: 1.1rem;
+  width: 250px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ===== FIN DE ESTILOS ===== */
+
+/* ===== NUEVO CÓDIGO PARA BOTONES DESACTIVADOS ===== */
+
+/* Estilo general para cualquier botón de acción en la tabla que esté desactivado */
+.it-table-actions button:disabled {
+  background-color: var(--color-bg);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Se asegura de que no haya efectos de hover en botones desactivados */
+.it-table-actions button:disabled:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text-secondary);
+  transform: none; /* Cancela cualquier animación de hover */
+  box-shadow: none; /* Cancela cualquier sombra de hover */
+}
+
+.it-charge-line .it-remove-charge-line-btn:disabled {
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: transparent;
+  border: none;
+}
