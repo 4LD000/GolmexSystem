@@ -133,8 +133,8 @@
   let currentEditingInvoiceId = null;
   let isDownloadingPdf = false;
   let invoiceSubscription = null;
-  let currentUserIT = null; 
-  let isInitializingModuleIT = false; 
+  let currentUserIT = null;
+  let isInitializingModuleIT = false;
   let isModuleInitializedIT = false;
 
   let highestZIndex = 1100;
@@ -289,43 +289,56 @@
     }
     return `${prefix}${String(nextSequence).padStart(4, "0")}`;
   }
-  
+
   // NEW: Function to check and update overdue invoices
   async function checkForOverdueInvoices() {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data: overdue, error } = await supabase
-          .from(INVOICES_TABLE_NAME)
-          .select('id')
-          .eq('status', INVOICE_STATUS_PENDING)
-          .lt('due_date', today);
+    const today = new Date().toISOString().split("T")[0];
 
-      if (error) {
-          console.error('Error fetching pending invoices to check for overdue status:', error);
-          return;
-      }
-      
-      if (overdue && overdue.length > 0) {
-          const idsToUpdate = overdue.map(inv => inv.id);
-          console.log(`Found ${idsToUpdate.length} overdue invoices. Updating status...`);
-          
-          const { error: updateError } = await supabase
-              .from(INVOICES_TABLE_NAME)
-              .update({ status: INVOICE_STATUS_OVERDUE, updated_at: new Date().toISOString() })
-              .in('id', idsToUpdate);
-              
-          if (updateError) {
-              console.error('Error bulk updating invoices to Overdue:', updateError);
-              showItNotification(`Failed to update status for ${idsToUpdate.length} overdue invoices.`, 'error');
-          } else {
-              showItNotification(`${idsToUpdate.length} invoice(s) have been automatically marked as Overdue.`, 'info');
-              // The data will be re-fetched next, so the table will be updated.
-          }
+    const { data: overdue, error } = await supabase
+      .from(INVOICES_TABLE_NAME)
+      .select("id")
+      .eq("status", INVOICE_STATUS_PENDING)
+      .lt("due_date", today);
+
+    if (error) {
+      console.error(
+        "Error fetching pending invoices to check for overdue status:",
+        error
+      );
+      return;
+    }
+
+    if (overdue && overdue.length > 0) {
+      const idsToUpdate = overdue.map((inv) => inv.id);
+      console.log(
+        `Found ${idsToUpdate.length} overdue invoices. Updating status...`
+      );
+
+      const { error: updateError } = await supabase
+        .from(INVOICES_TABLE_NAME)
+        .update({
+          status: INVOICE_STATUS_OVERDUE,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", idsToUpdate);
+
+      if (updateError) {
+        console.error("Error bulk updating invoices to Overdue:", updateError);
+        showItNotification(
+          `Failed to update status for ${idsToUpdate.length} overdue invoices.`,
+          "error"
+        );
       } else {
-          console.log("No pending invoices are overdue.");
+        showItNotification(
+          `${idsToUpdate.length} invoice(s) have been automatically marked as Overdue.`,
+          "info"
+        );
+        // The data will be re-fetched next, so the table will be updated.
       }
+    } else {
+      console.log("No pending invoices are overdue.");
+    }
   }
-
 
   // SECTION 3: SUPABASE DATA FETCHING
   async function fetchInvoicesFromSupabase(
@@ -453,10 +466,7 @@
         {
           data: "invoice_date",
           title: "Invoice Date",
-          render: (
-            data,
-            type
-          ) =>
+          render: (data, type) =>
             type === "display" && data !== "N/A"
               ? new Date(data + "T00:00:00Z").toLocaleDateString()
               : data,
@@ -535,11 +545,12 @@
               <button data-action="download" data-id="${row.id}" title="Download PDF"><i class='bx bxs-file-pdf'></i></button>
               <button data-action="mark-paid" data-id="${row.id}" title="Mark as Paid"><i class='bx bx-money'></i></button>
               <button data-action="cancel" data-id="${row.id}" title="Cancel Invoice"><i class='bx bx-x-circle'></i></button>
-            `;
+             `;
             return buttonsHtml;
           },
         },
       ],
+
       responsive: true,
       scrollX: true,
       autoWidth: false,
@@ -773,15 +784,24 @@
 
   // NEW: Function to update the dashboard with live data from the database
   async function updateDashboardSummaryWithLiveCounts() {
-    if (!dbTotalInvoicesEl || !dbPaidInvoicesEl || !dbPendingInvoicesEl || !dbOverdueInvoicesEl) {
+    if (
+      !dbTotalInvoicesEl ||
+      !dbPaidInvoicesEl ||
+      !dbPendingInvoicesEl ||
+      !dbOverdueInvoicesEl
+    ) {
       console.warn("Dashboard elements not found, skipping update.");
       return;
     }
 
     // For the 'Paid' count, we'll only count invoices from the current month to keep it relevant.
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0];
 
     try {
       // Use Promise.all to run all count queries in parallel for efficiency
@@ -789,26 +809,38 @@
         { count: totalCount },
         { count: pendingCount },
         { count: overdueCount },
-        { count: paidThisMonthCount }
+        { count: paidThisMonthCount },
       ] = await Promise.all([
         // Total: Invoices that are NOT 'Paid' or 'Cancelled'
-        supabase.from(INVOICES_TABLE_NAME).select('*', { count: 'exact', head: true })
-          .not('status', 'in', `(${INVOICE_STATUS_PAID},${INVOICE_STATUS_CANCELLED})`),
+        supabase
+          .from(INVOICES_TABLE_NAME)
+          .select("*", { count: "exact", head: true })
+          .not(
+            "status",
+            "in",
+            `(${INVOICE_STATUS_PAID},${INVOICE_STATUS_CANCELLED})`
+          ),
 
         // Pending: Invoices with status 'Pending'
-        supabase.from(INVOICES_TABLE_NAME).select('*', { count: 'exact', head: true })
-          .eq('status', INVOICE_STATUS_PENDING),
+        supabase
+          .from(INVOICES_TABLE_NAME)
+          .select("*", { count: "exact", head: true })
+          .eq("status", INVOICE_STATUS_PENDING),
 
         // Overdue: Invoices with status 'Overdue'
-        supabase.from(INVOICES_TABLE_NAME).select('*', { count: 'exact', head: true })
-          .eq('status', INVOICE_STATUS_OVERDUE),
-        
+        supabase
+          .from(INVOICES_TABLE_NAME)
+          .select("*", { count: "exact", head: true })
+          .eq("status", INVOICE_STATUS_OVERDUE),
+
         // Paid: Invoices with status 'Paid' and updated within the current month.
         // Note: We use 'updated_at' as a proxy for the payment date, which is a better approximation.
-        supabase.from(INVOICES_TABLE_NAME).select('*', { count: 'exact', head: true })
-          .eq('status', INVOICE_STATUS_PAID)
-          .gte('updated_at', `${firstDayOfMonth} 00:00:00`)
-          .lte('updated_at', `${lastDayOfMonth} 23:59:59`)
+        supabase
+          .from(INVOICES_TABLE_NAME)
+          .select("*", { count: "exact", head: true })
+          .eq("status", INVOICE_STATUS_PAID)
+          .gte("updated_at", `${firstDayOfMonth} 00:00:00`)
+          .lte("updated_at", `${lastDayOfMonth} 23:59:59`),
       ]);
 
       // Update the HTML elements with the new values
@@ -816,58 +848,82 @@
       dbPendingInvoicesEl.textContent = pendingCount || 0;
       dbOverdueInvoicesEl.textContent = overdueCount || 0;
       dbPaidInvoicesEl.textContent = paidThisMonthCount || 0;
-
     } catch (error) {
       console.error("Error updating dashboard counts:", error);
       showItNotification("Could not update dashboard totals.", "error");
     }
   }
 
-
-  function addChargeLine(chargeData = null) {
+  function addChargeLine(chargeData = null, isReadOnly = false) {
     const chargeLineDiv = document.createElement("div");
     chargeLineDiv.className = "it-charge-line";
-    chargeLineDiv.innerHTML = `
-        <input type="text" name="charge_name[]" placeholder="Service Description" value="${
-          chargeData?.name || ""
-        }" required>
-        <input type="number" name="charge_quantity[]" placeholder="1" step="0.01" min="0" value="${
-          chargeData?.quantity || 1
-        }" required>
-        <input type="number" name="charge_unit_price[]" placeholder="0.00" step="0.01" min="0" value="${
-          chargeData?.unit_price || 0
-        }" required>
-        <select name="charge_currency[]" required>
-            <option value="USD" ${
-              chargeData?.currency === "USD" || (!chargeData && "USD")
-                ? "selected"
-                : ""
-            }>USD</option>
-            <option value="MXN" ${
-              chargeData?.currency === "MXN" ? "selected" : ""
-            }>MXN</option>
-        </select>
-        <input type="number" name="charge_amount[]" placeholder="0.00" readonly step="0.01" value="${
-          chargeData?.amount || 0
-        }">
-        <button type="button" class="btn-goldmex-danger btn-goldmex-small it-remove-charge-line-btn" title="Delete Charge"><i class='bx bx-trash'></i></button>
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.name = "charge_name[]";
+    nameInput.placeholder = "Service Description";
+    nameInput.value = chargeData?.name || "";
+    nameInput.required = true;
+    nameInput.disabled = isReadOnly;
+
+    const qtyInput = document.createElement("input");
+    qtyInput.type = "number";
+    qtyInput.name = "charge_quantity[]";
+    qtyInput.value = chargeData?.quantity ?? 1; // Usamos ?? para permitir 0
+    qtyInput.step = "0.01";
+    qtyInput.disabled = isReadOnly;
+
+    const priceInput = document.createElement("input");
+    priceInput.type = "number";
+    priceInput.name = "charge_unit_price[]";
+    priceInput.value = chargeData?.unit_price ?? 0;
+    priceInput.step = "0.01";
+    priceInput.disabled = isReadOnly;
+
+    const currencySelect = document.createElement("select");
+    currencySelect.name = "charge_currency[]";
+    const usdSelected =
+      chargeData?.currency === "USD" || !chargeData?.currency ? "selected" : "";
+    const mxnSelected = chargeData?.currency === "MXN" ? "selected" : "";
+    currencySelect.innerHTML = `
+        <option value="USD" ${usdSelected}>USD</option>
+        <option value="MXN" ${mxnSelected}>MXN</option>
     `;
+    currencySelect.disabled = isReadOnly;
+
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.name = "charge_amount[]";
+    amountInput.readOnly = true;
+    amountInput.placeholder = "0.00";
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className =
+      "btn-goldmex-danger btn-goldmex-small it-remove-charge-line-btn";
+    deleteBtn.title = "Delete Charge";
+    deleteBtn.innerHTML = "<i class='bx bx-trash'></i>";
+    deleteBtn.disabled = isReadOnly;
+    deleteBtn.style.display = isReadOnly ? "none" : "flex";
+
+    chargeLineDiv.appendChild(nameInput);
+    chargeLineDiv.appendChild(qtyInput);
+    chargeLineDiv.appendChild(priceInput);
+    chargeLineDiv.appendChild(currencySelect);
+    chargeLineDiv.appendChild(amountInput);
+    chargeLineDiv.appendChild(deleteBtn);
+
     manualChargesContainer.appendChild(chargeLineDiv);
 
-    const qtyInput = chargeLineDiv.querySelector(
-      'input[name="charge_quantity[]"]'
-    );
-    const priceInput = chargeLineDiv.querySelector(
-      'input[name="charge_unit_price[]"]'
-    );
-    [qtyInput, priceInput].forEach((input) => {
-      input.addEventListener("input", () =>
-        calculateAndUpdateChargeLineAmount(chargeLineDiv)
-      );
-    });
+    if (!isReadOnly) {
+      [qtyInput, priceInput].forEach((input) => {
+        input.addEventListener("input", () =>
+          calculateAndUpdateChargeLineAmount(chargeLineDiv)
+        );
+      });
+    }
 
-    if (chargeData) calculateAndUpdateChargeLineAmount(chargeLineDiv);
-    else calculateAndUpdateChargeLineAmount(chargeLineDiv);
+    calculateAndUpdateChargeLineAmount(chargeLineDiv);
     updateManualTotals();
   }
 
@@ -994,21 +1050,21 @@
     initializeInvoicesTable(allInvoicesData);
   }
 
+  // ===== REEMPLAZAR FUNCIÓN COMPLETA =====
   function renderInvoiceDetail(invoiceId) {
     let invoice = allInvoicesData.find((inv) => inv.id === invoiceId);
 
-    if (!invoice) {
-      if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-        const historyTableInstance = $(
-          invoiceHistoryTableHtmlElement
-        ).DataTable();
-        const historyRowData = historyTableInstance
-          .rows()
-          .data()
-          .toArray()
-          .find((inv) => inv.id === invoiceId);
-        if (historyRowData) invoice = historyRowData;
-      }
+    if (
+      !invoice &&
+      $.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)
+    ) {
+      const historyRowData = $(invoiceHistoryTableHtmlElement)
+        .DataTable()
+        .rows()
+        .data()
+        .toArray()
+        .find((inv) => inv.id === invoiceId);
+      if (historyRowData) invoice = historyRowData;
     }
 
     if (!invoice) {
@@ -1021,8 +1077,53 @@
       viewInvoiceNumberSpan.textContent = invoice.invoice_number;
 
     let chargesHtml = "";
-    (invoice.charges || []).forEach((charge) => {
-      chargesHtml += `
+    const firstCharge = (invoice.charges || [])[0];
+    const isServiceInvoice =
+      firstCharge && firstCharge.internal_cost !== undefined;
+
+    if (isServiceInvoice) {
+      // --- VISTA DETALLADA CON TABLA REAL ---
+      chargesHtml = `
+      <table class="invoice-items-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Description</th>
+            <th style="text-align:right;">Internal Cost</th>
+            <th style="text-align:right;">Margin %</th>
+            <th style="text-align:right;">Final Price</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      (invoice.charges || []).forEach((charge) => {
+        chargesHtml += `
+            <tr>
+              <td>${charge.name || "N/A"}</td>
+              <td style="text-align:right;">${(
+                charge.internal_cost || 0
+              ).toFixed(2)} ${charge.currency}</td>
+              <td style="text-align:right;">${charge.margin_percent || 0}%</td>
+              <td style="text-align:right;" class="charge-final">${(
+                charge.amount || 0
+              ).toFixed(2)} ${charge.currency}</td>
+            </tr>`;
+      });
+      chargesHtml += `</tbody></table>`;
+    } else {
+      // --- VISTA SIMPLE PARA FACTURAS MANUALES (SIN CAMBIOS) ---
+      chargesHtml = `
+      <table class="invoice-items-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Description</th>
+            <th style="text-align:right;">Quantity</th>
+            <th style="text-align:right;">Unit Price</th>
+            <th style="text-align:center;">Currency</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      (invoice.charges || []).forEach((charge) => {
+        chargesHtml += `
         <tr>
           <td>${charge.name || "N/A"}</td>
           <td style="text-align:right;">${(charge.quantity || 0).toFixed(
@@ -1034,24 +1135,14 @@
           <td style="text-align:center;">${charge.currency || "USD"}</td>
           <td style="text-align:right;">${(charge.amount || 0).toFixed(2)}</td>
         </tr>`;
-    });
-
-    let totalsHtml = "";
-    const displayTotals =
-      invoice.totals_by_currency &&
-      typeof invoice.totals_by_currency === "object" &&
-      Object.keys(invoice.totals_by_currency).length > 0
-        ? invoice.totals_by_currency
-        : (invoice.charges || []).reduce((acc, charge) => {
-            const currency = charge.currency || "USD";
-            acc[currency] = (acc[currency] || 0) + (charge.amount || 0);
-            return acc;
-          }, {});
-
-    for (const curr in displayTotals) {
-      totalsHtml += `<tr><td colspan="4" style="text-align:right; font-weight:bold;">TOTAL (${curr}):</td><td style="text-align:right; font-weight:bold;">${parseFloat(
-        displayTotals[curr] || 0
-      ).toFixed(2)}</td></tr>`;
+      });
+      let totalsHtmlSimple = "";
+      for (const curr in invoice.totals_by_currency) {
+        totalsHtmlSimple += `<tr><td colspan="4" style="text-align:right; font-weight:bold;">TOTAL (${curr}):</td><td style="text-align:right; font-weight:bold;">${parseFloat(
+          invoice.totals_by_currency[curr] || 0
+        ).toFixed(2)}</td></tr>`;
+      }
+      chargesHtml += `</tbody><tfoot>${totalsHtmlSimple}</tfoot></table>`;
     }
 
     const displayInvoiceDate =
@@ -1063,12 +1154,20 @@
         ? new Date(invoice.due_date + "T00:00:00Z").toLocaleDateString()
         : "N/A";
 
+    let totalsHtmlDetailed = "";
+    if (isServiceInvoice) {
+      for (const curr in invoice.totals_by_currency) {
+        totalsHtmlDetailed += `<div class="invoice-total-line"><strong>TOTAL (${curr}):</strong> <strong>${parseFloat(
+          invoice.totals_by_currency[curr] || 0
+        ).toFixed(2)}</strong></div>`;
+      }
+    }
+
     invoiceContentContainer.innerHTML = `
       <div class="invoice-preview" style="padding:15px; background: #fff; border: 1px solid #eee; border-radius: 5px;">
         <div class="invoice-header" style="display:flex; justify-content:space-between; margin-bottom:20px; padding-bottom:10px; border-bottom:1px solid #eee;">
           <div class="invoice-logo">
             <img src="/assets/logo.png" alt="Goldmex Logo" style="height: 50px; max-width: 180px;" onerror="this.style.display='none'; this.outerHTML='<span>Goldmex Logo</span>'"/>
-            <p style="font-size:0.8em; color:#777; margin-top:5px;">GMX E-Commerce Services, LLC</p>
           </div>
           <div class="invoice-company-details" style="text-align:right; font-size:0.9em;">
             2345 Michael Faraday Dr. Ste. 8<br>San Diego CA 92154, USA
@@ -1096,31 +1195,27 @@
             <strong>Due Date:</strong> ${displayDueDate}
           </div>
         </div>
-        <table class="invoice-items-table" style="width:100%; border-collapse:collapse; font-size:0.85em;">
-          <thead>
-            <tr>
-              <th style="border:1px solid #ddd; padding:8px; background:#f9f9f9; text-align:left;">Description</th>
-              <th style="border:1px solid #ddd; padding:8px; background:#f9f9f9; text-align:right;">Quantity</th>
-              <th style="border:1px solid #ddd; padding:8px; background:#f9f9f9; text-align:right;">Unit Price</th>
-              <th style="border:1px solid #ddd; padding:8px; background:#f9f9f9; text-align:center;">Currency</th>
-              <th style="border:1px solid #ddd; padding:8px; background:#f9f9f9; text-align:right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>${chargesHtml}</tbody>
-          <tfoot>${totalsHtml}</tfoot>
-        </table>
+        <h4 class="it-charges-title">Charges</h4>
+        <div class="it-charges-wrapper">
+            ${chargesHtml}
+        </div>
+        ${
+          isServiceInvoice
+            ? `<div class="invoice-totals">${totalsHtmlDetailed}</div>`
+            : ""
+        }
         <div class="invoice-footer" style="margin-top:20px; font-size:0.8em; text-align:center; color:#777;">
-          ${
-            invoice.payment_communication
-              ? `<p><strong>Payment Communication:</strong> ${invoice.payment_communication}</p>`
-              : ""
-          }
-          ${
-            invoice.notes
-              ? `<p><strong>Notes:</strong> ${invoice.notes}</p>`
-              : ""
-          }
-          <p>Thank you for your business!</p>
+            ${
+              invoice.payment_communication
+                ? `<p><strong>Payment Communication:</strong> ${invoice.payment_communication}</p>`
+                : ""
+            }
+            ${
+              invoice.notes
+                ? `<p><strong>Notes:</strong> ${invoice.notes}</p>`
+                : ""
+            }
+            <p>Thank you for your business!</p>
         </div>
       </div>`;
     openItModal(viewInvoiceModal);
@@ -1177,20 +1272,27 @@
       case "view":
         renderInvoiceDetail(invoiceId);
         break;
-      case "edit":
+
+      case "edit": // ===== INICIA LÓGICA DE EDICIÓN INTELIGENTE =====
         if (tableType === "history") {
-          showItNotification(
-            "Historical invoices typically cannot be edited directly. Consider creating a credit note or new invoice.",
-            "info"
-          );
+          showItNotification("Historical invoices cannot be edited.", "info");
           return;
         }
+
         resetManualInvoiceForm();
         currentEditingInvoiceId = invoiceId;
-        if (manualInvoiceModalTitle)
-          manualInvoiceModalTitle.innerHTML = `<i class='bx bx-edit-alt'></i> Edit Invoice ${invoiceRow.invoice_number}`;
-        if (manualInvoiceIdInput) manualInvoiceIdInput.value = invoiceRow.id;
 
+        const isServiceInvoice = !!invoiceRow.service_id_fk;
+
+        // Ocultar o mostrar el botón de "Add Charge Line"
+        if (addChargeLineBtn) {
+          addChargeLineBtn.style.display = isServiceInvoice ? "none" : "block";
+        }
+
+        // Llenar el formulario con los datos generales (siempre editables)
+        if (manualInvoiceModalTitle)
+          manualInvoiceModalTitle.innerHTML = `<i class='bx bx-edit'></i> Edit Invoice ${invoiceRow.invoice_number}`;
+        if (manualInvoiceIdInput) manualInvoiceIdInput.value = invoiceRow.id;
         document.getElementById("manualCustomerName").value =
           invoiceRow.customer_name || "";
         document.getElementById("manualCustomerAddress").value =
@@ -1213,15 +1315,24 @@
           invoiceRow.payment_communication || "";
         document.getElementById("manualNotes").value = invoiceRow.notes || "";
 
-        (invoiceRow.charges || []).forEach((charge) => addChargeLine(charge));
-        if ((invoiceRow.charges || []).length === 0) addChargeLine();
+        // Poblar los cargos, pasando el indicador de solo lectura si es de servicio
+        (invoiceRow.charges || []).forEach((charge) =>
+          addChargeLine(charge, isServiceInvoice)
+        );
+
+        // Si es una factura manual sin cargos, agregar una línea en blanco
+        if ((invoiceRow.charges || []).length === 0 && !isServiceInvoice) {
+          addChargeLine(null, false);
+        }
 
         updateManualTotals();
         openItModal(manualInvoiceModal);
-        break;
+        break; // ===== FIN DE LÓGICA DE EDICIÓN INTELIGENTE =====
+
       case "download":
         handleDownloadPdf(invoiceId);
         break;
+
       case "mark-paid":
         if (
           tableType === "history" &&
@@ -1243,6 +1354,7 @@
           confirmChangeStatusBtn.dataset.invoiceId = invoiceId;
         openItModal(changeInvoiceStatusModal);
         break;
+
       case "cancel":
         if (
           tableType === "history" &&
@@ -1264,6 +1376,7 @@
           confirmChangeStatusBtn.dataset.invoiceId = invoiceId;
         openItModal(changeInvoiceStatusModal);
         break;
+
       default:
         console.warn("Unknown invoice action:", action);
     }
