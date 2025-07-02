@@ -1643,15 +1643,15 @@ body.dark-mode #viewServiceChargesContainer .charge-total-amount-view {
     width: 100%;
   }
 }
-/* ===== INICIA SECCIÓN DE CARGOS - CÓDIGO FINAL Y CORRECTO ===== */
 
-/* 1. Estilo para el contenedor de cada cargo. */
+/* ===== BEGIN CHARGES SECTION - DEFINITIVE SOLUTION (3x4 LAYOUT) ===== */
+
+/* 1. Main container with a 12-column base grid for precision. */
 .st-charge-row {
   display: grid;
-  /* La clave: 3 columnas de tamaño idéntico (1fr = 1 fracción del espacio disponible) */
-  grid-template-columns: 1.5fr 1fr 1fr;
-  /* Espacio entre las filas y columnas */
-  gap: 0.75rem 1rem;
+  /* A 12-column base grid gives us perfect control for 3- and 4-item rows. */
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
   padding: 1rem;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1659,87 +1659,85 @@ body.dark-mode #viewServiceChargesContainer .charge-total-amount-view {
   margin-bottom: 1rem;
 }
 
-/* 2. Contenedor para cada campo (etiqueta + input). */
+/* 2. Assign column spans for ROW 1 (3 items). */
+.st-field-charge-type,
+.st-field-provider,
+.st-field-provider-cost {
+  /* Each field spans 4 of the 12 columns, creating 3 equal parts. */
+  grid-column: span 4;
+}
+
+/* 3. Assign column spans for ROW 2 (4 items). */
+.st-field-margin,
+.st-field-final-price,
+.st-field-currency,
+.st-field-action {
+  /* Each field spans 3 of the 12 columns, creating 4 equal parts. */
+  grid-column: span 3;
+}
+
+/* 4. This ensures the label is always ON TOP of its input. */
 .st-charge-field {
   display: flex;
   flex-direction: column;
 }
 
-/* 3. Estilo para las etiquetas de cada campo. */
+/* 5. Style for the labels. */
 .st-charge-field label {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.7rem;
+  font-weight: 600;
   color: var(--color-text-secondary);
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.25rem;
   text-transform: uppercase;
 }
 
-/* 4. Estilo general para todos los inputs y selects dentro de la fila. */
+/* 6. General style for inputs and selects within the row. */
 .st-charge-row input,
-.st-charge-row select,
-.st-charge-row button {
+.st-charge-row select {
     width: 100%;
     box-sizing: border-box;
-    min-width: 0;
     border: 1px solid var(--color-border);
-    border-radius: 0.4rem;
-    padding: 0.6rem;
+    border-radius: 0.3rem;
+    padding: 0.55rem;
     background-color: var(--color-bg);
-    transition: all 0.2s ease-in-out;
-    color: var(--color-text-primary); /* <-- AÑADE ESTA LÍNEA */
-}
-.st-charge-row input:focus,
-.st-charge-row select:focus {
-    outline: none;
-    border-color: var(--goldmex-secondary-color);
-    box-shadow: 0 0 0 2px rgba(var(--goldmex-secondary-color-rgb), 0.3);
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
 }
 
-/* 5. Estilos específicos por campo. */
-
-/* Campo "Final Price" (solo lectura) */
-.st-charge-row input[name="final_price[]"] {
-  background-color: #e9f5e9;
-  border-color: #a3d9a5;
-  color: #216e4e;
-  font-weight: 600;
-  cursor: not-allowed;
+/* 7. Style for the delete button. */
+.st-field-action {
+    justify-content: flex-end; /* Aligns the button to the bottom */
 }
-body.dark-mode .st-charge-row input[name="final_price[]"] {
-    background-color: rgba(var(--goldmex-success-color-dark-rgb, 81, 207, 102), 0.1);
-    border-color: rgba(var(--goldmex-success-color-dark-rgb, 81, 207, 102), 0.4);
-    color: var(--goldmex-success-color-dark, #51cf66);
-}
-
-/* Campos de número centrados */
-.st-charge-row input[name="internal_cost[]"],
-.st-charge-row input[name="margin_percent[]"] {
-    text-align: center;
-}
-
-/* Botón de eliminar con diseño y animación */
-.st-charge-row .st-charge-delete-btn {
+.st-field-action .st-charge-delete-btn {
   background-color: transparent;
-  border-color: transparent;
   color: var(--color-text-secondary);
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: 1px solid var(--color-border);
   cursor: pointer;
+  height: 38px; /* Match input height for alignment */
+  transition: all 0.2s ease;
 }
-.st-charge-row .st-charge-delete-btn:hover {
-  background-color:#e31837;
-  color: var(--goldmex-white-color);
+.st-field-action .st-charge-delete-btn:hover {
+  background-color: #e31837;
   border-color: var(--goldmex-accent-color);
-  transform: scale(1.1);
+  color: var(--goldmex-white-color);
 }
 
-/* 6. En móvil, todo se apila en una sola columna para mejor visualización. */
+/* 8. Responsive layout for smaller screens (now simplified). */
+@media (max-width: 991px) {
+  .st-charge-row {
+      /* On tablets, stack everything for clarity. */
+      grid-template-columns: repeat(2, 1fr);
+  }
+  /* Remove specific spans on tablets to let them flow naturally in 2 columns */
+  .st-charge-row .st-charge-field {
+      grid-column: span 1 !important;
+  }
+}
 @media (max-width: 768px) {
   .st-charge-row {
+      /* On mobile, stack everything in 1 column. */
       grid-template-columns: 1fr;
   }
 }
 
-/* ===== FIN DE SECCIÓN ===== */
+/* ===== END OF SECTION ===== */
