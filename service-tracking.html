@@ -112,7 +112,8 @@
                             <h4 class="st-form-section-title"><i class='bx bx-info-circle'></i> General Information</h4>
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
-                                    <label for="serviceCategoryModal">Service Type: <span class="st-required">*</span></label>
+                                    <label for="serviceCategoryModal">Service Type: <span
+                                            class="st-required">*</span></label>
                                     <select id="serviceCategoryModal" name="serviceCategoryModal" required>
                                         <option value="" disabled selected>Select a type...</option>
                                         <option value="ocean">🌊 Ocean</option>
@@ -122,7 +123,8 @@
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="customerModal">Customer: <span class="st-required">*</span></label>
-                                    <input type="text" id="customerModal" name="customerModal" placeholder="Customer Name" required>
+                                    <input type="text" id="customerModal" name="customerModal"
+                                        placeholder="Customer Name" required>
                                 </div>
                             </div>
                             <div class="st-form-row">
@@ -142,21 +144,26 @@
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="shipperModal">Shipper: <span class="st-required">*</span></label>
-                                    <input type="text" id="shipperModal" name="shipperModal" placeholder="Shipper Name" required>
+                                    <input type="text" id="shipperModal" name="shipperModal" placeholder="Shipper Name"
+                                        required>
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="consigneeModal">Consignee: <span class="st-required">*</span></label>
-                                    <input type="text" id="consigneeModal" name="consigneeModal" placeholder="Consignee Name" required>
+                                    <input type="text" id="consigneeModal" name="consigneeModal"
+                                        placeholder="Consignee Name" required>
                                 </div>
                             </div>
                             <div class="st-form-row">
-                                 <div class="st-form-group st-form-group-col">
+                                <div class="st-form-group st-form-group-col">
                                     <label for="carrierModal">Carrier: <span class="st-required">*</span></label>
-                                    <input type="text" id="carrierModal" name="carrierModal" placeholder="Carrier Name" required>
+                                    <input type="text" id="carrierModal" name="carrierModal" placeholder="Carrier Name"
+                                        required>
                                 </div>
-                                <div class="st-form-group st-form-group-col" id="flightNumberGroupModal" style="display:none;">
+                                <div class="st-form-group st-form-group-col" id="flightNumberGroupModal"
+                                    style="display:none;">
                                     <label for="flightNumberModal">Flight Number (Air):</label>
-                                    <input type="text" id="flightNumberModal" name="flightNumberModal" placeholder="Flight Number">
+                                    <input type="text" id="flightNumberModal" name="flightNumberModal"
+                                        placeholder="Flight Number">
                                 </div>
                             </div>
                         </div>
@@ -168,25 +175,29 @@
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="polModal">POL:</label>
-                                    <input type="text" id="polModal" name="polModal" placeholder="Port/Point of Loading">
+                                    <input type="text" id="polModal" name="polModal"
+                                        placeholder="Port/Point of Loading">
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="podModal">POD:</label>
-                                    <input type="text" id="podModal" name="podModal" placeholder="Port/Point of Discharge">
+                                    <input type="text" id="podModal" name="podModal"
+                                        placeholder="Port/Point of Discharge">
                                 </div>
                             </div>
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="finalDestinationModal">Final Destination:</label>
-                                    <input type="text" id="finalDestinationModal" name="finalDestinationModal" placeholder="Final Destination">
+                                    <input type="text" id="finalDestinationModal" name="finalDestinationModal"
+                                        placeholder="Final Destination">
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="mblHawbModal">MBL / MAWB / PRO:</label>
                                     <input type="text" id="mblHawbModal" name="mblHawbModal" placeholder="MBL/MAWB/PRO">
                                 </div>
                             </div>
-                             <div class="st-form-row">
-                                <div class="st-form-group st-form-group-col" id="hblHawbGroupModal" style="display:none;">
+                            <div class="st-form-row">
+                                <div class="st-form-group st-form-group-col" id="hblHawbGroupModal"
+                                    style="display:none;">
                                     <label for="hblModal">HBL (Ocean) / HAWB (Air):</label>
                                     <input type="text" id="hblModal" name="hblModal" placeholder="HBL / HAWB">
                                 </div>
@@ -195,37 +206,44 @@
                         </div>
 
                         <div class="st-form-section">
-                             <h4 class="st-form-section-title"><i class='bx bx-cog'></i> Service Specifics</h4>
+                            <h4 class="st-form-section-title"><i class='bx bx-cog'></i> Service Specifics</h4>
                             <div id="oceanFieldsModal" class="st-service-type-fields">
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
-                                        <label for="oceanServiceTypeModal">Ocean Service Type: <span class="st-required">*</span></label>
-                                        <select id="oceanServiceTypeModal" name="oceanServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <label for="oceanServiceTypeModal">Ocean Service Type: <span
+                                                class="st-required">*</span></label>
+                                        <select id="oceanServiceTypeModal" name="oceanServiceTypeModal">
+                                            <!-- Required se validará en JS -->
                                             <option value="" disabled selected>Select...</option>
-                                            <option value="LCL">LCL</option> <option value="FCL">FCL</option>
+                                            <option value="LCL">LCL</option>
+                                            <option value="FCL">FCL</option>
                                         </select>
                                     </div>
                                     <div class="st-form-group st-form-group-col">
-                                        <label for="oceanServiceModal">Ocean Service: <span class="st-required">*</span></label>
-                                        <select id="oceanServiceModal" name="oceanServiceModal"> <!-- Required se validará en JS -->
+                                        <label for="oceanServiceModal">Ocean Service: <span
+                                                class="st-required">*</span></label>
+                                        <select id="oceanServiceModal" name="oceanServiceModal">
+                                            <!-- Required se validará en JS -->
                                             <option value="" disabled selected>Select...</option>
-                                            <option value="Door to Door">Door to Door</option> <option value="Door to Port">Door to Port</option>
-                                            <option value="Port to Door">Port to Door</option> <option value="Port to Port">Port to Port</option>
+                                            <option value="Door to Door">Door to Door</option>
+                                            <option value="Door to Port">Door to Port</option>
+                                            <option value="Port to Door">Port to Door</option>
+                                            <option value="Port to Port">Port to Port</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="st-form-row" id="containerFieldsModal" style="display:none;">
-                                     <div class="st-form-group st-form-group-col">
+                                    <div class="st-form-group st-form-group-col">
                                         <label for="containerNumberModal">Container Number:</label>
                                         <input type="text" id="containerNumberModal" name="containerNumberModal">
                                     </div>
-                                     <div class="st-form-group st-form-group-col">
+                                    <div class="st-form-group st-form-group-col">
                                         <label for="containerTypeModal">Container Type:</label>
                                         <input type="text" id="containerTypeModal" name="containerTypeModal">
                                     </div>
                                 </div>
                                 <div class="st-form-row">
-                                     <div class="st-form-group st-form-group-col">
+                                    <div class="st-form-group st-form-group-col">
                                         <label for="sealNumberModal">Seal Number:</label>
                                         <input type="text" id="sealNumberModal" name="sealNumberModal">
                                     </div>
@@ -236,22 +254,28 @@
                                         <label for="isfFileModal">ISF File:</label>
                                         <input type="file" id="isfFileModal" name="isfFileModal" class="st-file-input">
                                     </div>
-                                    <div class="st-form-group st-form-group-col st-checkbox-group" style="align-self: flex-end; padding-bottom: 0.7rem;">
+                                    <div class="st-form-group st-form-group-col st-checkbox-group"
+                                        style="align-self: flex-end; padding-bottom: 0.7rem;">
                                         <input type="checkbox" id="addIsfLaterModal" name="addIsfLaterModal">
-                                        <label for="addIsfLaterModal">Add ISF Later <span class="st-required" id="isfRequiredIndicatorModal">*</span></label>
+                                        <label for="addIsfLaterModal">Add ISF Later <span class="st-required"
+                                                id="isfRequiredIndicatorModal">*</span></label>
                                     </div>
                                 </div>
                                 <p class="st-validation-error" id="isfErrorModal" style="display:none;"></p>
                             </div>
                             <div id="truckFieldsModal" class="st-service-type-fields">
-                                 <div class="st-form-row">
+                                <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
-                                        <label for="truckServiceTypeModal">Truck Service Type: <span class="st-required">*</span></label>
-                                        <select id="truckServiceTypeModal" name="truckServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <label for="truckServiceTypeModal">Truck Service Type: <span
+                                                class="st-required">*</span></label>
+                                        <select id="truckServiceTypeModal" name="truckServiceTypeModal">
+                                            <!-- Required se validará en JS -->
                                             <option value="" disabled selected>Select...</option>
-                                            <option value="FTL">FTL</option> <option value="LTL">LTL</option>
+                                            <option value="FTL">FTL</option>
+                                            <option value="LTL">LTL</option>
                                         </select>
-                                    </div> <div class="st-form-group st-form-group-col"></div>
+                                    </div>
+                                    <div class="st-form-group st-form-group-col"></div>
                                 </div>
                             </div>
                             <div id="airFieldsModal" class="st-service-type-fields">
@@ -259,7 +283,7 @@
                             </div>
                         </div>
                     </div>
-                     <!-- Fila Inferior del Formulario (abarca ambas columnas del formulario si es necesario) -->
+                    <!-- Fila Inferior del Formulario (abarca ambas columnas del formulario si es necesario) -->
                     <div class="st-form-bottom-row">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bxs-package'></i> Cargo Details</h4>
@@ -286,7 +310,8 @@
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col-full">
                                     <label for="commodityDescriptionModal">Commodity Description:</label>
-                                    <textarea id="commodityDescriptionModal" name="commodityDescriptionModal" rows="2"></textarea>
+                                    <textarea id="commodityDescriptionModal" name="commodityDescriptionModal"
+                                        rows="2"></textarea>
                                 </div>
                             </div>
                             <div class="st-form-row">
@@ -298,15 +323,19 @@
                             </div>
                         </div>
                         <div class="st-form-section">
-                             <h4 class="st-form-section-title"><i class='bx bx-analyse'></i> Status & Notes</h4>
+                            <h4 class="st-form-section-title"><i class='bx bx-analyse'></i> Status & Notes</h4>
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="serviceStatusModal">Initial Status:</label>
                                     <select id="serviceStatusModal" name="serviceStatusModal">
-                                        <option value="Pending" selected>Pending</option> <option value="Booked">Booked</option>
-                                        <option value="In Transit">In Transit</option> <option value="At Destination">At Destination</option>
-                                        <option value="Delivered">Delivered</option> <option value="On Hold">On Hold</option>
-                                        <option value="Cancelled">Cancelled</option> <option value="Completed">Completed</option>
+                                        <option value="Pending" selected>Pending</option>
+                                        <option value="Booked">Booked</option>
+                                        <option value="In Transit">In Transit</option>
+                                        <option value="At Destination">At Destination</option>
+                                        <option value="Delivered">Delivered</option>
+                                        <option value="On Hold">On Hold</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                        <option value="Completed">Completed</option>
                                     </select>
                                 </div>
                                 <div class="st-form-group st-form-group-col"></div>
@@ -328,12 +357,7 @@
                     <button type="button" id="addChargeBtn_create" class="btn-goldmex-secondary btn-add-charge">
                         <i class='bx bx-plus'></i> Add Charge
                     </button>
-                    <div class="st-charges-header-row">
-                        <div class="st-charge-header-item charge-name-header">Charge Type</div>
-                        <div class="st-charge-header-item charge-cost-header">Price</div>
-                        <div class="st-charge-header-item charge-currency-header">Currency</div>
-                        <div class="st-charge-header-item charge-action-header">Action</div>
-                    </div>
+                   
                     <div id="chargesContainerModal_create" class="st-charges-list-container">
                         <!-- Charge rows will be added here by JavaScript -->
                     </div>
@@ -341,7 +365,8 @@
             </form>
             <div class="st-modal-footer">
                 <button type="button" id="cancelServiceBtn" class="btn-goldmex-secondary">Cancel</button>
-                <button type="submit" form="newServiceForm" id="createServiceBtn" class="btn-goldmex-primary">Create Service</button>
+                <button type="submit" form="newServiceForm" id="createServiceBtn" class="btn-goldmex-primary">Create
+                    Service</button>
             </div>
         </div>
     </div>
@@ -350,7 +375,8 @@
     <div id="viewServiceModal" class="st-modal">
         <div class="st-modal-content st-modal-content-xlarge">
             <div class="st-modal-header">
-                <h3 id="viewServiceModalTitle"><i class='bx bx-show-alt'></i> Service Details <span id="viewServiceTypeBadge" class="st-type-badge"></span></h3>
+                <h3 id="viewServiceModalTitle"><i class='bx bx-show-alt'></i> Service Details <span
+                        id="viewServiceTypeBadge" class="st-type-badge"></span></h3>
                 <button class="st-close-button" id="closeViewServiceModalBtn" aria-label="Close modal">&times;</button>
             </div>
             <div id="viewServiceDetailsBody" class="st-modal-body st-modal-body-columns">
@@ -358,66 +384,99 @@
                     <div class="st-detail-section">
                         <h4><i class='bx bx-info-circle'></i> General Information</h4>
                         <div class="st-detail-grid">
-                            <div class="st-detail-group"><span class="st-detail-label">Service ID:</span><span class="st-detail-value" id="viewServiceId"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Customer:</span><span class="st-detail-value" id="viewCustomer"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">ETD:</span><span class="st-detail-value" id="viewEtd"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">ETA:</span><span class="st-detail-value" id="viewEta"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Shipper:</span><span class="st-detail-value" id="viewShipper"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Consignee:</span><span class="st-detail-value" id="viewConsignee"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Carrier:</span><span class="st-detail-value" id="viewCarrier"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">POL:</span><span class="st-detail-value" id="viewPol"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">POD:</span><span class="st-detail-value" id="viewPod"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Final Destination:</span><span class="st-detail-value" id="viewFinalDestination"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">MBL/MAWB/PRO:</span><span class="st-detail-value" id="viewMblHawbPro"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Status:</span><span class="st-detail-value" id="viewServiceStatus"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Service ID:</span><span
+                                    class="st-detail-value" id="viewServiceId"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Customer:</span><span
+                                    class="st-detail-value" id="viewCustomer"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">ETD:</span><span
+                                    class="st-detail-value" id="viewEtd"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">ETA:</span><span
+                                    class="st-detail-value" id="viewEta"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Shipper:</span><span
+                                    class="st-detail-value" id="viewShipper"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Consignee:</span><span
+                                    class="st-detail-value" id="viewConsignee"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Carrier:</span><span
+                                    class="st-detail-value" id="viewCarrier"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">POL:</span><span
+                                    class="st-detail-value" id="viewPol"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">POD:</span><span
+                                    class="st-detail-value" id="viewPod"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Final Destination:</span><span
+                                    class="st-detail-value" id="viewFinalDestination"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">MBL/MAWB/PRO:</span><span
+                                    class="st-detail-value" id="viewMblHawbPro"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Status:</span><span
+                                    class="st-detail-value" id="viewServiceStatus"></span></div>
                         </div>
                     </div>
                     <div id="viewOceanSpecificDetails" class="st-detail-section" style="display:none;">
                         <h4>🌊 Ocean Details</h4>
                         <div class="st-detail-grid">
-                            <div class="st-detail-group"><span class="st-detail-label">HBL:</span><span class="st-detail-value" id="viewHblOcean"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Ocean Service Type:</span><span class="st-detail-value" id="viewOceanServiceType"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Ocean Service:</span><span class="st-detail-value" id="viewOceanService"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Container Number:</span><span class="st-detail-value" id="viewContainerNumber"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Container Type:</span><span class="st-detail-value" id="viewContainerType"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Seal Number:</span><span class="st-detail-value" id="viewSealNumber"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">HBL:</span><span
+                                    class="st-detail-value" id="viewHblOcean"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Ocean Service Type:</span><span
+                                    class="st-detail-value" id="viewOceanServiceType"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Ocean Service:</span><span
+                                    class="st-detail-value" id="viewOceanService"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Container Number:</span><span
+                                    class="st-detail-value" id="viewContainerNumber"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Container Type:</span><span
+                                    class="st-detail-value" id="viewContainerType"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Seal Number:</span><span
+                                    class="st-detail-value" id="viewSealNumber"></span></div>
                         </div>
                     </div>
                     <div id="viewAirSpecificDetails" class="st-detail-section" style="display:none;">
                         <h4>✈️ Air Details</h4>
                         <div class="st-detail-grid">
-                            <div class="st-detail-group"><span class="st-detail-label">HAWB:</span><span class="st-detail-value" id="viewHblAir"></span></div>
-                            <div class="st-detail-group" id="viewFlightNumberGroup"><span class="st-detail-label">Flight Number:</span><span class="st-detail-value" id="viewFlightNumber"></span></div>
-                            <div class="st-detail-group" id="viewDimensionsAirGroup"><span class="st-detail-label">Dimensions:</span><span class="st-detail-value" id="viewDimensionsAir"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">HAWB:</span><span
+                                    class="st-detail-value" id="viewHblAir"></span></div>
+                            <div class="st-detail-group" id="viewFlightNumberGroup"><span class="st-detail-label">Flight
+                                    Number:</span><span class="st-detail-value" id="viewFlightNumber"></span></div>
+                            <div class="st-detail-group" id="viewDimensionsAirGroup"><span
+                                    class="st-detail-label">Dimensions:</span><span class="st-detail-value"
+                                    id="viewDimensionsAir"></span></div>
                         </div>
                     </div>
                     <div id="viewTruckSpecificDetails" class="st-detail-section" style="display:none;">
                         <h4>🚚 Truck Details</h4>
                         <div class="st-detail-grid">
-                            <div class="st-detail-group"><span class="st-detail-label">Truck Service Type:</span><span class="st-detail-value" id="viewTruckServiceType"></span></div>
-                            <div class="st-detail-group" id="viewDimensionsTruckGroup"><span class="st-detail-label">Dimensions:</span><span class="st-detail-value" id="viewDimensionsTruck"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">CBM:</span><span class="st-detail-value" id="viewCbm"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Truck Service Type:</span><span
+                                    class="st-detail-value" id="viewTruckServiceType"></span></div>
+                            <div class="st-detail-group" id="viewDimensionsTruckGroup"><span
+                                    class="st-detail-label">Dimensions:</span><span class="st-detail-value"
+                                    id="viewDimensionsTruck"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">CBM:</span><span
+                                    class="st-detail-value" id="viewCbm"></span></div>
                         </div>
                     </div>
                     <div class="st-detail-section">
                         <h4><i class='bx bx-package'></i> Cargo Details</h4>
                         <div class="st-detail-grid">
-                            <div class="st-detail-group"><span class="st-detail-label"># Packages/Pieces:</span><span class="st-detail-value" id="viewNumPackages"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">Gross Weight:</span><span class="st-detail-value" id="viewGrossWeight"></span></div>
-                            <div class="st-detail-group st-detail-full-width"><span class="st-detail-label">Commodity Description:</span><span class="st-detail-value" id="viewCommodityDescription"></span></div>
-                            <div class="st-detail-group"><span class="st-detail-label">HTS Code:</span><span class="st-detail-value" id="viewHtsCode"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label"># Packages/Pieces:</span><span
+                                    class="st-detail-value" id="viewNumPackages"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Gross Weight:</span><span
+                                    class="st-detail-value" id="viewGrossWeight"></span></div>
+                            <div class="st-detail-group st-detail-full-width"><span class="st-detail-label">Commodity
+                                    Description:</span><span class="st-detail-value"
+                                    id="viewCommodityDescription"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">HTS Code:</span><span
+                                    class="st-detail-value" id="viewHtsCode"></span></div>
                         </div>
                     </div>
                     <div class="st-detail-section">
                         <h4><i class='bx bx-note'></i> Additional Notes</h4>
                         <div class="st-detail-group st-detail-full-width">
-                            <span class="st-detail-value" id="viewServiceNotes" style="white-space: pre-wrap; padding-left:0;"></span>
+                            <span class="st-detail-value" id="viewServiceNotes"
+                                style="white-space: pre-wrap; padding-left:0;"></span>
                         </div>
                     </div>
-                     <div class="st-detail-section">
+                    <div class="st-detail-section">
                         <h4><i class='bx bx-user-circle'></i> Creator Information</h4>
                         <div class="st-detail-grid">
-                            <div class="st-detail-group"><span class="st-detail-label">Created By:</span><span class="st-detail-value" id="viewServiceCreator"></span></div>
+                            <div class="st-detail-group"><span class="st-detail-label">Created By:</span><span
+                                    class="st-detail-value" id="viewServiceCreator"></span></div>
                         </div>
                     </div>
                 </div>
@@ -427,7 +486,9 @@
                     </h4>
                     <div id="viewServiceChargesContainer" class="st-charges-list-container-view">
                         <!-- Charges will be listed here by JavaScript -->
-                        <p id="viewNoChargesMessage" class="st-detail-value" style="font-style: italic; display: none; text-align:center; padding:1rem;">No charges associated with this service.</p>
+                        <p id="viewNoChargesMessage" class="st-detail-value"
+                            style="font-style: italic; display: none; text-align:center; padding:1rem;">No charges
+                            associated with this service.</p>
                     </div>
                 </div>
             </div>
@@ -441,7 +502,10 @@
     <div id="editServiceModal" class="st-modal">
         <div class="st-modal-content st-modal-content-xlarge"> <!-- XLARGE for the new layout -->
             <div class="st-modal-header">
-                <h3><i class='bx bx-edit-alt'></i> Edit Service <span id="editServiceDisplayIdHeader" class="st-type-badge" style="font-size: 0.9em; background-color: transparent; color: var(--color-text-secondary); border: none; padding-left: 5px;"></span></h3>
+                <h3><i class='bx bx-edit-alt'></i> Edit Service <span id="editServiceDisplayIdHeader"
+                        class="st-type-badge"
+                        style="font-size: 0.9em; background-color: transparent; color: var(--color-text-secondary); border: none; padding-left: 5px;"></span>
+                </h3>
                 <button class="st-close-button" id="closeEditServiceModalBtn" aria-label="Close modal">&times;</button>
             </div>
             <form id="editServiceForm" class="st-modal-body st-modal-body-columns">
@@ -453,7 +517,8 @@
                             <h4 class="st-form-section-title"><i class='bx bx-info-circle'></i> General Information</h4>
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
-                                    <label for="editServiceCategoryModal">Service Type: <span class="st-required">*</span></label>
+                                    <label for="editServiceCategoryModal">Service Type: <span
+                                            class="st-required">*</span></label>
                                     <select id="editServiceCategoryModal" name="serviceCategoryModal" required>
                                         <option value="" disabled>Select a type...</option>
                                         <option value="ocean">🌊 Ocean</option>
@@ -463,7 +528,8 @@
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editCustomerModal">Customer: <span class="st-required">*</span></label>
-                                    <input type="text" id="editCustomerModal" name="customerModal" placeholder="Customer Name" required>
+                                    <input type="text" id="editCustomerModal" name="customerModal"
+                                        placeholder="Customer Name" required>
                                 </div>
                             </div>
                             <div class="st-form-row">
@@ -483,51 +549,62 @@
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editShipperModal">Shipper: <span class="st-required">*</span></label>
-                                    <input type="text" id="editShipperModal" name="shipperModal" placeholder="Shipper Name" required>
+                                    <input type="text" id="editShipperModal" name="shipperModal"
+                                        placeholder="Shipper Name" required>
                                 </div>
                                 <div class="st-form-group st-form-group-col">
-                                    <label for="editConsigneeModal">Consignee: <span class="st-required">*</span></label>
-                                    <input type="text" id="editConsigneeModal" name="consigneeModal" placeholder="Consignee Name" required>
+                                    <label for="editConsigneeModal">Consignee: <span
+                                            class="st-required">*</span></label>
+                                    <input type="text" id="editConsigneeModal" name="consigneeModal"
+                                        placeholder="Consignee Name" required>
                                 </div>
                             </div>
-                             <div class="st-form-row">
-                                 <div class="st-form-group st-form-group-col">
+                            <div class="st-form-row">
+                                <div class="st-form-group st-form-group-col">
                                     <label for="editCarrierModal">Carrier: <span class="st-required">*</span></label>
-                                    <input type="text" id="editCarrierModal" name="carrierModal" placeholder="Carrier Name" required>
+                                    <input type="text" id="editCarrierModal" name="carrierModal"
+                                        placeholder="Carrier Name" required>
                                 </div>
-                                <div class="st-form-group st-form-group-col" id="editFlightNumberGroupModal" style="display:none;">
+                                <div class="st-form-group st-form-group-col" id="editFlightNumberGroupModal"
+                                    style="display:none;">
                                     <label for="editFlightNumberModal">Flight Number (Air):</label>
-                                    <input type="text" id="editFlightNumberModal" name="flightNumberModal" placeholder="Flight Number">
+                                    <input type="text" id="editFlightNumberModal" name="flightNumberModal"
+                                        placeholder="Flight Number">
                                 </div>
                             </div>
                         </div>
                     </div>
-                     <!-- Columna Derecha del Formulario -->
+                    <!-- Columna Derecha del Formulario -->
                     <div class="st-form-column-section">
                         <div class="st-form-section">
                             <h4 class="st-form-section-title"><i class='bx bxs-map-pin'></i> Logistics Details</h4>
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editPolModal">POL:</label>
-                                    <input type="text" id="editPolModal" name="polModal" placeholder="Port/Point of Loading">
+                                    <input type="text" id="editPolModal" name="polModal"
+                                        placeholder="Port/Point of Loading">
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editPodModal">POD:</label>
-                                    <input type="text" id="editPodModal" name="podModal" placeholder="Port/Point of Discharge">
+                                    <input type="text" id="editPodModal" name="podModal"
+                                        placeholder="Port/Point of Discharge">
                                 </div>
                             </div>
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editFinalDestinationModal">Final Destination:</label>
-                                    <input type="text" id="editFinalDestinationModal" name="finalDestinationModal" placeholder="Final Destination">
+                                    <input type="text" id="editFinalDestinationModal" name="finalDestinationModal"
+                                        placeholder="Final Destination">
                                 </div>
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editMblHawbModal">MBL / MAWB / PRO:</label>
-                                    <input type="text" id="editMblHawbModal" name="mblHawbModal" placeholder="MBL/MAWB/PRO">
+                                    <input type="text" id="editMblHawbModal" name="mblHawbModal"
+                                        placeholder="MBL/MAWB/PRO">
                                 </div>
                             </div>
                             <div class="st-form-row">
-                                <div class="st-form-group st-form-group-col" id="editHblHawbGroupModal" style="display:none;">
+                                <div class="st-form-group st-form-group-col" id="editHblHawbGroupModal"
+                                    style="display:none;">
                                     <label for="editHblModal">HBL (Ocean) / HAWB (Air):</label>
                                     <input type="text" id="editHblModal" name="hblModal" placeholder="HBL / HAWB">
                                 </div>
@@ -536,22 +613,29 @@
                         </div>
 
                         <div class="st-form-section">
-                             <h4 class="st-form-section-title"><i class='bx bx-cog'></i> Service Specifics</h4>
+                            <h4 class="st-form-section-title"><i class='bx bx-cog'></i> Service Specifics</h4>
                             <div id="editOceanFieldsModal" class="st-service-type-fields">
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
-                                        <label for="editOceanServiceTypeModal">Ocean Service Type: <span class="st-required">*</span></label>
-                                        <select id="editOceanServiceTypeModal" name="oceanServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <label for="editOceanServiceTypeModal">Ocean Service Type: <span
+                                                class="st-required">*</span></label>
+                                        <select id="editOceanServiceTypeModal" name="oceanServiceTypeModal">
+                                            <!-- Required se validará en JS -->
                                             <option value="" disabled selected>Select...</option>
-                                            <option value="LCL">LCL</option> <option value="FCL">FCL</option>
+                                            <option value="LCL">LCL</option>
+                                            <option value="FCL">FCL</option>
                                         </select>
                                     </div>
                                     <div class="st-form-group st-form-group-col">
-                                        <label for="editOceanServiceModal">Ocean Service: <span class="st-required">*</span></label>
-                                        <select id="editOceanServiceModal" name="oceanServiceModal"> <!-- Required se validará en JS -->
+                                        <label for="editOceanServiceModal">Ocean Service: <span
+                                                class="st-required">*</span></label>
+                                        <select id="editOceanServiceModal" name="oceanServiceModal">
+                                            <!-- Required se validará en JS -->
                                             <option value="" disabled selected>Select...</option>
-                                            <option value="Door to Door">Door to Door</option> <option value="Door to Port">Door to Port</option>
-                                            <option value="Port to Door">Port to Door</option> <option value="Port to Port">Port to Port</option>
+                                            <option value="Door to Door">Door to Door</option>
+                                            <option value="Door to Port">Door to Port</option>
+                                            <option value="Port to Door">Port to Door</option>
+                                            <option value="Port to Port">Port to Port</option>
                                         </select>
                                     </div>
                                 </div>
@@ -575,12 +659,15 @@
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
                                         <label for="editIsfFileModal">ISF File:</label>
-                                        <input type="file" id="editIsfFileModal" name="isfFileModal" class="st-file-input">
+                                        <input type="file" id="editIsfFileModal" name="isfFileModal"
+                                            class="st-file-input">
                                         <span id="currentIsfFile" class="st-current-file-display"></span>
                                     </div>
-                                    <div class="st-form-group st-form-group-col st-checkbox-group" style="align-self: flex-end; padding-bottom: 0.7rem;">
+                                    <div class="st-form-group st-form-group-col st-checkbox-group"
+                                        style="align-self: flex-end; padding-bottom: 0.7rem;">
                                         <input type="checkbox" id="editAddIsfLaterModal" name="addIsfLaterModal">
-                                        <label for="editAddIsfLaterModal">Add ISF Later <span class="st-required" id="editIsfRequiredIndicatorModal">*</span></label>
+                                        <label for="editAddIsfLaterModal">Add ISF Later <span class="st-required"
+                                                id="editIsfRequiredIndicatorModal">*</span></label>
                                     </div>
                                 </div>
                                 <p class="st-validation-error" id="editIsfErrorModal" style="display:none;"></p>
@@ -588,10 +675,13 @@
                             <div id="editTruckFieldsModal" class="st-service-type-fields">
                                 <div class="st-form-row">
                                     <div class="st-form-group st-form-group-col">
-                                        <label for="editTruckServiceTypeModal">Truck Service Type: <span class="st-required">*</span></label>
-                                        <select id="editTruckServiceTypeModal" name="truckServiceTypeModal"> <!-- Required se validará en JS -->
+                                        <label for="editTruckServiceTypeModal">Truck Service Type: <span
+                                                class="st-required">*</span></label>
+                                        <select id="editTruckServiceTypeModal" name="truckServiceTypeModal">
+                                            <!-- Required se validará en JS -->
                                             <option value="" disabled selected>Select...</option>
-                                            <option value="FTL">FTL</option> <option value="LTL">LTL</option>
+                                            <option value="FTL">FTL</option>
+                                            <option value="LTL">LTL</option>
                                         </select>
                                     </div>
                                     <div class="st-form-group st-form-group-col"></div>
@@ -629,7 +719,8 @@
                             <div class="st-form-row">
                                 <div class="st-form-group st-form-group-col-full">
                                     <label for="editCommodityDescriptionModal">Commodity Description:</label>
-                                    <textarea id="editCommodityDescriptionModal" name="commodityDescriptionModal" rows="2"></textarea>
+                                    <textarea id="editCommodityDescriptionModal" name="commodityDescriptionModal"
+                                        rows="2"></textarea>
                                 </div>
                             </div>
                             <div class="st-form-row">
@@ -646,10 +737,14 @@
                                 <div class="st-form-group st-form-group-col">
                                     <label for="editServiceStatusModal">Service Status:</label>
                                     <select id="editServiceStatusModal" name="serviceStatusModal">
-                                        <option value="Pending">Pending</option> <option value="Booked">Booked</option>
-                                        <option value="In Transit">In Transit</option> <option value="At Destination">At Destination</option>
-                                        <option value="Delivered">Delivered</option> <option value="On Hold">On Hold</option>
-                                        <option value="Cancelled">Cancelled</option> <option value="Completed">Completed</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Booked">Booked</option>
+                                        <option value="In Transit">In Transit</option>
+                                        <option value="At Destination">At Destination</option>
+                                        <option value="Delivered">Delivered</option>
+                                        <option value="On Hold">On Hold</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                        <option value="Completed">Completed</option>
                                     </select>
                                 </div>
                                 <div class="st-form-group st-form-group-col"></div>
@@ -671,12 +766,7 @@
                     <button type="button" id="addChargeBtn_edit" class="btn-goldmex-secondary btn-add-charge">
                         <i class='bx bx-plus'></i> Add New Charge
                     </button>
-                     <div class="st-charges-header-row">
-                        <div class="st-charge-header-item charge-name-header">Charge Type</div>
-                        <div class="st-charge-header-item charge-cost-header">Price</div>
-                        <div class="st-charge-header-item charge-currency-header">Currency</div>
-                        <div class="st-charge-header-item charge-action-header">Action</div>
-                    </div>
+                   
                     <div id="chargesContainerModal_edit" class="st-charges-list-container">
                         <!-- Existing charge rows and new charge rows will be managed here by JavaScript -->
                     </div>
@@ -684,7 +774,8 @@
             </form>
             <div class="st-modal-footer">
                 <button type="button" id="cancelEditServiceBtn" class="btn-goldmex-secondary">Cancel</button>
-                <button type="submit" form="editServiceForm" id="saveServiceChangesBtn" class="btn-goldmex-primary">Save Changes</button>
+                <button type="submit" form="editServiceForm" id="saveServiceChangesBtn" class="btn-goldmex-primary">Save
+                    Changes</button>
             </div>
         </div>
     </div>
@@ -693,7 +784,8 @@
     <div id="documentManagementModal" class="st-modal">
         <div class="st-modal-content" style="max-width: 800px;">
             <div class="st-modal-header">
-                <h3 id="docModalTitle"><i class='bx bx-folder-open'></i> Service Documents - <span id="docModalServiceId"></span></h3>
+                <h3 id="docModalTitle"><i class='bx bx-folder-open'></i> Service Documents - <span
+                        id="docModalServiceId"></span></h3>
                 <button class="st-close-button" id="closeDocModalBtn" aria-label="Close modal">&times;</button>
             </div>
             <div class="st-modal-body">
@@ -717,7 +809,8 @@
                             <input type="file" id="docFileInput" name="docFileInput" class="st-file-input">
                         </div>
                         <div class="st-form-group st-form-group-button">
-                            <button type="button" id="uploadDocBtn" class="btn-goldmex-primary"><i class='bx bx-upload'></i> Upload</button>
+                            <button type="button" id="uploadDocBtn" class="btn-goldmex-primary"><i
+                                    class='bx bx-upload'></i> Upload</button>
                         </div>
                     </div>
                 </div>
@@ -725,7 +818,8 @@
                 <div class="st-doc-list-section">
                     <h4><i class='bx bx-list-ul'></i> Uploaded Documents</h4>
                     <div id="docListContainer" class="st-doc-list-container">
-                        <p id="noDocsMessage" class="st-no-docs-message" style="display:none; text-align:center; padding: 1rem; color: var(--color-text-secondary);">
+                        <p id="noDocsMessage" class="st-no-docs-message"
+                            style="display:none; text-align:center; padding: 1rem; color: var(--color-text-secondary);">
                             No documents uploaded for this service yet.
                         </p>
                     </div>
@@ -739,23 +833,25 @@
 
     <!-- Modal para Archivo de Servicios -->
     <div id="archiveServiceModal" class="st-modal">
-        <div class="st-modal-content" style="max-width: 90vw; width: 1200px;"> <div class="st-modal-header">
+        <div class="st-modal-content" style="max-width: 90vw; width: 1200px;">
+            <div class="st-modal-header">
                 <h3><i class='bx bx-calendar-event'></i> Monthly Service Archive</h3>
-                <button class="st-close-button" id="closeArchiveServiceModalBtn" aria-label="Close modal">&times;</button>
+                <button class="st-close-button" id="closeArchiveServiceModalBtn"
+                    aria-label="Close modal">&times;</button>
             </div>
             <div class="st-modal-body">
                 <div class="st-archive-controls">
                     <div class="st-form-group">
                         <label for="archiveMonthSelect">Month:</label>
                         <select id="archiveMonthSelect" name="archiveMonthSelect">
-                            </select>
+                        </select>
                     </div>
                     <div class="st-form-group">
                         <label for="archiveYearSelect">Year:</label>
                         <select id="archiveYearSelect" name="archiveYearSelect">
-                            </select>
+                        </select>
                     </div>
-                     <div class="st-form-group">
+                    <div class="st-form-group">
                         <label for="archiveServiceTypeSelect">Service Type:</label>
                         <select id="archiveServiceTypeSelect" name="archiveServiceTypeSelect">
                             <option value="all" selected>All</option>
@@ -770,13 +866,14 @@
                 </div>
                 <div id="archiveTotalResults" style="margin-bottom: 1rem; font-weight: 500;">Results: 0</div>
                 <div class="st-table-container" id="archiveTableContainer" style="max-height: 60vh; overflow-y: auto;">
-                     <table id="archiveServicesTable" class="display responsive nowrap" style="width:100%">
+                    <table id="archiveServicesTable" class="display responsive nowrap" style="width:100%">
                         <thead>
-                            </thead>
+                        </thead>
                         <tbody>
-                            </tbody>
+                        </tbody>
                     </table>
-                    <p id="noArchiveResultsMessage" style="text-align:center; padding: 2rem; display:none;">No services found for the selected month and year.</p>
+                    <p id="noArchiveResultsMessage" style="text-align:center; padding: 2rem; display:none;">No services
+                        found for the selected month and year.</p>
                 </div>
             </div>
             <div class="st-modal-footer">
@@ -790,10 +887,12 @@
         <div class="st-modal-content" style="max-width: 900px;">
             <div class="st-modal-header">
                 <h3><i class='bx bx-bell'></i> Transit Progress Notification</h3>
-                <button class="st-close-button" id="closeProgressNotificationModalBtn" aria-label="Close modal">&times;</button>
+                <button class="st-close-button" id="closeProgressNotificationModalBtn"
+                    aria-label="Close modal">&times;</button>
             </div>
             <div class="st-modal-body">
-                <p style="margin-bottom: 1rem; text-align: center; font-style: italic; color: var(--color-text-secondary);">
+                <p
+                    style="margin-bottom: 1rem; text-align: center; font-style: italic; color: var(--color-text-secondary);">
                     Showing services currently in transit. (Automatic updates 3 times a day, 8 AM - 5 PM Tijuana Time)
                 </p>
                 <div class="st-table-container" style="max-height: 60vh; overflow-y: auto;">
@@ -806,18 +905,20 @@
                                 <th>ETD</th>
                                 <th>ETA</th>
                                 <th>Status</th>
-                                </tr>
+                            </tr>
                         </thead>
                         <tbody id="progressNotificationTableBody">
-                            </tbody>
+                        </tbody>
                     </table>
-                    <p id="noProgressServicesMessage" style="text-align:center; padding: 2rem; display:none; color: var(--color-text-secondary);">
+                    <p id="noProgressServicesMessage"
+                        style="text-align:center; padding: 2rem; display:none; color: var(--color-text-secondary);">
                         No active services in transit to display.
                     </p>
                 </div>
             </div>
             <div class="st-modal-footer">
-                <button type="button" id="closeProgressNotificationFooterBtn" class="btn-goldmex-secondary">Close</button>
+                <button type="button" id="closeProgressNotificationFooterBtn"
+                    class="btn-goldmex-secondary">Close</button>
             </div>
         </div>
     </div>
