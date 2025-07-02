@@ -1,6 +1,5 @@
 .service-tracking-container {
   padding: 1rem;
-  /* Animation will be applied to child elements instead */
 }
 
 /* Apply entrance animation to main content blocks within the container */
@@ -330,7 +329,7 @@ body.dark-mode .btn-add-charge:hover {
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  min-width: 360px;
+  min-width: 450px;
 }
 body.dark-mode .st-charges-main-column {
   border-left-color: #2c4a78;
@@ -685,6 +684,7 @@ body.dark-mode .st-scorecard-icon.in-progress {
   color: var(--color-text-secondary);
   transition: background-color 0.2s ease;
 }
+
 .st-upcoming-list-simple li:last-child {
   border-bottom: none;
 }
@@ -902,7 +902,7 @@ body.dark-mode
   border-color: var(--goldmex-accent-color);
 }
 .st-table-actions button[data-action="delete"]:hover {
-  background-color: var(--goldmex-accent-color);
+  background-color:#e31837;
   color: var(--goldmex-white-color);
 }
 .custom-notification-st-container {
@@ -1344,22 +1344,10 @@ body.dark-mode #progressNotificationTable tbody tr.progress-overdue td {
 /* Service Charges Section Styles */
 .btn-add-charge {
   margin-bottom: 0.75rem;
-  /* font-size: 0.8rem !important; */ /* Reverted to inherit from .btn-goldmex-base */
-  /* padding: 0.4rem 0.8rem !important; */ /* Reverted to inherit from .btn-goldmex-base */
   width: 100%;
 }
 
-.st-charges-header-row {
-  display: grid;
-  grid-template-columns: minmax(0, 2.5fr) 80px 80px 40px;
-  gap: 0.5rem;
-  padding: 0.4rem;
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 0.5rem;
-}
+
 .st-charge-header-item {
   text-align: left;
   white-space: nowrap;
@@ -1393,57 +1381,7 @@ body.dark-mode .st-charges-list-container {
   background-color: transparent;
 }
 
-.st-charge-row {
-  display: grid;
-  grid-template-columns: minmax(0, 2.5fr) 80px 80px 40px; /* Match header */
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.5rem 0.3rem;
-  margin-bottom: 0.5rem;
-  border-radius: 0.25rem;
-  background-color: var(--color-surface);
-}
-.st-charge-row:last-child {
-  margin-bottom: 0;
-}
-body.dark-mode .st-charge-row {
-  background-color: rgba(var(--color-border-rgb), 0.5);
-}
 
-.st-charge-row select,
-.st-charge-row input[type="number"] {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.8rem;
-}
-
-.st-charge-row input[type="number"] {
-  text-align: right;
-}
-.st-charge-row select[name="chargeCurrency[]"] {
-  text-align: center;
-}
-
-.st-charge-row .st-charge-delete-btn {
-  background: none;
-  border: 1px solid var(--goldmex-accent-color);
-  color: var(--goldmex-accent-color);
-  border-radius: 0.25rem;
-  padding: 0.3rem;
-  font-size: 0.9rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.st-charge-row .st-charge-delete-btn:hover {
-  background-color: var(--goldmex-accent-color);
-  color: var(--goldmex-white-color);
-}
 
 #viewServiceChargesContainer .st-detail-group.charge-item-view {
   grid-column: 1 / -1;
@@ -1514,11 +1452,7 @@ body.dark-mode #viewServiceChargesContainer .charge-total-amount-view {
     padding-left: 1rem;
     min-width: 300px; /* Ensure it doesn't get too squeezed */
   }
-  .st-charges-header-row,
-  .st-charge-row {
-    /* Adjust column widths for slightly smaller screens if needed */
-    grid-template-columns: minmax(0, 2fr) 70px 70px 35px;
-  }
+  
 }
 
 @media (max-width: 991px) {
@@ -1545,11 +1479,7 @@ body.dark-mode #viewServiceChargesContainer .charge-total-amount-view {
     flex-direction: column;
     gap: 0;
   }
-  .st-charges-header-row,
-  .st-charge-row {
-    /* Ensure full width for stacked charges column */
-    grid-template-columns: minmax(0, 2.5fr) 80px 80px 40px;
-  }
+  
 }
 
 @media (max-width: 768px) {
@@ -1712,35 +1642,104 @@ body.dark-mode #viewServiceChargesContainer .charge-total-amount-view {
   .st-archive-controls button#filterArchiveBtn {
     width: 100%;
   }
+}
+/* ===== INICIA SECCIÓN DE CARGOS - CÓDIGO FINAL Y CORRECTO ===== */
 
-  .st-charges-header-row {
-    grid-template-columns: minmax(0, 2fr) 70px 70px 35px; /* Adjust for mobile */
-    font-size: 0.7rem;
-  }
+/* 1. Estilo para el contenedor de cada cargo. */
+.st-charge-row {
+  display: grid;
+  /* La clave: 3 columnas de tamaño idéntico (1fr = 1 fracción del espacio disponible) */
+  grid-template-columns: 1.5fr 1fr 1fr;
+  /* Espacio entre las filas y columnas */
+  gap: 0.75rem 1rem;
+  padding: 1rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* 2. Contenedor para cada campo (etiqueta + input). */
+.st-charge-field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 3. Estilo para las etiquetas de cada campo. */
+.st-charge-field label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+/* 4. Estilo general para todos los inputs y selects dentro de la fila. */
+.st-charge-row input,
+.st-charge-row select,
+.st-charge-row button {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 0.4rem;
+    padding: 0.6rem;
+    background-color: var(--color-bg);
+    transition: all 0.2s ease-in-out;
+    color: var(--color-text-primary); /* <-- AÑADE ESTA LÍNEA */
+}
+.st-charge-row input:focus,
+.st-charge-row select:focus {
+    outline: none;
+    border-color: var(--goldmex-secondary-color);
+    box-shadow: 0 0 0 2px rgba(var(--goldmex-secondary-color-rgb), 0.3);
+}
+
+/* 5. Estilos específicos por campo. */
+
+/* Campo "Final Price" (solo lectura) */
+.st-charge-row input[name="final_price[]"] {
+  background-color: #e9f5e9;
+  border-color: #a3d9a5;
+  color: #216e4e;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+body.dark-mode .st-charge-row input[name="final_price[]"] {
+    background-color: rgba(var(--goldmex-success-color-dark-rgb, 81, 207, 102), 0.1);
+    border-color: rgba(var(--goldmex-success-color-dark-rgb, 81, 207, 102), 0.4);
+    color: var(--goldmex-success-color-dark, #51cf66);
+}
+
+/* Campos de número centrados */
+.st-charge-row input[name="internal_cost[]"],
+.st-charge-row input[name="margin_percent[]"] {
+    text-align: center;
+}
+
+/* Botón de eliminar con diseño y animación */
+.st-charge-row .st-charge-delete-btn {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--color-text-secondary);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.st-charge-row .st-charge-delete-btn:hover {
+  background-color:#e31837;
+  color: var(--goldmex-white-color);
+  border-color: var(--goldmex-accent-color);
+  transform: scale(1.1);
+}
+
+/* 6. En móvil, todo se apila en una sola columna para mejor visualización. */
+@media (max-width: 768px) {
   .st-charge-row {
-    grid-template-columns: 1fr; /* Stack all items in a charge row */
-    grid-template-areas:
-      "name"
-      "cost"
-      "currency"
-      "delete";
-    gap: 0.4rem;
-    padding: 0.5rem;
-  }
-  .st-charge-row select[name="chargeName[]"] {
-    grid-area: name;
-  }
-  .st-charge-row input[name="chargeCost[]"] {
-    grid-area: cost;
-    margin-top: 0.3rem;
-  } /* Reduced margin */
-  .st-charge-row select[name="chargeCurrency[]"] {
-    grid-area: currency;
-    margin-top: 0.3rem;
-  }
-  .st-charge-row .st-charge-delete-btn {
-    grid-area: delete;
-    justify-self: flex-end;
-    margin-top: 0.3rem;
+      grid-template-columns: 1fr;
   }
 }
+
+/* ===== FIN DE SECCIÓN ===== */
