@@ -1,0 +1,284 @@
+<!-- Estructura del Módulo List of Entries -->
+<div class="list-of-entries-container">
+
+    <!-- Cabecera del Módulo -->
+    <div class="le-header">
+        <h2><i class='bx bx-spreadsheet'></i> List of Entries</h2>
+        <div class="le-header-actions">
+            <button id="addEntryNumbersBtn" class="btn-goldmex-secondary">
+                <i class='bx bx-upload'></i> Add Entry Numbers (CSV)
+            </button>
+            <!-- Botón de Historial NUEVO -->
+            <button id="openHistoryModalBtn" class="btn-goldmex-secondary">
+                <i class='bx bx-history'></i> History
+            </button>
+            <button id="addNewEntryBtn" class="btn-goldmex-primary">
+                <i class='bx bx-plus-circle'></i> Add New Entry
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard de Resumen NUEVO -->
+    <div class="le-dashboard-summary">
+        <div class="le-scorecard">
+            <div class="le-scorecard-icon total"><i class='bx bx-file-blank'></i></div>
+            <div class="le-scorecard-info">
+                <h4>Active Entries</h4>
+                <p id="db-total-entries">0</p>
+            </div>
+        </div>
+        <div class="le-scorecard">
+            <div class="le-scorecard-icon in-progress"><i class='bx bx-loader-circle'></i></div>
+            <div class="le-scorecard-info">
+                <h4>In Progress</h4>
+                <p id="db-inprogress-entries">0</p>
+            </div>
+        </div>
+        <div class="le-scorecard">
+            <div class="le-scorecard-icon completed"><i class='bx bx-check-double'></i></div>
+            <div class="le-scorecard-info">
+                <h4>Completed (Month)</h4>
+                <p id="db-completed-entries">0</p>
+            </div>
+        </div>
+        <div class="le-scorecard">
+            <div class="le-scorecard-icon cancelled"><i class='bx bx-x-circle'></i></div>
+            <div class="le-scorecard-info">
+                <h4>Cancelled (Month)</h4>
+                <p id="db-cancelled-entries">0</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Contenedor de la Tabla Principal -->
+    <div class="le-table-container">
+        <table id="entriesTable" class="display responsive nowrap" style="width:100%">
+            <!-- El contenido de la tabla se genera con JavaScript -->
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Entrada -->
+<div id="entryFormModal" class="le-modal">
+    <div class="le-modal-content le-modal-content-xlarge">
+        <div class="le-modal-header">
+            <h3 id="entryFormModalTitle"><i class='bx bx-edit-alt'></i> Add New Entry</h3>
+            <button class="le-close-button" id="closeEntryFormModalBtn">&times;</button>
+        </div>
+        <form id="entryForm" class="le-modal-body">
+            <input type="hidden" id="entryId" name="entryId">
+            <!-- Paso 1: Selección de Cliente -->
+            <div class="le-form-step">
+                <h4><span class="le-step-number">1</span> Customer & Entry Selection</h4>
+                <div class="le-form-grid-3">
+                    <div class="le-form-group">
+                        <label for="le-customer-type-select">Customer Type</label>
+                        <select id="le-customer-type-select">
+                            <option value="" selected disabled>Select a type...</option>
+                        </select>
+                    </div>
+                    <div class="le-form-group">
+                        <label for="le-customer-select">Customer Name</label>
+                        <select id="le-customer-select" disabled>
+                            <option value="">Select type first...</option>
+                        </select>
+                    </div>
+                    <div class="le-form-group">
+                        <label for="le-entry-number-select">Entry Number</label>
+                        <select id="le-entry-number-select" disabled>
+                            <option value="">Select customer first...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Detalles (Duties, Bond, etc.) -->
+            <div id="entryDetailsSection" class="le-entry-details-section">
+                <div class="le-details-grid">
+                    <div class="le-duties-column">
+                        <h4><span class="le-step-number">2</span> Duties Details</h4>
+                        <div id="le-duties-container"></div>
+                        <button type="button" id="addDutyLineBtn" class="btn-goldmex-secondary btn-goldmex-small">
+                            <i class='bx bx-plus'></i> Add Duty
+                        </button>
+                    </div>
+                    <div class="le-other-details-column">
+                        <h4><span class="le-step-number">3</span> Additional Info</h4>
+                        <div class="le-form-group">
+                            <label for="le-invoice-input">Invoice</label>
+                            <input type="text" id="le-invoice-input" placeholder="Enter invoice number...">
+                        </div>
+                        <div class="le-form-group">
+                            <label>Bond Type <span class="le-required">*</span></label>
+                            <div id="le-bond-section" class="le-bond-options">
+                                <label><input type="radio" name="bondType" value="Single Entry Bond" required> Single</label>
+                                <label><input type="radio" name="bondType" value="Continuous Bond"> Continuous</label>
+                            </div>
+                            <p id="bondTypeError" class="le-validation-error" style="display:none;">Please select a bond type.</p>
+                        </div>
+                         <div class="le-form-group">
+                            <label for="le-notes-input">Notes</label>
+                            <textarea id="le-notes-input" rows="4" placeholder="Add any relevant notes..."></textarea>
+                        </div>
+                        <!-- Campo de estado para editar -->
+                        <div class="le-form-group" id="le-status-group" style="display: none;">
+                            <label for="le-status-select">Status</label>
+                            <select id="le-status-select">
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="le-modal-footer">
+            <button type="button" id="cancelEntryFormBtn" class="btn-goldmex-secondary">Cancel</button>
+            <button type="submit" form="entryForm" id="saveEntryBtn" class="btn-goldmex-primary" disabled>Save Entry</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Ver Detalles de la Entrada -->
+<div id="viewEntryModal" class="le-modal">
+    <div class="le-modal-content le-modal-content-xlarge">
+        <div class="le-modal-header">
+            <h3 id="viewEntryModalTitle"><i class='bx bx-show-alt'></i> Entry Details</h3>
+            <button class="le-close-button" id="closeViewEntryModalBtn">&times;</button>
+        </div>
+        <div id="viewEntryDetailsBody" class="le-modal-body">
+            <!-- El contenido se inyectará aquí con JS -->
+        </div>
+        <div class="le-modal-footer">
+            <button type="button" id="closeViewEntryFooterBtn" class="btn-goldmex-secondary">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Gestión de Documentos -->
+<div id="leDocManagementModal" class="le-modal">
+    <div class="le-modal-content" style="max-width: 800px;">
+        <div class="le-modal-header">
+            <h3 id="leDocModalTitle"><i class='bx bx-folder-open'></i> Entry Documents</h3>
+            <button class="le-close-button" id="leCloseDocModalBtn">&times;</button>
+        </div>
+        <div class="le-modal-body">
+            <div class="le-doc-upload-section">
+                <h4><i class='bx bx-cloud-upload'></i> Upload New Document</h4>
+                <div class="le-form-grid">
+                    <div class="le-form-group">
+                        <label for="leDocFileInput">Select File:</label>
+                        <input type="file" id="leDocFileInput" class="st-file-input">
+                    </div>
+                    <div class="le-form-group le-form-group-button">
+                        <button type="button" id="leUploadDocBtn" class="btn-goldmex-primary"><i class='bx bx-upload'></i> Upload</button>
+                    </div>
+                </div>
+            </div>
+            <div class="le-doc-list-section">
+                <h4><i class='bx bx-list-ul'></i> Uploaded Documents</h4>
+                <div id="leDocListContainer" class="le-doc-list-container">
+                    <p id="leNoDocsMessage" class="le-no-docs-message" style="display:none;">No documents uploaded for this entry yet.</p>
+                </div>
+            </div>
+        </div>
+        <div class="le-modal-footer">
+            <button type="button" id="leCloseDocModalFooterBtn" class="btn-goldmex-secondary">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal de Confirmación Personalizado -->
+<div id="leCustomConfirmModal" class="le-modal">
+    <div class="le-modal-content" style="max-width: 450px;">
+        <div class="le-modal-header">
+            <h3 id="leCustomConfirmTitle">Confirm Action</h3>
+            <button class="le-close-button" id="leCustomConfirmCloseBtn">&times;</button>
+        </div>
+        <div class="le-modal-body">
+            <p id="leCustomConfirmMessage"></p>
+        </div>
+        <div class="le-modal-footer">
+            <button type="button" id="leCustomConfirmCancelBtn" class="btn-goldmex-secondary">Cancel</button>
+            <button type="button" id="leCustomConfirmOkBtn" class="btn-goldmex-primary">OK</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal para Subir CSV de Entry Numbers -->
+<div id="addEntryNumbersModal" class="le-modal">
+    <div class="le-modal-content">
+        <div class="le-modal-header">
+            <h3><i class='bx bx-upload'></i> Add Entry Numbers via CSV</h3>
+            <button class="le-close-button" id="closeEntryNumbersModalBtn">&times;</button>
+        </div>
+        <div class="le-modal-body">
+            <p class="le-modal-instructions">
+                Upload a .CSV file with three columns: <strong>customer_type</strong>, <strong>customer_name</strong>, and <strong>entry_number</strong>. The system will process the file and add only the new, non-duplicate entry numbers.
+            </p>
+            <div class="le-form-group">
+                <label for="csvUploadInput">CSV File</label>
+                <input type="file" id="csvUploadInput" class="st-file-input" accept=".csv">
+            </div>
+            <div id="csv-processing-results" class="le-csv-results" style="display:none;">
+                <h4>Processing Results:</h4>
+                <p id="csvResultsMessage"></p>
+            </div>
+        </div>
+        <div class="le-modal-footer">
+            <button type="button" id="cancelCsvUploadBtn" class="btn-goldmex-secondary">Cancel</button>
+            <button type="button" id="processCsvBtn" class="btn-goldmex-primary" disabled>Process Data</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Historial NUEVO -->
+<div id="historyModal" class="le-modal">
+    <div class="le-modal-content" style="max-width: 90vw; width: 1400px;">
+        <div class="le-modal-header">
+            <h3><i class='bx bx-history'></i> Entries History</h3>
+            <button class="le-close-button" id="closeHistoryModalBtn">&times;</button>
+        </div>
+        <div class="le-modal-body">
+            <div class="le-history-controls">
+                <div class="le-form-group">
+                    <label for="historyCustomerType">Customer Type:</label>
+                    <select id="historyCustomerType"></select>
+                </div>
+                <div class="le-form-group">
+                    <label for="historyCustomerName">Customer Name:</label>
+                    <input type="text" id="historyCustomerName" placeholder="Filter by customer name...">
+                </div>
+                <div class="le-form-group">
+                    <label for="historyMonth">Month:</label>
+                    <select id="historyMonth"></select>
+                </div>
+                <div class="le-form-group">
+                    <label for="historyYear">Year:</label>
+                    <select id="historyYear"></select>
+                </div>
+                <button id="filterHistoryBtn" class="btn-goldmex-primary"><i class='bx bx-filter-alt'></i> Filter</button>
+            </div>
+            <div id="historyTotalResults" style="margin-bottom: 1rem; font-weight: 500;">Results: 0</div>
+            <div class="le-table-container" id="historyTableContainer" style="max-height: 60vh; overflow-y: auto;">
+                <table id="historyTable" class="display responsive nowrap" style="width:100%">
+                    <!-- Contenido de la tabla de historial -->
+                </table>
+                <p id="noHistoryResultsMessage" style="text-align:center; padding: 2rem; display:none;">No historical entries found for the selected criteria.</p>
+            </div>
+        </div>
+        <div class="le-modal-footer">
+            <button type="button" id="closeHistoryFooterBtn" class="btn-goldmex-secondary">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Contenedor de Notificaciones Personalizadas -->
+<div id="customNotificationContainerLE" class="custom-notification-le-container"></div>
+
+<script src="js/list-of-entries.js"></script>
