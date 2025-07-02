@@ -848,6 +848,10 @@
       const chargeRows = chargesContainer.querySelectorAll(".st-charge-row");
       chargeRows.forEach((row) => {
         const name = row.querySelector('select[name="chargeName[]"]')?.value;
+        // NUEVO: Capturar el nombre del proveedor
+        const provider_name = row.querySelector(
+          'input[name="provider_name[]"]'
+        )?.value;
         const internal_cost = parseFloat(
           row.querySelector('input[name="internal_cost[]"]')?.value
         );
@@ -862,9 +866,17 @@
           'select[name="chargeCurrency[]"]'
         )?.value;
 
-        if (name && !isNaN(internal_cost) && !isNaN(final_price) && currency) {
+        // Se incluye provider_name en la validación y en el objeto
+        if (
+          name &&
+          provider_name &&
+          !isNaN(internal_cost) &&
+          !isNaN(final_price) &&
+          currency
+        ) {
           collectedCharges.push({
             name,
+            provider_name, // Añadido
             internal_cost,
             margin_percent,
             final_price,
@@ -1586,11 +1598,12 @@
     const invoiceCharges = (fullServiceDetails.service_charges || []).map(
       (sc) => ({
         name: sc.name,
-        quantity: 1, // La cantidad siempre es 1 para los cargos de servicio
-        unit_price: sc.final_price || 0, // Usamos el precio final para el cliente
+        quantity: 1,
+        unit_price: sc.final_price || 0,
         currency: sc.currency || SERVICE_CHARGES_MAP.defaultCurrency,
-        amount: sc.final_price || 0, // El monto total de la línea es el precio final
-        // --- Campos extra que guardamos para análisis ---
+        amount: sc.final_price || 0,
+        // --- NUEVO: Campos extra que guardamos para la vista interna de la factura ---
+        provider_name: sc.provider_name,
         internal_cost: sc.internal_cost,
         margin_percent: sc.margin_percent,
       })
@@ -1645,8 +1658,7 @@
   }
 
   // SECTION 7: MODAL SPECIFIC LOGIC & UI SETUP
-  // --- FUNCIÓN TOTALMENTE REEMPLAZADA ---
-  // ===== REEMPLAZAR TODA LA FUNCIÓN CON ESTA VERSIÓN =====
+  // ===== REPLACE THE ENTIRE FUNCTION WITH THIS VERSION =====
   function createChargeRowElement(
     serviceType,
     charge = null,
@@ -1655,10 +1667,11 @@
     const chargeRow = document.createElement("div");
     chargeRow.className = "st-charge-row";
 
-    // --- Helper para crear un campo con su etiqueta ---
-    const createField = (label, element) => {
+    // --- Helper to create a field with its label and a UNIQUE CLASS ---
+    const createField = (label, element, fieldClass) => {
       const fieldWrapper = document.createElement("div");
-      fieldWrapper.className = "st-charge-field";
+      // Add the specific class passed as an argument
+      fieldWrapper.className = `st-charge-field ${fieldClass}`;
       const labelElement = document.createElement("label");
       labelElement.textContent = label;
       fieldWrapper.appendChild(labelElement);
@@ -1666,35 +1679,66 @@
       return fieldWrapper;
     };
 
-    // --- Elementos del formulario ---
+    // --- Form elements (no changes to variable names) ---
     const nameSelect = document.createElement("select");
     nameSelect.name = "chargeName[]";
+    nameSelect.required = true;
+
+    const providerNameInput = document.createElement("input");
+    providerNameInput.type = "text";
+    providerNameInput.name = "provider_name[]";
+    providerNameInput.placeholder = "Provider Name";
+    providerNameInput.required = true;
+
     const internalCostInput = document.createElement("input");
     internalCostInput.type = "number";
     internalCostInput.name = "internal_cost[]";
+    internalCostInput.required = true;
+
     const marginPercentInput = document.createElement("input");
     marginPercentInput.type = "number";
     marginPercentInput.name = "margin_percent[]";
-    const finalPriceDisplay = document.createElement("input");
-    finalPriceDisplay.type = "number";
-    finalPriceDisplay.name = "final_price[]";
-    finalPriceDisplay.readOnly = true;
+
+    const finalPriceInput = document.createElement("input");
+    finalPriceInput.type = "number";
+    finalPriceInput.name = "final_price[]";
+    finalPriceInput.required = true;
+
     const currencySelect = document.createElement("select");
     currencySelect.name = "chargeCurrency[]";
+
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className = "st-charge-delete-btn";
     deleteBtn.innerHTML = "<i class='bx bx-trash'></i>";
+    deleteBtn.title = "Delete Charge";
 
-    // --- Lógica de cálculo en tiempo real ---
+    // --- Bi-directional calculation logic (no changes here) ---
+    let isCalculating = false;
     const calculateFinalPrice = () => {
+      if (isCalculating) return;
+      isCalculating = true;
       const internalCost = parseFloat(internalCostInput.value) || 0;
       const marginPercent = parseFloat(marginPercentInput.value) || 0;
       const finalPrice = internalCost * (1 + marginPercent / 100);
-      finalPriceDisplay.value = finalPrice.toFixed(2);
+      finalPriceInput.value = finalPrice.toFixed(2);
+      isCalculating = false;
+    };
+    const calculateMarginPercent = () => {
+      if (isCalculating) return;
+      isCalculating = true;
+      const internalCost = parseFloat(internalCostInput.value) || 0;
+      const finalPrice = parseFloat(finalPriceInput.value) || 0;
+      if (internalCost > 0) {
+        const margin = ((finalPrice - internalCost) / internalCost) * 100;
+        marginPercentInput.value = margin.toFixed(2);
+      } else {
+        marginPercentInput.value = "";
+      }
+      isCalculating = false;
     };
 
-    // --- Asignar valores y eventos ---
+    // --- Assign values and events (no changes here) ---
     const availableCharges = SERVICE_CHARGES_MAP[serviceType] || [];
     let nameOptionsHtml = '<option value="">Select Charge...</option>';
     availableCharges.forEach((chargeName) => {
@@ -1703,47 +1747,60 @@
       }>${chargeName}</option>`;
     });
     nameSelect.innerHTML = nameOptionsHtml;
-
+    if (charge?.name) nameSelect.value = charge.name;
+    providerNameInput.value = charge?.provider_name || "";
     internalCostInput.placeholder = "0.00";
     internalCostInput.step = "0.01";
     internalCostInput.value = charge?.internal_cost
       ? charge.internal_cost.toFixed(2)
       : "";
-    internalCostInput.addEventListener("input", calculateFinalPrice);
-
     marginPercentInput.placeholder = "%";
-    marginPercentInput.step = "1";
-    marginPercentInput.value = charge?.margin_percent || "";
-    marginPercentInput.addEventListener("input", calculateFinalPrice);
-
-    finalPriceDisplay.placeholder = "0.00";
-    finalPriceDisplay.value = charge?.final_price
+    marginPercentInput.step = "0.01";
+    marginPercentInput.value = charge?.margin_percent
+      ? charge.margin_percent.toFixed(2)
+      : "";
+    finalPriceInput.placeholder = "0.00";
+    finalPriceInput.step = "0.01";
+    finalPriceInput.value = charge?.final_price
       ? charge.final_price.toFixed(2)
-      : "0.00";
-
+      : "";
+    internalCostInput.addEventListener("input", calculateFinalPrice);
+    marginPercentInput.addEventListener("input", calculateFinalPrice);
+    finalPriceInput.addEventListener("input", calculateMarginPercent);
     const availableCurrencies = SERVICE_CHARGES_MAP.currencies || ["USD"];
     let currencyOptionsHtml = "";
     availableCurrencies.forEach((currencyCode) => {
       const isSelected =
         charge?.currency === currencyCode ||
-        (!charge && currencyCode === "USD");
+        (!charge && currencyCode === SERVICE_CHARGES_MAP.defaultCurrency);
       currencyOptionsHtml += `<option value="${currencyCode}" ${
         isSelected ? "selected" : ""
       }>${currencyCode}</option>`;
     });
     currencySelect.innerHTML = currencyOptionsHtml;
-
+    if (charge?.currency) currencySelect.value = charge.currency;
     deleteBtn.addEventListener("click", () => chargeRow.remove());
 
-    // --- Construir la fila con los nuevos campos y etiquetas ---
-    chargeRow.appendChild(createField("Charge Type", nameSelect));
-    chargeRow.appendChild(createField("Currency", currencySelect));
-    chargeRow.appendChild(createField("Action", deleteBtn));
-    chargeRow.appendChild(createField("Internal Cost", internalCostInput));
-    chargeRow.appendChild(createField("Margin %", marginPercentInput));
-    chargeRow.appendChild(createField("Final Price", finalPriceDisplay));
-
-    if (charge) calculateFinalPrice();
+    // --- Build the row with the new fields and SPECIFIC CLASSES (using ENGLISH labels) ---
+    chargeRow.appendChild(
+      createField("Charge Type", nameSelect, "st-field-charge-type")
+    );
+    chargeRow.appendChild(
+      createField("Provider", providerNameInput, "st-field-provider")
+    );
+    chargeRow.appendChild(
+      createField("Provider Cost", internalCostInput, "st-field-provider-cost")
+    );
+    chargeRow.appendChild(
+      createField("Margin %", marginPercentInput, "st-field-margin")
+    );
+    chargeRow.appendChild(
+      createField("Final Price", finalPriceInput, "st-field-final-price")
+    );
+    chargeRow.appendChild(
+      createField("Currency", currencySelect, "st-field-currency")
+    );
+    chargeRow.appendChild(createField("Action", deleteBtn, "st-field-action"));
 
     return chargeRow;
   }
