@@ -847,22 +847,29 @@
     if (chargesContainer) {
       const chargeRows = chargesContainer.querySelectorAll(".st-charge-row");
       chargeRows.forEach((row) => {
-        const nameSelect = row.querySelector('select[name="chargeName[]"]');
-        const costInput = row.querySelector('input[name="chargeCost[]"]');
-        const currencySelect = row.querySelector(
-          'select[name="chargeCurrency[]"]'
+        const name = row.querySelector('select[name="chargeName[]"]')?.value;
+        const internal_cost = parseFloat(
+          row.querySelector('input[name="internal_cost[]"]')?.value
         );
-        if (nameSelect && costInput && currencySelect && nameSelect.value) {
-          // Ensure name is selected
-          const cost = parseFloat(costInput.value);
-          if (!isNaN(cost)) {
-            // Ensure cost is a valid number
-            collectedCharges.push({
-              name: nameSelect.value,
-              cost: cost,
-              currency: currencySelect.value,
-            });
-          }
+        const margin_percent =
+          parseFloat(
+            row.querySelector('input[name="margin_percent[]"]')?.value
+          ) || 0;
+        const final_price = parseFloat(
+          row.querySelector('input[name="final_price[]"]')?.value
+        );
+        const currency = row.querySelector(
+          'select[name="chargeCurrency[]"]'
+        )?.value;
+
+        if (name && !isNaN(internal_cost) && !isNaN(final_price) && currency) {
+          collectedCharges.push({
+            name,
+            internal_cost,
+            margin_percent,
+            final_price,
+            currency,
+          });
         }
       });
     }
@@ -1579,10 +1586,13 @@
     const invoiceCharges = (fullServiceDetails.service_charges || []).map(
       (sc) => ({
         name: sc.name,
-        quantity: 1,
-        unit_price: sc.cost || 0,
+        quantity: 1, // La cantidad siempre es 1 para los cargos de servicio
+        unit_price: sc.final_price || 0, // Usamos el precio final para el cliente
         currency: sc.currency || SERVICE_CHARGES_MAP.defaultCurrency,
-        amount: sc.cost || 0,
+        amount: sc.final_price || 0, // El monto total de la línea es el precio final
+        // --- Campos extra que guardamos para análisis ---
+        internal_cost: sc.internal_cost,
+        margin_percent: sc.margin_percent,
       })
     );
 
@@ -1635,6 +1645,8 @@
   }
 
   // SECTION 7: MODAL SPECIFIC LOGIC & UI SETUP
+  // --- FUNCIÓN TOTALMENTE REEMPLAZADA ---
+  // ===== REEMPLAZAR TODA LA FUNCIÓN CON ESTA VERSIÓN =====
   function createChargeRowElement(
     serviceType,
     charge = null,
@@ -1643,63 +1655,99 @@
     const chargeRow = document.createElement("div");
     chargeRow.className = "st-charge-row";
 
-    const availableCharges = SERVICE_CHARGES_MAP[serviceType] || [];
-    const availableCurrencies = SERVICE_CHARGES_MAP.currencies || [
-      SERVICE_CHARGES_MAP.defaultCurrency,
-    ];
+    // --- Helper para crear un campo con su etiqueta ---
+    const createField = (label, element) => {
+      const fieldWrapper = document.createElement("div");
+      fieldWrapper.className = "st-charge-field";
+      const labelElement = document.createElement("label");
+      labelElement.textContent = label;
+      fieldWrapper.appendChild(labelElement);
+      fieldWrapper.appendChild(element);
+      return fieldWrapper;
+    };
 
+    // --- Elementos del formulario ---
     const nameSelect = document.createElement("select");
     nameSelect.name = "chargeName[]";
-    if (!isEditable) nameSelect.disabled = true;
+    const internalCostInput = document.createElement("input");
+    internalCostInput.type = "number";
+    internalCostInput.name = "internal_cost[]";
+    const marginPercentInput = document.createElement("input");
+    marginPercentInput.type = "number";
+    marginPercentInput.name = "margin_percent[]";
+    const finalPriceDisplay = document.createElement("input");
+    finalPriceDisplay.type = "number";
+    finalPriceDisplay.name = "final_price[]";
+    finalPriceDisplay.readOnly = true;
+    const currencySelect = document.createElement("select");
+    currencySelect.name = "chargeCurrency[]";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "st-charge-delete-btn";
+    deleteBtn.innerHTML = "<i class='bx bx-trash'></i>";
+
+    // --- Lógica de cálculo en tiempo real ---
+    const calculateFinalPrice = () => {
+      const internalCost = parseFloat(internalCostInput.value) || 0;
+      const marginPercent = parseFloat(marginPercentInput.value) || 0;
+      const finalPrice = internalCost * (1 + marginPercent / 100);
+      finalPriceDisplay.value = finalPrice.toFixed(2);
+    };
+
+    // --- Asignar valores y eventos ---
+    const availableCharges = SERVICE_CHARGES_MAP[serviceType] || [];
     let nameOptionsHtml = '<option value="">Select Charge...</option>';
     availableCharges.forEach((chargeName) => {
       nameOptionsHtml += `<option value="${chargeName}" ${
-        charge && charge.name === chargeName ? "selected" : ""
+        charge?.name === chargeName ? "selected" : ""
       }>${chargeName}</option>`;
     });
     nameSelect.innerHTML = nameOptionsHtml;
 
-    const costInput = document.createElement("input");
-    costInput.type = "number";
-    costInput.name = "chargeCost[]";
-    costInput.placeholder = "Cost";
-    costInput.step = "0.01";
-    costInput.value =
-      charge && charge.cost !== undefined ? charge.cost.toFixed(2) : "";
-    if (!isEditable) costInput.disabled = true;
+    internalCostInput.placeholder = "0.00";
+    internalCostInput.step = "0.01";
+    internalCostInput.value = charge?.internal_cost
+      ? charge.internal_cost.toFixed(2)
+      : "";
+    internalCostInput.addEventListener("input", calculateFinalPrice);
 
-    const currencySelect = document.createElement("select");
-    currencySelect.name = "chargeCurrency[]";
-    if (!isEditable) currencySelect.disabled = true;
+    marginPercentInput.placeholder = "%";
+    marginPercentInput.step = "1";
+    marginPercentInput.value = charge?.margin_percent || "";
+    marginPercentInput.addEventListener("input", calculateFinalPrice);
+
+    finalPriceDisplay.placeholder = "0.00";
+    finalPriceDisplay.value = charge?.final_price
+      ? charge.final_price.toFixed(2)
+      : "0.00";
+
+    const availableCurrencies = SERVICE_CHARGES_MAP.currencies || ["USD"];
     let currencyOptionsHtml = "";
     availableCurrencies.forEach((currencyCode) => {
+      const isSelected =
+        charge?.currency === currencyCode ||
+        (!charge && currencyCode === "USD");
       currencyOptionsHtml += `<option value="${currencyCode}" ${
-        charge && charge.currency === currencyCode
-          ? "selected"
-          : !charge && currencyCode === SERVICE_CHARGES_MAP.defaultCurrency
-          ? "selected"
-          : ""
+        isSelected ? "selected" : ""
       }>${currencyCode}</option>`;
     });
     currencySelect.innerHTML = currencyOptionsHtml;
 
-    chargeRow.appendChild(nameSelect);
-    chargeRow.appendChild(costInput);
-    chargeRow.appendChild(currencySelect);
+    deleteBtn.addEventListener("click", () => chargeRow.remove());
 
-    if (isEditable) {
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "st-charge-delete-btn";
-      deleteBtn.innerHTML = "<i class='bx bx-trash'></i>";
-      deleteBtn.title = "Remove Charge";
-      deleteBtn.addEventListener("click", () => {
-        chargeRow.remove();
-      });
-      chargeRow.appendChild(deleteBtn);
-    }
+    // --- Construir la fila con los nuevos campos y etiquetas ---
+    chargeRow.appendChild(createField("Charge Type", nameSelect));
+    chargeRow.appendChild(createField("Currency", currencySelect));
+    chargeRow.appendChild(createField("Action", deleteBtn));
+    chargeRow.appendChild(createField("Internal Cost", internalCostInput));
+    chargeRow.appendChild(createField("Margin %", marginPercentInput));
+    chargeRow.appendChild(createField("Final Price", finalPriceDisplay));
+
+    if (charge) calculateFinalPrice();
+
     return chargeRow;
   }
+
   function populateChargesUI(
     container,
     serviceType,
@@ -1882,32 +1930,33 @@
           const chargeDiv = document.createElement("div");
           chargeDiv.className = "st-detail-group charge-item-view";
           chargeDiv.innerHTML = `
-                    <span class="st-detail-value charge-name-view">${
-                      charge.name
-                    }</span>
-                    <span class="st-detail-value charge-cost-view">${(
-                      charge.cost || 0
-                    ).toFixed(2)} ${
+                <span class="st-detail-value charge-name-view">${
+                  charge.name
+                }</span>
+                <span class="st-detail-value charge-cost-view">${(
+                  charge.final_price || 0
+                ) // <-- CORREGIDO
+                  .toFixed(2)} ${
             charge.currency || SERVICE_CHARGES_MAP.defaultCurrency
           }</span>
-                `;
+            `;
           viewServiceChargesContainer.appendChild(chargeDiv);
 
           const currency =
             charge.currency || SERVICE_CHARGES_MAP.defaultCurrency;
           totalsByCurrency[currency] =
-            (totalsByCurrency[currency] || 0) + (charge.cost || 0);
+            (totalsByCurrency[currency] || 0) + (charge.final_price || 0); // <-- CORREGIDO
         });
 
         Object.keys(totalsByCurrency).forEach((currency) => {
           const totalDiv = document.createElement("div");
           totalDiv.className = "charge-total-view";
           totalDiv.innerHTML = `
-                    <span class="charge-total-label-view">TOTAL (${currency}):</span>
-                    <span class="charge-total-amount-view">${totalsByCurrency[
-                      currency
-                    ].toFixed(2)} ${currency}</span>
-                `;
+                <span class="charge-total-label-view">TOTAL (${currency}):</span>
+                <span class="charge-total-amount-view">${totalsByCurrency[
+                  currency
+                ].toFixed(2)} ${currency}</span>
+            `;
           viewServiceChargesContainer.appendChild(totalDiv);
         });
       } else {
@@ -2681,9 +2730,11 @@
     return { startDate, displayEndDate, todayUTC };
   }
   function filterServicesForCurrentMonthDisplay(services) {
+    // Obtiene el rango de fechas para el mes actual (ej. 1 de julio - 31 de julio)
     const { startDate, displayEndDate, todayUTC } = getCurrentMonthRange();
 
     return services.filter((service) => {
+      // Primero, nos aseguramos de no procesar servicios que ya están finalizados.
       if (
         COMPLETED_STATUSES.includes(service.status) ||
         service.status === CANCELLED_STATUS
@@ -2691,46 +2742,49 @@
         return false;
       }
 
-      const etdString =
-        service.etd && service.etd !== "N/A" ? service.etd : null;
-      const etaString =
-        service.eta && service.eta !== "N/A" ? service.eta : null;
+      // Parseamos las fechas del servicio para poder compararlas.
+      const etdDate =
+        service.etd && service.etd !== "N/A"
+          ? new Date(
+              service.etd.includes("T") || service.etd.includes("Z")
+                ? service.etd
+                : service.etd + "T00:00:00Z"
+            )
+          : null;
+      const etaDate =
+        service.eta && service.eta !== "N/A"
+          ? new Date(
+              service.eta.includes("T") || service.eta.includes("Z")
+                ? service.eta
+                : service.eta + "T00:00:00Z"
+            )
+          : null;
 
-      const etdDate = etdString
-        ? new Date(
-            etdString.includes("T") || etdString.includes("Z")
-              ? etdString
-              : etdString + "T00:00:00Z"
-          )
-        : null;
-      const etaDate = etaString
-        ? new Date(
-            etaString.includes("T") || etaString.includes("Z")
-              ? etaString
-              : etaString + "T00:00:00Z"
-          )
-        : null;
+      // --- INICIO DE LA LÓGICA MODIFICADA ---
 
-      const etdInMonth =
-        etdDate && etdDate >= startDate && etdDate <= displayEndDate;
-      const etaInMonth =
-        etaDate && etaDate >= startDate && etaDate <= displayEndDate;
+      // REGLA 1 (Lógica Original): El servicio es relevante para el mes actual.
+      // Se mostrará si su ETD o ETA caen dentro del rango de fechas del mes en curso.
+      const isRelevantToCurrentMonth =
+        (etdDate && etdDate >= startDate && etdDate <= displayEndDate) ||
+        (etaDate && etaDate >= startDate && etaDate <= displayEndDate);
 
-      if (etdInMonth || etaInMonth) return true;
-
-      if (
-        etdDate &&
-        etdDate < startDate &&
-        etaDate &&
-        etaDate >= todayUTC &&
-        etaDate <= displayEndDate
-      ) {
-        return true;
-      }
-      if (etaDate && etaDate >= startDate && etaDate < todayUTC) {
-        return true;
+      if (isRelevantToCurrentMonth) {
+        return true; // Mostrar el servicio.
       }
 
+      // REGLA 2 (Nueva Lógica): El servicio está "atrasado" pero sigue activo.
+      // Si la fecha de ETA del servicio ya pasó (es anterior a hoy) y el servicio
+      // aún no ha sido marcado como "Completed" o "Cancelled" (lo cual ya verificamos
+      // al principio), entonces debe seguir mostrándose.
+      const isOverdueAndActive = etaDate && etaDate < todayUTC;
+
+      if (isOverdueAndActive) {
+        return true; // Mostrar el servicio atrasado.
+      }
+
+      // --- FIN DE LA LÓGICA MODIFICADA ---
+
+      // Si el servicio no cumple ninguna de las dos reglas, no se muestra en la tabla principal.
       return false;
     });
   }
@@ -3587,7 +3641,7 @@
       docManagementModal.addEventListener("click", (event) => {
         if (event.target === docManagementModal) closeModal(docManagementModal);
       });
-    
+
     if (docCategorySelect)
       docCategorySelect.addEventListener("change", handleDocCategoryChange);
     if (uploadDocBtn)
