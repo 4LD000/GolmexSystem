@@ -1093,10 +1093,10 @@
         <thead>
           <tr>
             <th style="text-align:left;">Description</th>
-            <th style="text-align:left;">Proveedor</th>
-            <th style="text-align:right;">Costo Proveedor</th>
+            <th style="text-align:left;">Provider</th>
+            <th style="text-align:right;">Provider Cost</th>
             <th style="text-align:right;">Margen %</th>
-            <th style="text-align:right;">Precio Final</th>
+            <th style="text-align:right;">Final Price</th>
           </tr>
         </thead>
         <tbody>`;
