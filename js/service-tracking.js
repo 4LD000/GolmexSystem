@@ -72,7 +72,7 @@
       "Endorsement Fee",
       "VGM (Verified Gross Mass) Fee",
       "Documentation Fee",
-      "Port Congestion Surcharge",
+      "Javiercliaxto",
     ],
     air: [
       "Air Freight",
