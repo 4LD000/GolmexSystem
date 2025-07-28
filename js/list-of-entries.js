@@ -19,7 +19,7 @@
 
     const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Honey fee'];
     const dutyUnits = ['$', 'kg', 'L', 'unit'];
-    
+
     // --- Element Caching ---
     const entriesTableElement = document.getElementById('entriesTable');
     const addNewEntryBtn = document.getElementById('addNewEntryBtn');
@@ -40,6 +40,8 @@
     const invoiceInput = document.getElementById('le-invoice-input');
     const notesInput = document.getElementById('le-notes-input');
     const bondTypeError = document.getElementById('bondTypeError');
+    const fdaStatusSelect = document.getElementById('le-fda-status-select'); // NUEVO
+    const cargoReleaseSelect = document.getElementById('le-cargo-release-select'); // NUEVO
     const statusGroup = document.getElementById('le-status-group');
     const statusSelect = document.getElementById('le-status-select');
     const viewEntryModal = document.getElementById('viewEntryModal');
@@ -130,7 +132,7 @@
         currentConfirmCallback = onOk;
         openLeModal(leCustomConfirmModal);
     }
-    
+
     function getFileIconClass(fileName) {
         if (!fileName) return "bxs-file-blank";
         const extension = fileName.split(".").pop().toLowerCase();
@@ -142,7 +144,7 @@
             default: return "bxs-file-blank";
         }
     }
-    
+
     function parseCSV(csvText) {
         const rows = [];
         let currentRow = [];
@@ -152,7 +154,7 @@
 
         for (let i = 0; i < csvText.length; i++) {
             const char = csvText[i];
-            
+
             if (inQuotedField) {
                 if (char === '"') {
                     if (csvText[i + 1] === '"') {
@@ -203,9 +205,9 @@
                 { data: 'customer_name', title: 'Customer', className: 'dt-left' },
                 { data: 'created_at', title: 'Date', className: 'dt-center', render: (d) => d ? new Date(d).toLocaleDateString() : 'N/A' },
                 { data: 'invoice', title: 'Invoice', className: 'dt-center', defaultContent: '' },
-                { 
-                    data: 'duties', 
-                    title: 'Duties', 
+                {
+                    data: 'duties',
+                    title: 'Duties',
                     className: 'dt-center',
                     render: (duties) => {
                         if (duties && duties.length > 0) {
@@ -215,8 +217,26 @@
                     }
                 },
                 { data: 'bond_type', title: 'Bond', className: 'dt-center' },
-                { 
-                    data: 'status', 
+                {
+                    data: 'fda_status',
+                    title: 'FDA Status',
+                    className: 'dt-center',
+                    render: (status) => {
+                        const safeStatus = (status || 'Hold').toLowerCase().replace(/\s/g, '-');
+                        return `<span class="le-status-badge status-${safeStatus}">${status || 'Hold'}</span>`;
+                    }
+                },
+                {
+                    data: 'cargo_release',
+                    title: 'Cargo Release',
+                    className: 'dt-center',
+                    render: (status) => {
+                        const safeStatus = (status || 'Pending').toLowerCase().replace(/\s/g, '-');
+                        return `<span class="le-status-badge status-${safeStatus}">${status || 'Pending'}</span>`;
+                    }
+                },
+                {
+                    data: 'status',
                     title: 'Status',
                     className: 'dt-center',
                     render: (status) => {
@@ -265,7 +285,7 @@
                 }
             ],
             language: { search: "Search:", emptyTable: "No active entries recorded yet." },
-            order: [[2, 'desc']] 
+            order: [[2, 'desc']]
         });
     }
 
@@ -284,9 +304,9 @@
                 { data: 'customer_name', title: 'Customer', className: 'dt-center' },
                 { data: 'created_at', title: 'Creation Date', className: 'dt-center', render: (d) => d ? new Date(d).toLocaleDateString() : 'N/A' },
                 { data: 'updated_at', title: 'Completion Date', className: 'dt-center', render: (d) => d ? new Date(d).toLocaleDateString() : 'N/A' },
-                { 
-                    data: 'status', 
-                    title: 'Status', 
+                {
+                    data: 'status',
+                    title: 'Status',
                     className: 'dt-center',
                     render: (status) => {
                         const safeStatus = (status || '').toLowerCase().replace(/\s/g, '-');
@@ -351,7 +371,7 @@
         initializeEntriesTable(activeEntries);
         updateDashboard();
     }
-    
+
     async function saveEntry() {
         if (!currentUserLE) return showLENotification('You must be logged in.', 'error');
 
@@ -379,6 +399,8 @@
             invoice: invoiceInput.value.trim() || null,
             duties: duties,
             bond_type: bondSelected.value,
+            fda_status: fdaStatusSelect.value,
+            cargo_release: cargoReleaseSelect.value,
             notes: notesInput.value.trim() || null,
             user_email: currentUserLE.email,
             user_name: currentUserLE.user_metadata?.full_name || currentUserLE.email,
@@ -398,7 +420,7 @@
                 await supabase.from(AVAILABLE_ENTRIES_TABLE).update({ is_used: true }).eq('entry_number', dataToSave.entry_number);
             }
         }
-        
+
         saveEntryBtn.disabled = false;
         saveEntryBtn.textContent = "Save Entry";
 
@@ -416,7 +438,7 @@
         if (!currentUserLE) return;
         const entryToDelete = allEntriesData.find(e => e.id === entryId);
         if (!entryToDelete) return;
-        
+
         if (entryToDelete.documents && entryToDelete.documents.length > 0) {
             const filePaths = entryToDelete.documents.map(doc => doc.file_path);
             const { error: storageError } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
@@ -435,7 +457,7 @@
         showLENotification('Entry deleted successfully.', 'success');
         await fetchAllEntries();
     }
-    
+
     async function completeEntry(entryId) {
         if (!currentUserLE) return;
         const { error } = await supabase.from(ENTRIES_TABLE).update({ status: 'Completed', updated_at: new Date().toISOString() }).eq('id', entryId);
@@ -457,6 +479,8 @@
         entryNumberSelect.innerHTML = '<option value="">Select customer first...</option>';
         entryNumberSelect.disabled = true;
         dutiesContainer.innerHTML = '';
+        fdaStatusSelect.value = 'Hold';
+        cargoReleaseSelect.value = 'Pending';
         entryDetailsSection.classList.remove('visible');
         saveEntryBtn.disabled = true;
         statusGroup.style.display = 'none'; // Hide status on reset
@@ -477,6 +501,8 @@
             invoiceInput.value = entry.invoice || '';
             notesInput.value = entry.notes || '';
             document.querySelector(`input[name="bondType"][value="${entry.bond_type}"]`).checked = true;
+            fdaStatusSelect.value = entry.fda_status || 'Hold';
+            cargoReleaseSelect.value = entry.cargo_release || 'Pending';
             dutiesContainer.innerHTML = '';
             (entry.duties || []).forEach(addDutyLineFromData);
             statusSelect.value = entry.status || 'In Progress';
@@ -488,15 +514,18 @@
             statusGroup.style.display = 'none';
         }
     }
-    
+
     function populateViewModal(entry) {
         viewEntryModalTitle.innerHTML = `<i class='bx bx-show-alt'></i> Entry Details - ${entry.entry_number}`;
         let dutiesHtml = '<p>No duties recorded.</p>';
-        if(entry.duties && entry.duties.length > 0) {
+        if (entry.duties && entry.duties.length > 0) {
             dutiesHtml = entry.duties.map(d => `<li><span class="le-duty-name">${d.type}</span> <span class="le-duty-value">${d.value} ${d.unit}</span></li>`).join('');
             dutiesHtml = `<ul class="le-duties-view-container">${dutiesHtml}</ul>`;
         }
         const safeStatus = (entry.status || 'In Progress').toLowerCase().replace(/\s/g, '-');
+        const safeFdaStatus = (entry.fda_status || 'Hold').toLowerCase().replace(/\s/g, '-');
+        const safeCargoStatus = (entry.cargo_release || 'Pending').toLowerCase().replace(/\s/g, '-');
+
         viewEntryDetailsBody.innerHTML = `
             <div class="le-detail-section">
                 <h4><i class='bx bx-info-circle'></i> General Information</h4>
@@ -508,6 +537,8 @@
                     <div class="le-detail-group"><span class="le-detail-label">Invoice:</span><span class="le-detail-value">${entry.invoice || 'N/A'}</span></div>
                     <div class="le-detail-group"><span class="le-detail-label">Bond Type:</span><span class="le-detail-value">${entry.bond_type}</span></div>
                     <div class="le-detail-group"><span class="le-detail-label">Status:</span><span class="le-detail-value"><span class="le-status-badge status-${safeStatus}">${entry.status}</span></span></div>
+                    <div class="le-detail-group"><span class="le-detail-label">FDA Status:</span><span class="le-detail-value"><span class="le-status-badge status-${safeFdaStatus}">${entry.fda_status || 'Hold'}</span></span></div>
+                    <div class="le-detail-group"><span class="le-detail-label">Cargo Release:</span><span class="le-detail-value"><span class="le-status-badge status-${safeCargoStatus}">${entry.cargo_release || 'Pending'}</span></span></div>
                     <div class="le-detail-group"><span class="le-detail-label">User:</span><span class="le-detail-value">${entry.user_name}</span></div>
                 </div>
             </div>
@@ -526,7 +557,7 @@
     // SECTION 6: DOCUMENT MANAGEMENT
     async function uploadEntryDocument() {
         if (!currentEntryIdForDocs || !leDocFileInput.files[0]) return;
-        
+
         leUploadDocBtn.disabled = true;
         const file = leDocFileInput.files[0];
         const entry = allEntriesData.find(e => e.id === currentEntryIdForDocs);
@@ -545,7 +576,7 @@
             file_path: filePath,
             uploaded_at: new Date().toISOString()
         };
-        
+
         const updatedDocuments = [...(entry.documents || []), newDocument];
         const { error: dbError } = await supabase.from(ENTRIES_TABLE).update({ documents: updatedDocuments }).eq('id', currentEntryIdForDocs);
 
@@ -559,7 +590,7 @@
             leDocFileInput.value = '';
         }
     }
-    
+
     function renderEntryDocuments() {
         const entry = allEntriesData.find(e => e.id === currentEntryIdForDocs);
         leDocListContainer.innerHTML = '';
@@ -615,7 +646,7 @@
             });
         }
     }
-    
+
     // SECTION 7: EVENT LISTENERS & FORM HELPERS
     function addDutyLineFromData(duty) {
         const line = document.createElement('div');
@@ -623,7 +654,7 @@
 
         const typeSelect = document.createElement('select');
         typeSelect.innerHTML = dutyTypes.map(t => `<option value="${t}" ${duty && duty.type === t ? 'selected' : ''}>${t}</option>`).join('');
-        
+
         const valueInput = document.createElement('input');
         valueInput.type = 'number';
         valueInput.placeholder = 'Value';
@@ -643,7 +674,7 @@
         line.append(typeSelect, valueInput, unitSelect, removeBtn);
         dutiesContainer.appendChild(line);
     }
-    
+
     async function populateCustomerTypes(selectElement = customerTypeSelect) {
         const { data, error } = await supabase.from(AVAILABLE_ENTRIES_TABLE).select('customer_type');
         if (error) { console.error("Error fetching customer types:", error); return; }
@@ -685,23 +716,23 @@
         if (error) { entryNumberSelect.innerHTML = '<option>Error loading</option>'; return; }
         entryNumberSelect.innerHTML = '<option value="" selected disabled>Select entry...</option>';
         if (isEditing && selectedEntry) {
-             const option = document.createElement('option');
-             option.value = selectedEntry;
-             option.textContent = selectedEntry;
-             option.selected = true;
-             entryNumberSelect.appendChild(option);
+            const option = document.createElement('option');
+            option.value = selectedEntry;
+            option.textContent = selectedEntry;
+            option.selected = true;
+            entryNumberSelect.appendChild(option);
         }
         (data || []).forEach(item => {
             if (item.entry_number !== selectedEntry) {
-                 const option = document.createElement('option');
-                 option.value = item.entry_number;
-                 option.textContent = item.entry_number;
-                 entryNumberSelect.appendChild(option);
+                const option = document.createElement('option');
+                option.value = item.entry_number;
+                option.textContent = item.entry_number;
+                entryNumberSelect.appendChild(option);
             }
         });
         entryNumberSelect.disabled = false;
     }
-    
+
     function resetCsvModal() {
         csvUploadInput.value = '';
         processCsvBtn.disabled = true;
@@ -716,7 +747,7 @@
         processCsvBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Processing...";
 
         const reader = new FileReader();
-        reader.onload = async function(event) {
+        reader.onload = async function (event) {
             try {
                 const parsedRows = parseCSV(event.target.result);
                 if (parsedRows.length < 2) throw new Error('CSV is empty or has no data.');
@@ -741,7 +772,7 @@
                 csvResultsMessage.textContent = `Processed ${parsedRows.length + 1} rows. Added ${newEntries.length} new entries. Skipped ${entries.length - newEntries.length} duplicates.`;
                 csvProcessingResultsDiv.style.display = 'block';
             } catch (error) {
-                 showLENotification(error.message, 'error');
+                showLENotification(error.message, 'error');
             } finally {
                 processCsvBtn.innerHTML = 'Process Data';
                 processCsvBtn.disabled = false;
@@ -755,10 +786,10 @@
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const completedThisMonth = allEntriesData.filter(e => 
+        const completedThisMonth = allEntriesData.filter(e =>
             e.status === 'Completed' && new Date(e.updated_at) >= firstDayOfMonth
         );
-        const cancelledThisMonth = allEntriesData.filter(e => 
+        const cancelledThisMonth = allEntriesData.filter(e =>
             e.status === 'Cancelled' && new Date(e.updated_at) >= firstDayOfMonth
         );
 
@@ -780,7 +811,7 @@
         });
 
         const handleTableAction = (action, data) => {
-             switch(action) {
+            switch (action) {
                 case 'view': populateViewModal(data); break;
                 case 'edit':
                     resetEntryForm();
@@ -802,7 +833,7 @@
             }
         };
 
-        $(entriesTableElement).on('click', 'button', function() {
+        $(entriesTableElement).on('click', 'button', function () {
             const action = $(this).data('action');
             const row = $(this).closest('tr');
             if (!row.length) return;
@@ -810,14 +841,14 @@
             if (data) handleTableAction(action, data);
         });
 
-        $(historyTableElement).on('click', 'button', function() {
+        $(historyTableElement).on('click', 'button', function () {
             const action = $(this).data('action');
             const row = $(this).closest('tr');
             if (!row.length) return;
             const data = historyDataTable.row(row).data();
             if (data) handleTableAction(action, data);
         });
-        
+
         closeEntryFormModalBtn.addEventListener('click', () => closeLeModal(entryFormModal));
         cancelEntryFormBtn.addEventListener('click', () => closeLeModal(entryFormModal));
         entryForm.addEventListener('submit', (e) => { e.preventDefault(); saveEntry(); });
@@ -836,10 +867,10 @@
         customerTypeSelect.addEventListener('change', () => fetchCustomersForType(customerTypeSelect.value));
         customerSelect.addEventListener('change', () => fetchAvailableEntriesForCustomer(customerSelect.value));
         entryNumberSelect.addEventListener('change', () => {
-            if(entryNumberSelect.value) {
+            if (entryNumberSelect.value) {
                 entryDetailsSection.classList.add('visible');
                 saveEntryBtn.disabled = false;
-                if(dutiesContainer.children.length === 0) addDutyLineFromData(null);
+                if (dutiesContainer.children.length === 0) addDutyLineFromData(null);
             } else {
                 entryDetailsSection.classList.remove('visible');
                 saveEntryBtn.disabled = true;
@@ -902,7 +933,7 @@
 
     function handleFilterHistoryEntries() {
         const historicalEntries = allEntriesData.filter(e => e.status === 'Completed' || e.status === 'Cancelled');
-        
+
         const type = historyCustomerTypeSelect.value;
         const name = historyCustomerNameInput.value.toLowerCase();
         const month = historyMonthSelect.value;
@@ -929,7 +960,7 @@
         if (isModuleInitializedLE) return;
         console.log("LE Module: Initializing...");
         setupEventListeners();
-        
+
         const handleAuthChange = async (event) => {
             const user = event.detail?.user;
             if (user && (!currentUserLE || currentUserLE.id !== user.id)) {
@@ -945,23 +976,23 @@
         };
 
         const cleanupModule = () => {
-             if (entriesDataTable) { entriesDataTable.destroy(); entriesDataTable = null; }
-             if (historyDataTable) { historyDataTable.destroy(); historyDataTable = null; }
-             document.removeEventListener("supabaseAuthStateChange", handleAuthChange);
-             document.removeEventListener("moduleWillUnload", cleanupModule);
-             console.log("LE Module Unloaded");
+            if (entriesDataTable) { entriesDataTable.destroy(); entriesDataTable = null; }
+            if (historyDataTable) { historyDataTable.destroy(); historyDataTable = null; }
+            document.removeEventListener("supabaseAuthStateChange", handleAuthChange);
+            document.removeEventListener("moduleWillUnload", cleanupModule);
+            console.log("LE Module Unloaded");
         };
 
         document.addEventListener("supabaseAuthStateChange", handleAuthChange);
         document.addEventListener("moduleWillUnload", cleanupModule);
-        
+
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 currentUserLE = session.user;
                 fetchAllEntries();
             }
         });
-        
+
         isModuleInitializedLE = true;
     }
 
