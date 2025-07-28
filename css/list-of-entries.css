@@ -670,3 +670,26 @@ body.dark-mode .le-step-number {
     text-align: center;
     vertical-align: middle;
 }
+
+/* Estilos para nuevos Status Badges */
+.le-status-badge.status-may-proceed {
+  background-color: var(--goldmex-success-color, #28a745);
+}
+
+.le-status-badge.status-hold {
+  background-color: #fd7e14; /* Naranja para "Hold" */
+}
+
+.le-status-badge.status-pending {
+  background-color: #6c757d; /* Gris neutral para "Pending" */
+}
+
+.le-status-badge.status-released {
+  background-color: var(--goldmex-secondary-color, #007bff); /* Azul para "Released" */
+}
+
+/* El status "in-progress" ya existe, pero se incluye para referencia de Cargo Release */
+.le-status-badge.status-in-progress {
+  background-color: var(--goldmex-info-color, #17a2b8);
+}
+
