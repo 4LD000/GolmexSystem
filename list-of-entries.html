@@ -1,14 +1,11 @@
-<!-- Estructura del Módulo List of Entries -->
 <div class="list-of-entries-container">
 
-    <!-- Cabecera del Módulo -->
     <div class="le-header">
         <h2><i class='bx bx-spreadsheet'></i> List of Entries</h2>
         <div class="le-header-actions">
             <button id="addEntryNumbersBtn" class="btn-goldmex-secondary">
                 <i class='bx bx-upload'></i> Add Entry Numbers (CSV)
             </button>
-            <!-- Botón de Historial NUEVO -->
             <button id="openHistoryModalBtn" class="btn-goldmex-secondary">
                 <i class='bx bx-history'></i> History
             </button>
@@ -18,7 +15,6 @@
         </div>
     </div>
 
-    <!-- Dashboard de Resumen NUEVO -->
     <div class="le-dashboard-summary">
         <div class="le-scorecard">
             <div class="le-scorecard-icon total"><i class='bx bx-file-blank'></i></div>
@@ -51,15 +47,12 @@
     </div>
 
 
-    <!-- Contenedor de la Tabla Principal -->
     <div class="le-table-container">
         <table id="entriesTable" class="display responsive nowrap" style="width:100%">
-            <!-- El contenido de la tabla se genera con JavaScript -->
-        </table>
+            </table>
     </div>
 </div>
 
-<!-- Modal para Agregar/Editar Entrada -->
 <div id="entryFormModal" class="le-modal">
     <div class="le-modal-content le-modal-content-xlarge">
         <div class="le-modal-header">
@@ -68,7 +61,6 @@
         </div>
         <form id="entryForm" class="le-modal-body">
             <input type="hidden" id="entryId" name="entryId">
-            <!-- Paso 1: Selección de Cliente -->
             <div class="le-form-step">
                 <h4><span class="le-step-number">1</span> Customer & Entry Selection</h4>
                 <div class="le-form-grid-3">
@@ -93,7 +85,6 @@
                 </div>
             </div>
 
-            <!-- Sección de Detalles (Duties, Bond, etc.) -->
             <div id="entryDetailsSection" class="le-entry-details-section">
                 <div class="le-details-grid">
                     <div class="le-duties-column">
@@ -117,11 +108,25 @@
                             </div>
                             <p id="bondTypeError" class="le-validation-error" style="display:none;">Please select a bond type.</p>
                         </div>
+                        <div class="le-form-group">
+                            <label for="le-fda-status-select">FDA Status</label>
+                            <select id="le-fda-status-select">
+                                <option value="Hold" selected>Hold</option>
+                                <option value="May Proceed">May Proceed</option>
+                            </select>
+                        </div>
+                        <div class="le-form-group">
+                            <label for="le-cargo-release-select">Cargo Release</label>
+                            <select id="le-cargo-release-select">
+                                <option value="Pending" selected>Pending</option>
+                                <option value="In progress">In progress</option>
+                                <option value="Released">Released</option>
+                            </select>
+                        </div>
                          <div class="le-form-group">
                             <label for="le-notes-input">Notes</label>
                             <textarea id="le-notes-input" rows="4" placeholder="Add any relevant notes..."></textarea>
                         </div>
-                        <!-- Campo de estado para editar -->
                         <div class="le-form-group" id="le-status-group" style="display: none;">
                             <label for="le-status-select">Status</label>
                             <select id="le-status-select">
@@ -141,7 +146,6 @@
     </div>
 </div>
 
-<!-- Modal para Ver Detalles de la Entrada -->
 <div id="viewEntryModal" class="le-modal">
     <div class="le-modal-content le-modal-content-xlarge">
         <div class="le-modal-header">
@@ -149,15 +153,13 @@
             <button class="le-close-button" id="closeViewEntryModalBtn">&times;</button>
         </div>
         <div id="viewEntryDetailsBody" class="le-modal-body">
-            <!-- El contenido se inyectará aquí con JS -->
-        </div>
+            </div>
         <div class="le-modal-footer">
             <button type="button" id="closeViewEntryFooterBtn" class="btn-goldmex-secondary">Close</button>
         </div>
     </div>
 </div>
 
-<!-- Modal para Gestión de Documentos -->
 <div id="leDocManagementModal" class="le-modal">
     <div class="le-modal-content" style="max-width: 800px;">
         <div class="le-modal-header">
@@ -191,7 +193,6 @@
 </div>
 
 
-<!-- Modal de Confirmación Personalizado -->
 <div id="leCustomConfirmModal" class="le-modal">
     <div class="le-modal-content" style="max-width: 450px;">
         <div class="le-modal-header">
@@ -209,7 +210,6 @@
 </div>
 
 
-<!-- Modal para Subir CSV de Entry Numbers -->
 <div id="addEntryNumbersModal" class="le-modal">
     <div class="le-modal-content">
         <div class="le-modal-header">
@@ -236,7 +236,6 @@
     </div>
 </div>
 
-<!-- Modal de Historial NUEVO -->
 <div id="historyModal" class="le-modal">
     <div class="le-modal-content" style="max-width: 90vw; width: 1400px;">
         <div class="le-modal-header">
@@ -266,8 +265,7 @@
             <div id="historyTotalResults" style="margin-bottom: 1rem; font-weight: 500;">Results: 0</div>
             <div class="le-table-container" id="historyTableContainer" style="max-height: 60vh; overflow-y: auto;">
                 <table id="historyTable" class="display responsive nowrap" style="width:100%">
-                    <!-- Contenido de la tabla de historial -->
-                </table>
+                    </table>
                 <p id="noHistoryResultsMessage" style="text-align:center; padding: 2rem; display:none;">No historical entries found for the selected criteria.</p>
             </div>
         </div>
@@ -278,7 +276,6 @@
 </div>
 
 
-<!-- Contenedor de Notificaciones Personalizadas -->
 <div id="customNotificationContainerLE" class="custom-notification-le-container"></div>
 
 <script src="js/list-of-entries.js"></script>
