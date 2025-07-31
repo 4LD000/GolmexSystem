@@ -12,9 +12,11 @@
     <link rel="icon" href="assets/favicon.png" type="image/png">
     
     <!-- Hojas de estilo de los módulos -->
+    <link rel="stylesheet" href="css/client-management.css">
     <link rel="stylesheet" href="css/service-tracking.css">
     <link rel="stylesheet" href="css/invoice-tracking.css">
-    <link rel="stylesheet" href="css/list-of-entries.css"> <!-- Hoja de estilo NUEVA -->
+    <link rel="stylesheet" href="css/list-of-entries.css">
+    
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -61,6 +63,19 @@
                         <span>Dashboard</span>
                     </a>
                 </li>
+                
+                <!-- INICIO: Nueva sección CRM -->
+                <li class="menu-item menu-item-dropdown">
+                    <a href="#" class="menu-link">
+                        <i class='bx bxs-briefcase'></i>
+                        <span>CRM</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li><a href="#" class="sub-menu-link" data-module="client-management">Client Management</a></li>
+                    </ul>
+                </li>
+                <!-- FIN: Nueva sección CRM -->
 
                 <li class="menu-item menu-item-dropdown">
                     <a href="#" class="menu-link">
@@ -84,7 +99,6 @@
                     </a>
                     <ul class="sub-menu">
                         <li><a href="#" class="sub-menu-link" data-module="service-tracking">Service Tracking</a></li>
-                        <!-- Módulo nuevo añadido aquí -->
                         <li><a href="#" class="sub-menu-link" data-module="list-of-entries">List of Entries</a></li>
                     </ul>
                 </li>
@@ -136,6 +150,7 @@
 
     <script src="js/dataTables.min.js"></script>
     <script src="js/script.js"></script>
+    <!-- Los scripts de los módulos ahora se cargan dinámicamente a través de script.js -->
 </body>
 
 </html>
