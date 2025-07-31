@@ -8,14 +8,16 @@
 
     // --- Config & State ---
     const ENTRIES_TABLE = 'main_entries';
+    const CLIENTS_TABLE = 'clients'; 
     const AVAILABLE_ENTRIES_TABLE = 'available_entry_numbers';
     const BUCKET_NAME = 'entriesdocs';
     let currentUserLE = null;
     let isModuleInitializedLE = false;
     let entriesDataTable, historyDataTable;
     let currentEntryIdForDocs = null;
-    let allEntriesData = []; // This will now hold ALL entries, active and historical
+    let allEntriesData = [];
     let historyYearsPopulated = false;
+    let originalEntryStatus = {}; 
 
     const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Honey fee'];
     const dutyUnits = ['$', 'kg', 'L', 'unit'];
@@ -40,8 +42,8 @@
     const invoiceInput = document.getElementById('le-invoice-input');
     const notesInput = document.getElementById('le-notes-input');
     const bondTypeError = document.getElementById('bondTypeError');
-    const fdaStatusSelect = document.getElementById('le-fda-status-select'); // NUEVO
-    const cargoReleaseSelect = document.getElementById('le-cargo-release-select'); // NUEVO
+    const fdaStatusSelect = document.getElementById('le-fda-status-select');
+    const cargoReleaseSelect = document.getElementById('le-cargo-release-select');
     const statusGroup = document.getElementById('le-status-group');
     const statusSelect = document.getElementById('le-status-select');
     const viewEntryModal = document.getElementById('viewEntryModal');
@@ -71,14 +73,10 @@
     const csvUploadInput = document.getElementById('csvUploadInput');
     const csvProcessingResultsDiv = document.getElementById('csv-processing-results');
     const csvResultsMessage = document.getElementById('csvResultsMessage');
-
-    // Dashboard Elements
     const dbTotalEntriesEl = document.getElementById('db-total-entries');
     const dbInProgressEntriesEl = document.getElementById('db-inprogress-entries');
     const dbCompletedEntriesEl = document.getElementById('db-completed-entries');
     const dbCancelledEntriesEl = document.getElementById('db-cancelled-entries');
-
-    // History Modal Elements
     const openHistoryModalBtn = document.getElementById('openHistoryModalBtn');
     const historyModal = document.getElementById('historyModal');
     const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
@@ -91,9 +89,15 @@
     const filterHistoryBtn = document.getElementById('filterHistoryBtn');
     const historyTotalResultsEl = document.getElementById('historyTotalResults');
     const noHistoryResultsMessageEl = document.getElementById('noHistoryResultsMessage');
+    const manualEmailModal = document.getElementById('manualEmailModal');
+    const manualEmailInput = document.getElementById('manualEmailInput');
+    const manualEmailOkBtn = document.getElementById('manualEmailOkBtn');
+    const manualEmailCancelBtn = document.getElementById('manualEmailCancelBtn');
+    const sendingNotificationModal = document.getElementById('sendingNotificationModal');
+    let notificationEntryData = null; 
 
 
-    // SECTION 2: UTILITY FUNCTIONS
+    // SECTION 2: UTILITY & MODAL FUNCTIONS
     function showLENotification(message, type = 'info', duration = 4000) {
         const container = document.getElementById('customNotificationContainerLE');
         if (!container) return;
@@ -188,6 +192,7 @@
         }
         return rows.filter(row => row.length > 1 || (row.length === 1 && row[0] !== ''));
     }
+
 
     // SECTION 3: DATATABLE INITIALIZATION
     function initializeEntriesTable(data) {
@@ -289,7 +294,6 @@
         });
     }
 
-    // FIX: Updated history table definition
     function initializeHistoryTable(data) {
         if ($.fn.DataTable.isDataTable(historyTableElement)) {
             historyDataTable.clear().rows.add(data).draw();
@@ -357,7 +361,7 @@
         });
     }
 
-    // SECTION 4: CORE LOGIC
+    // SECTION 4: CORE LOGIC & DATABASE INTERACTIONS
     async function fetchAllEntries() {
         if (!currentUserLE) return;
         const { data, error } = await supabase.from(ENTRIES_TABLE).select('*').order('created_at', { ascending: false });
@@ -404,19 +408,17 @@
             notes: notesInput.value.trim() || null,
             user_email: currentUserLE.email,
             user_name: currentUserLE.user_metadata?.full_name || currentUserLE.email,
-            status: statusSelect.value, // Get status from the select
+            status: statusSelect.value,
             updated_at: new Date().toISOString()
         };
 
-        let error;
+        let result;
         if (entryId) {
-            const { error: updateError } = await supabase.from(ENTRIES_TABLE).update(dataToSave).eq('id', entryId);
-            error = updateError;
+            result = await supabase.from(ENTRIES_TABLE).update(dataToSave).eq('id', entryId).select().single();
         } else {
-            dataToSave.status = 'In Progress'; // New entries always start as In Progress
-            const { error: insertError } = await supabase.from(ENTRIES_TABLE).insert(dataToSave);
-            error = insertError;
-            if (!error) {
+            dataToSave.status = 'In Progress';
+            result = await supabase.from(ENTRIES_TABLE).insert(dataToSave).select().single();
+            if (!result.error) {
                 await supabase.from(AVAILABLE_ENTRIES_TABLE).update({ is_used: true }).eq('entry_number', dataToSave.entry_number);
             }
         }
@@ -424,13 +426,15 @@
         saveEntryBtn.disabled = false;
         saveEntryBtn.textContent = "Save Entry";
 
-        if (error) {
-            showLENotification(`Error saving entry: ${error.message}`, 'error');
-            console.error('Save Entry Error:', error);
+        if (result.error) {
+            showLENotification(`Error saving entry: ${result.error.message}`, 'error');
+            console.error('Save Entry Error:', result.error);
         } else {
             showLENotification(`Entry ${entryId ? 'updated' : 'created'} successfully!`, 'success');
             closeLeModal(entryFormModal);
-            await fetchAllEntries(); // Refetch all data
+            await fetchAllEntries(); 
+            
+            handleStatusChange(originalEntryStatus, result.data);
         }
     }
 
@@ -460,12 +464,16 @@
 
     async function completeEntry(entryId) {
         if (!currentUserLE) return;
-        const { error } = await supabase.from(ENTRIES_TABLE).update({ status: 'Completed', updated_at: new Date().toISOString() }).eq('id', entryId);
+        const originalEntry = allEntriesData.find(e => e.id === entryId);
+        if (!originalEntry) return;
+
+        const { data, error } = await supabase.from(ENTRIES_TABLE).update({ status: 'Completed', updated_at: new Date().toISOString() }).eq('id', entryId).select().single();
         if (error) {
             showLENotification(`Error completing entry: ${error.message}`, 'error');
         } else {
             showLENotification('Entry marked as completed.', 'success');
             await fetchAllEntries();
+            handleStatusChange(originalEntry, data);
         }
     }
 
@@ -473,6 +481,7 @@
     function resetEntryForm() {
         entryForm.reset();
         entryIdInput.value = '';
+        originalEntryStatus = {}; 
         customerTypeSelect.disabled = false;
         customerSelect.innerHTML = '<option value="">Select type first...</option>';
         customerSelect.disabled = true;
@@ -483,13 +492,18 @@
         cargoReleaseSelect.value = 'Pending';
         entryDetailsSection.classList.remove('visible');
         saveEntryBtn.disabled = true;
-        statusGroup.style.display = 'none'; // Hide status on reset
+        statusGroup.style.display = 'none';
     }
 
     async function populateEntryForm(entry) {
-        // This function now only populates the form, it doesn't open it.
         await populateCustomerTypes();
         if (entry) {
+            originalEntryStatus = {
+                fda_status: entry.fda_status,
+                cargo_release: entry.cargo_release,
+                status: entry.status
+            };
+
             entryFormModalTitle.innerHTML = `<i class='bx bx-edit-alt'></i> Edit Entry - ${entry.entry_number}`;
             entryIdInput.value = entry.id;
             customerTypeSelect.value = entry.customer_type;
@@ -506,7 +520,7 @@
             dutiesContainer.innerHTML = '';
             (entry.duties || []).forEach(addDutyLineFromData);
             statusSelect.value = entry.status || 'In Progress';
-            statusGroup.style.display = 'block'; // Show status dropdown for editing
+            statusGroup.style.display = 'block';
             entryDetailsSection.classList.add('visible');
             saveEntryBtn.disabled = false;
         } else {
@@ -557,7 +571,6 @@
     // SECTION 6: DOCUMENT MANAGEMENT
     async function uploadEntryDocument() {
         if (!currentEntryIdForDocs || !leDocFileInput.files[0]) return;
-
         leUploadDocBtn.disabled = true;
         const file = leDocFileInput.files[0];
         const entry = allEntriesData.find(e => e.id === currentEntryIdForDocs);
@@ -635,11 +648,9 @@
             showConfirmModal('Delete Document', 'Are you sure you want to permanently delete this document?', async () => {
                 const { error: storageError } = await supabase.storage.from(BUCKET_NAME).remove([path]);
                 if (storageError) return showLENotification(`Storage error: ${storageError.message}`, 'error');
-
                 const updatedDocuments = entry.documents.filter(d => d.id !== docId);
                 const { error: dbError } = await supabase.from(ENTRIES_TABLE).update({ documents: updatedDocuments }).eq('id', entry.id);
                 if (dbError) return showLENotification(`DB update error: ${dbError.message}`, 'error');
-
                 showLENotification('Document deleted successfully.', 'success');
                 entry.documents = updatedDocuments;
                 renderEntryDocuments();
@@ -647,7 +658,93 @@
         }
     }
 
-    // SECTION 7: EVENT LISTENERS & FORM HELPERS
+    // SECTION 7: NOTIFICATION LOGIC (GMAIL VERSION)
+    async function signInWithGmailScope() {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                scopes: 'https://www.googleapis.com/auth/gmail.send',
+            },
+        });
+        if (error) {
+            console.error('Error getting Gmail scope:', error);
+            showLENotification('Could not get permission to send emails.', 'error');
+        }
+    }
+
+    function handleStatusChange(originalStatus, updatedEntry) {
+        if (!originalStatus || !updatedEntry) return;
+
+        const fdaChanged = originalStatus.fda_status !== updatedEntry.fda_status;
+        const cargoChanged = originalStatus.cargo_release !== updatedEntry.cargo_release;
+        const statusChanged = originalStatus.status !== updatedEntry.status;
+
+        if (fdaChanged || cargoChanged || statusChanged) {
+            console.log("Status change detected. Triggering notification process.");
+            triggerNotificationProcess(updatedEntry);
+        }
+    }
+
+    async function triggerNotificationProcess(entryData) {
+        const { data: client, error } = await supabase
+            .from(CLIENTS_TABLE)
+            .select('email')
+            .ilike('company_name', entryData.customer_name)
+            .single();
+
+        if (error || !client || !client.email) {
+            console.warn(`Customer email not found for: ${entryData.customer_name}. Opening manual input modal.`);
+            notificationEntryData = entryData; 
+            openLeModal(manualEmailModal);
+        } else {
+            console.log(`Email found for ${entryData.customer_name}: ${client.email}. Sending notification.`);
+            sendNotification(entryData, client.email);
+        }
+    }
+
+    async function sendNotification(entryData, recipientEmail) {
+        openLeModal(sendingNotificationModal);
+
+        try {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session) {
+                throw new Error('Could not get user session. Please sign in again.');
+            }
+
+            const { provider_token, user } = session;
+            if (!provider_token) {
+                // This means the user needs to grant the gmail.send scope
+                closeLeModal(sendingNotificationModal);
+                await signInWithGmailScope();
+                // After the user grants permission, they will be redirected back.
+                // The action will need to be re-initiated by the user.
+                // A more advanced implementation could store the pending action in localStorage.
+                showLENotification('Permission required. Please try the action again.', 'info');
+                return;
+            }
+
+            const { error: functionError } = await supabase.functions.invoke('send-gmail-notification', {
+                body: {
+                    entry: entryData,
+                    email: recipientEmail,
+                    provider_token: provider_token,
+                    from_email: user.email
+                },
+            });
+
+            if (functionError) throw functionError;
+
+            showLENotification('Notification sent successfully!', 'success');
+        } catch (error) {
+            console.error('Error during notification process:', error);
+            showLENotification(`Failed to send notification: ${error.message}`, 'error');
+        } finally {
+            closeLeModal(sendingNotificationModal);
+        }
+    }
+
+
+    // SECTION 8: EVENT LISTENERS & FORM HELPERS
     function addDutyLineFromData(duty) {
         const line = document.createElement('div');
         line.className = 'le-duty-line';
@@ -794,7 +891,7 @@
         );
 
         dbTotalEntriesEl.textContent = activeEntries.length;
-        dbInProgressEntriesEl.textContent = activeEntries.length; // Same as total active
+        dbInProgressEntriesEl.textContent = activeEntries.length;
         dbCompletedEntriesEl.textContent = completedThisMonth.length;
         dbCancelledEntriesEl.textContent = cancelledThisMonth.length;
     }
@@ -802,7 +899,7 @@
     function setupEventListeners() {
         addNewEntryBtn.addEventListener('click', () => {
             resetEntryForm();
-            populateEntryForm(null); // Pass null for new entry
+            populateEntryForm(null);
             openLeModal(entryFormModal);
         });
         addEntryNumbersBtn.addEventListener('click', () => {
@@ -815,8 +912,8 @@
                 case 'view': populateViewModal(data); break;
                 case 'edit':
                     resetEntryForm();
-                    openLeModal(entryFormModal); // Open modal immediately
-                    populateEntryForm(data); // Populate form after opening
+                    openLeModal(entryFormModal);
+                    populateEntryForm(data);
                     break;
                 case 'docs':
                     currentEntryIdForDocs = data.id;
@@ -877,22 +974,35 @@
             }
         });
         addDutyLineBtn.addEventListener('click', () => addDutyLineFromData(null));
-
         closeEntryNumbersModalBtn.addEventListener('click', () => closeLeModal(addEntryNumbersModal));
         cancelCsvUploadBtn.addEventListener('click', () => closeLeModal(addEntryNumbersModal));
         processCsvBtn.addEventListener('click', handleProcessCsv);
         csvUploadInput.addEventListener('change', () => {
             processCsvBtn.disabled = !csvUploadInput.files[0];
         });
-
-        // History Modal Listeners
         openHistoryModalBtn.addEventListener('click', openHistoryModal);
         closeHistoryModalBtn.addEventListener('click', () => closeLeModal(historyModal));
         closeHistoryFooterBtn.addEventListener('click', () => closeLeModal(historyModal));
         filterHistoryBtn.addEventListener('click', handleFilterHistoryEntries);
+
+        manualEmailCancelBtn.addEventListener('click', () => {
+            closeLeModal(manualEmailModal);
+            notificationEntryData = null; 
+        });
+        manualEmailOkBtn.addEventListener('click', () => {
+            const email = manualEmailInput.value;
+            if (email && notificationEntryData) {
+                closeLeModal(manualEmailModal);
+                sendNotification(notificationEntryData, email);
+                notificationEntryData = null; 
+                manualEmailInput.value = ''; 
+            } else {
+                showLENotification('Please enter a valid email address.', 'error');
+            }
+        });
     }
 
-    // History Functions
+    // SECTION 9: HISTORY FUNCTIONS
     function openHistoryModal() {
         populateHistoryFilterDropdowns();
         handleFilterHistoryEntries();
@@ -900,10 +1010,7 @@
     }
 
     function populateHistoryFilterDropdowns() {
-        // Populate Customer Types
         populateCustomerTypes(historyCustomerTypeSelect);
-
-        // Populate Months
         if (historyMonthSelect.options.length <= 1) {
             const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             historyMonthSelect.innerHTML = '<option value="">All Months</option>';
@@ -914,8 +1021,6 @@
                 historyMonthSelect.appendChild(option);
             });
         }
-
-        // Populate Years
         if (!historyYearsPopulated) {
             const currentYear = new Date().getFullYear();
             historyYearSelect.innerHTML = '<option value="">All Years</option>';
@@ -933,7 +1038,6 @@
 
     function handleFilterHistoryEntries() {
         const historicalEntries = allEntriesData.filter(e => e.status === 'Completed' || e.status === 'Cancelled');
-
         const type = historyCustomerTypeSelect.value;
         const name = historyCustomerNameInput.value.toLowerCase();
         const month = historyMonthSelect.value;
@@ -955,7 +1059,7 @@
     }
 
 
-    // SECTION 8: INITIALIZATION
+    // SECTION 10: INITIALIZATION
     function initializeModule() {
         if (isModuleInitializedLE) return;
         console.log("LE Module: Initializing...");
