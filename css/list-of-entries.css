@@ -238,7 +238,6 @@ body.dark-mode .le-table-actions button[data-action="edit"]:hover {
   background-color:#e31837;;
   color: var(--goldmex-white-color);
 }
-/* FIX: Explicit dark mode rule for delete button hover to prevent style conflicts */
 body.dark-mode .le-table-actions button[data-action="delete"]:hover {
     background-color:#e31837;
     color: var(--goldmex-white-color);
@@ -412,7 +411,6 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   justify-content: center;
 }
 
-/* FIX: Ensure modals opened from the History view appear on top */
 #viewEntryModal,
 #leDocManagementModal,
 #entryFormModal,
@@ -664,7 +662,6 @@ body.dark-mode .le-step-number {
     border-bottom: 1px solid var(--color-border);
 }
 
-/* FIX: Center align text in history table */
 #historyTable th,
 #historyTable td {
     text-align: center;
@@ -688,8 +685,25 @@ body.dark-mode .le-step-number {
   background-color: var(--goldmex-secondary-color, #007bff); /* Azul para "Released" */
 }
 
-/* El status "in-progress" ya existe, pero se incluye para referencia de Cargo Release */
 .le-status-badge.status-in-progress {
   background-color: var(--goldmex-info-color, #17a2b8);
 }
 
+/* START: New Styles for Notification Modals */
+#manualEmailModal .le-modal-header {
+    background-color: rgba(253, 126, 20, 0.1);
+    border-bottom-color: rgba(253, 126, 20, 0.4);
+}
+
+#manualEmailModal h3 .bx {
+    color: #fd7e14;
+}
+
+#sendingNotificationModal .le-modal-content {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    align-items: center;
+    justify-content: center;
+}
+/* END: New Styles for Notification Modals */
