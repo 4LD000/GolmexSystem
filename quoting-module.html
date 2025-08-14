@@ -302,14 +302,22 @@
 </div>
 
 <div id="sq-product-explorer-modal" class="sq-modal">
-    <div class="sq-modal-content sq-modal-large">
+    <div class="sq-modal-content sq-modal-xlarge">
         <div class="sq-modal-header">
             <h3><i class='bx bx-grid-alt'></i> Explore Products</h3>
             <span class="sq-modal-close-btn">&times;</span>
         </div>
         <div class="sq-modal-body">
-            <div class="sq-explorer-search">
-                <input type="text" id="sq-modal-search-input" placeholder="Search products in explorer...">
+            <div class="sq-explorer-controls">
+                <div class="sq-explorer-filters">
+                    <button class="sq-filter-btn active" data-filter="all">All</button>
+                    <button class="sq-filter-btn" data-filter="g">Grams (g)</button>
+                    <button class="sq-filter-btn" data-filter="ml">Milliliters (mL)</button>
+                    <button class="sq-filter-btn" data-filter="l">Liters (L)</button>
+                </div>
+                <div class="sq-explorer-search">
+                    <input type="text" id="sq-modal-search-input" placeholder="Search products in explorer...">
+                </div>
             </div>
             <div id="sq-product-cards-container" class="sq-product-cards-container"></div>
         </div>
@@ -345,10 +353,19 @@
                     <label for="p-pieces-per-case">Pieces per Case</label>
                     <input type="number" id="p-pieces-per-case" placeholder="12">
                 </div>
-                <div class="sq-form-group">
-                    <label for="p-volume">Volume per Piece (mL)</label>
-                    <input type="number" id="p-volume" placeholder="625">
+                
+                <div class="sq-form-group sq-form-group-combined">
+                    <label for="p-value-per-piece">Value per Piece</label>
+                    <div class="sq-input-with-select">
+                        <input type="number" id="p-value-per-piece" placeholder="625">
+                        <select id="p-unit-of-measure">
+                            <option value="g" selected>grams (g)</option>
+                            <option value="ml">milliliters (mL)</option>
+                            <option value="l">liters (L)</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div class="sq-form-group">
                     <label for="p-cases-per-pallet">Cases per Pallet</label>
                     <input type="number" id="p-cases-per-pallet" placeholder="102">
@@ -426,3 +443,4 @@
 
 
 <script src="js/quoting-module.js"></script>
+</div>
