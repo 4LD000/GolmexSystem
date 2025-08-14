@@ -4,7 +4,7 @@
         return;
     }
     document.body.dataset.quotingModuleInitialized = "true";
-    console.log("Sales & Quoting Module Initialized (v12 - Final Polish)");
+    console.log("Sales & Quoting Module Initialized (v13 - Units & Search Update)");
 
     // SECTION 1: SUPABASE & CONFIGURATION
     if (typeof supabase === "undefined" || !supabase) {
@@ -40,6 +40,7 @@
     let isCalculatingTransport = false;
     let productExplorerMode = "single";
     let selectedProductsForMulti = new Set();
+    let activeUnitFilter = 'all';
 
     // --- DOM Element Caching ---
     const manageProductsBtn = document.getElementById("sq-manage-products-btn");
@@ -187,6 +188,7 @@
     const modalCloseBtns = document.querySelectorAll(".sq-modal-close-btn");
     const modalCancelBtns = document.querySelectorAll(".sq-modal-cancel-btn");
     const modalSearchInput = document.getElementById("sq-modal-search-input");
+    const filterBtns = document.querySelectorAll(".sq-filter-btn");
 
     const productForm = document.getElementById("sq-product-form");
     const productModalTitle = document.getElementById("sq-product-modal-title");
@@ -195,7 +197,8 @@
     const productImageInput = document.getElementById("p-image");
     const currentImageEl = document.getElementById("p-current-image");
     const piecesPerCaseInput = document.getElementById("p-pieces-per-case");
-    const volumeInput = document.getElementById("p-volume");
+    const valuePerPieceInput = document.getElementById("p-value-per-piece");
+    const unitOfMeasureSelect = document.getElementById("p-unit-of-measure");
     const casesPerPalletInput = document.getElementById("p-cases-per-pallet");
     const palletsPerTruckInput = document.getElementById("p-pallets-per-truck");
     const packagingWeightInput = document.getElementById("p-packaging-weight");
@@ -254,6 +257,24 @@
             multiItemView.style.display = "flex";
         }
         currentQuoteMode = viewName;
+    }
+    
+    function getPieceWeightInGrams(product) {
+        if (!product || typeof product.value_per_piece !== 'number') return 0;
+    
+        const value = product.value_per_piece;
+        const unit = product.unit_of_measure || 'g';
+    
+        switch (unit) {
+            case 'g':
+                return value; // Already in grams
+            case 'ml':
+                return value; // Assuming density of 1 g/mL for liquids
+            case 'l':
+                return value * 1000; // 1 Liter = 1000 mL ≈ 1000 grams
+            default:
+                return 0;
+        }
     }
 
     function resetToStartView() {
@@ -376,13 +397,14 @@
             renderQuotePreview();
             return;
         }
-        const pieceWeightGrams =
-            (currentQuote.product.volume_per_piece_ml || 0) +
-            (currentQuote.product.packaging_weight_g || 28);
+        
+        const pieceWeightGrams = getPieceWeightInGrams(currentQuote.product);
+        const totalPieceWeightGrams = pieceWeightGrams + (currentQuote.product.packaging_weight_g || 0);
+
         const caseContentWeightGrams =
-            pieceWeightGrams * (currentQuote.product.pieces_per_case || 1);
+            totalPieceWeightGrams * (currentQuote.product.pieces_per_case || 1);
         const caseWeightGrams =
-            caseContentWeightGrams + (currentQuote.product.case_weight_g || 454);
+            caseContentWeightGrams + (currentQuote.product.case_weight_g || 0);
         const caseWeightLbs = caseWeightGrams * 0.00220462;
         const palletWeightLbs =
             caseWeightLbs * (currentQuote.product.cases_per_pallet || 1);
@@ -446,12 +468,12 @@
         );
         if (!item) return;
         const product = item.product;
-        const pieceWeightGrams =
-            (product.volume_per_piece_ml || 0) + (product.packaging_weight_g || 28);
+        const pieceWeightGrams = getPieceWeightInGrams(product);
+        const totalPieceWeightGrams = pieceWeightGrams + (product.packaging_weight_g || 0);
         const caseContentWeightGrams =
-            pieceWeightGrams * (product.pieces_per_case || 1);
+            totalPieceWeightGrams * (product.pieces_per_case || 1);
         const caseWeightGrams =
-            caseContentWeightGrams + (product.case_weight_g || 454);
+            caseContentWeightGrams + (product.case_weight_g || 0);
         const caseWeightLbs = caseWeightGrams * 0.00220462;
         const palletWeightLbs = caseWeightLbs * (product.cases_per_pallet || 1);
         if (multiWeightPerCaseEl)
@@ -738,7 +760,7 @@
                 .order("name");
             if (error) throw error;
             productsCache = data;
-            renderProductCards(productsCache);
+            applyFiltersAndRenderCards();
             if (
                 document
                     .getElementById("qcf-database-tab")
@@ -774,18 +796,34 @@
         productSearchInput.value = selected.name;
         productImage.src = selected.image_url || "assets/favicon.png";
         productNameEl.textContent = selected.name;
-        productSpecsEl.textContent = `${selected.pieces_per_case} pieces / ${selected.volume_per_piece_ml} mL`;
+        productSpecsEl.textContent = `${selected.pieces_per_case} pieces / ${selected.value_per_piece} ${selected.unit_of_measure}`;
         closeModal(productExplorerModal);
         selectedProductDisplay.style.display = "flex";
         selectedProductDisplay.classList.add("selected-product-active");
         updateAllCalculations();
     }
 
+    function applyFiltersAndRenderCards() {
+        const searchTerm = modalSearchInput.value.toLowerCase();
+        
+        let filteredProducts = productsCache;
+
+        if (activeUnitFilter !== 'all') {
+            filteredProducts = filteredProducts.filter(p => p.unit_of_measure === activeUnitFilter);
+        }
+
+        if (searchTerm) {
+            filteredProducts = filteredProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+        }
+
+        renderProductCards(filteredProducts);
+    }
+
     function renderProductCards(products) {
         if (!productCardsContainer) return;
         productCardsContainer.innerHTML = "";
         if (products.length === 0) {
-            productCardsContainer.innerHTML = "<p>No products found.</p>";
+            productCardsContainer.innerHTML = "<p>No products found matching your criteria.</p>";
             return;
         }
         products.forEach((product) => {
@@ -803,8 +841,7 @@
                 }">
                 <div class="sq-product-card-info">
                     <h5>${product.name}</h5>
-                    <p>${product.pieces_per_case || "N/A"} pieces / ${product.volume_per_piece_ml || "N/A"
-                } mL</p>
+                    <p>${product.pieces_per_case || "N/A"} pieces / ${product.value_per_piece || "N/A"} ${product.unit_of_measure || 'N/A'}</p>
                 </div>`;
             card.addEventListener("click", () => {
                 if (productExplorerMode === "single") {
@@ -841,8 +878,7 @@
                 }" alt="${item.product.name}">
                 <div class="product-info">
                     <h5>${item.product.name}</h5>
-                    <p>${item.product.pieces_per_case || "N/A"} pcs / ${item.product.volume_per_piece_ml || "N/A"
-                } mL</p>
+                    <p>${item.product.pieces_per_case || "N/A"} pcs / ${item.product.value_per_piece || "N/A"} ${item.product.unit_of_measure || 'N/A'}</p>
                 </div>`;
             multiItemListContainer.appendChild(itemEl);
         });
@@ -924,9 +960,20 @@
                 productExplorerMode = "single";
                 addSelectedProductsBtn.style.display = "none";
                 selectedProductsForMulti.clear();
-                renderProductCards(productsCache);
+                applyFiltersAndRenderCards();
                 openModal(productExplorerModal);
             });
+        
+        if (productSearchInput) {
+            productSearchInput.addEventListener("input", (e) => {
+                const searchTerm = e.target.value;
+                if (productExplorerModal.style.display !== 'flex') {
+                    openModal(productExplorerModal);
+                }
+                modalSearchInput.value = searchTerm;
+                applyFiltersAndRenderCards();
+            });
+        }
 
         const inputsToWatch = [
             caseQuantityInput,
@@ -967,7 +1014,7 @@
             currentMultiQuote.items.forEach((item) =>
                 selectedProductsForMulti.add(item.product.id)
             );
-            renderProductCards(productsCache);
+            applyFiltersAndRenderCards();
             openModal(productExplorerModal);
         });
         addSelectedProductsBtn.addEventListener("click", () => {
@@ -1074,13 +1121,20 @@
             }
         });
 
-        if (modalSearchInput)
-            modalSearchInput.addEventListener("input", (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                renderProductCards(
-                    productsCache.filter((p) => p.name.toLowerCase().includes(searchTerm))
-                );
+        if (modalSearchInput) {
+            modalSearchInput.addEventListener("input", applyFiltersAndRenderCards);
+        }
+
+        if (filterBtns) {
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activeUnitFilter = btn.dataset.filter;
+                    applyFiltersAndRenderCards();
+                });
             });
+        }
 
         if (productForm) productForm.addEventListener("submit", handleProductSave);
         if (saveQuoteBtn) saveQuoteBtn.addEventListener("click", saveSingleQuote);
@@ -1266,7 +1320,8 @@
                 name: productNameInput.value,
                 image_url: imageUrl,
                 pieces_per_case: parseInt(piecesPerCaseInput.value) || null,
-                volume_per_piece_ml: parseFloat(volumeInput.value) || null,
+                value_per_piece: parseFloat(valuePerPieceInput.value) || null,
+                unit_of_measure: unitOfMeasureSelect.value,
                 cases_per_pallet: parseInt(casesPerPalletInput.value) || null,
                 pallets_per_truck: parseInt(palletsPerTruckInput.value) || null,
                 packaging_weight_g: parseFloat(packagingWeightInput.value) || 28,
@@ -1314,7 +1369,8 @@
         productIdInput.value = product.id;
         productNameInput.value = product.name;
         piecesPerCaseInput.value = product.pieces_per_case;
-        volumeInput.value = product.volume_per_piece_ml;
+        valuePerPieceInput.value = product.value_per_piece;
+        unitOfMeasureSelect.value = product.unit_of_measure || 'g';
         casesPerPalletInput.value = product.cases_per_pallet;
         palletsPerTruckInput.value = product.pallets_per_truck;
         packagingWeightInput.value = product.packaging_weight_g;
@@ -1522,7 +1578,6 @@
         printContainer.classList.add("pdf-render-mode");
         document.body.appendChild(printContainer);
 
-        // --- PDF-Specific HTML Generation ---
         const { companyName, totals, transport, exchangeRate, items, quantity } =
             quoteObject;
         const isMulti = viewType === "multi";
@@ -1613,7 +1668,6 @@
                 <span class="footer-value">$${(totals.pricePerPieceUSD || 0).toFixed(4)}</span>
             </div>`;
 
-        // Define styles and content blocks for the footer to ensure correct layout in PDF
         const footerStyle = isMulti ? `style="flex-direction: column; gap: 1.5rem;"` : '';
         const footerRightStyle = isMulti ? `style="order: 1; align-self: flex-end; max-width: 50%; min-width: 300px; width: 100%;"` : '';
         const footerLeftStyle = isMulti ? `style="order: 2; width: 100%;"` : '';
