@@ -1,6 +1,6 @@
 /*
  * ====================================================================
- * == STYLES FOR SALES & QUOTING MODULE (SQ) - FULL & CORRECTED v2   ==
+ * == STYLES FOR SALES & QUOTING MODULE (SQ) - FULL & CORRECTED v3   ==
  * ====================================================================
  */
 
@@ -609,7 +609,6 @@ body.dark-mode .sq-table-container {
     transition: opacity 0.3s ease-in-out;
 }
 
-/* Add open state for modal animation */
 .sq-modal.open {
   display: flex;
   opacity: 1;
@@ -632,6 +631,11 @@ body.dark-mode .sq-table-container {
 
 .sq-modal-large {
     max-width: 900px;
+}
+
+/* NEW: Extra large modal for product explorer */
+.sq-modal-xlarge {
+    max-width: 1200px;
 }
 
 .sq-modal-header {
@@ -694,7 +698,60 @@ body.dark-mode #sqCustomConfirmModal .sq-modal-body p {
 }
 
 
-/* Product Explorer Modal Specifics */
+/* NEW: Product Explorer Controls, Filters, and Search */
+.sq-explorer-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.sq-explorer-filters {
+    display: flex;
+    gap: 0.5rem;
+    background-color: var(--color-bg);
+    padding: 0.3rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--qcf-border-color-light);
+}
+body.dark-mode .sq-explorer-filters {
+    border-color: var(--color-border);
+}
+
+.sq-filter-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.3rem;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sq-filter-btn:hover {
+    background-color: var(--active-hover-bg);
+    color: var(--active-hover-text);
+}
+
+.sq-filter-btn.active {
+    background-color: var(--goldmex-primary-color);
+    color: var(--goldmex-white-color);
+    box-shadow: 0 2px 5px rgba(var(--goldmex-primary-color-rgb), 0.2);
+}
+
+body.dark-mode .sq-filter-btn.active {
+    background-color: var(--goldmex-secondary-color);
+    color: var(--goldmex-primary-color);
+    box-shadow: none;
+}
+
+.sq-explorer-search {
+    flex-grow: 1;
+    max-width: 400px;
+}
+
 .sq-explorer-search input {
     width: 100%;
     padding: 0.7rem 1rem;
@@ -707,10 +764,10 @@ body.dark-mode .sq-explorer-search input {
     border-color: var(--color-border);
 }
 
-
+/* NEW: 4-column grid for product cards */
 .sq-product-cards-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 1rem;
     max-height: 60vh;
     overflow-y: auto;
@@ -778,6 +835,45 @@ body.dark-mode .sq-product-card {
     color: var(--color-text-secondary);
     margin-top: 4px;
     font-style: italic;
+}
+
+/* NEW: Styles for combined input with select */
+.sq-input-with-select {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--qcf-border-color-light);
+    border-radius: 0.3rem;
+    background-color: var(--color-bg);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+body.dark-mode .sq-input-with-select {
+    border-color: var(--color-border);
+}
+
+.sq-input-with-select:focus-within {
+    border-color: var(--goldmex-secondary-color);
+    box-shadow: 0 0 0 2px rgba(var(--goldmex-secondary-color-rgb), 0.2);
+}
+
+.sq-input-with-select input {
+    border: none;
+    background: none;
+    outline: none;
+    flex-grow: 1;
+    padding: 0.45rem 0.6rem;
+}
+
+.sq-input-with-select select {
+    border: none;
+    border-left: 1px solid var(--qcf-border-color-light);
+    background: none;
+    outline: none;
+    padding-right: 0.5rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+body.dark-mode .sq-input-with-select select {
+    border-left-color: var(--color-border);
 }
 
 /* Custom Notifications */
