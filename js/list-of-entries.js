@@ -19,7 +19,7 @@
     let historyYearsPopulated = false;
     let originalEntryStatus = {}; 
 
-    const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Honey fee'];
+    const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Antidumping Tomatoes', 'Honey fee'];
     const dutyUnits = ['$', 'kg', 'L', 'unit'];
 
     // --- Element Caching ---
