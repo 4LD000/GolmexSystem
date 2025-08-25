@@ -5,7 +5,7 @@
     }
     document.body.dataset.quotingModuleInitialized = "true";
     console.log(
-        "Sales & Quoting Module Initialized (v16 - Final with Capacity Dashboard UI)"
+        "Sales & Quoting Module Initialized (v17 - Final with All Validations)"
     );
 
     // SECTION 1: SUPABASE & CONFIGURATION
@@ -25,9 +25,9 @@
     let currentQuoteMode = "start";
     let activeMultiItemId = null;
 
-    // --- Truck Capacity Limits ---
+    // --- Truck Capacity Limits (REQUERIMIENTO #1 y #3) ---
     const TRUCK_PALLET_LIMIT = 22;
-    const TRUCK_WEIGHT_LIMIT_LBS = 40000;
+    const TRUCK_WEIGHT_LIMIT_LBS = 43000; // MODIFICADO: Límite de peso actualizado a 43,000
 
     let currentQuote = {
         exchangeRate: 17.5,
@@ -310,15 +310,10 @@
     }
 
     function softResetToModeSelection() {
-        // CAMBIO: Reactivamos el campo de nombre y el botón de confirmación
         companyNameInput.disabled = false;
         confirmCompanyBtn.disabled = false;
-
-        // CAMBIO: Deshabilitamos las tarjetas de selección hasta que se confirme un nuevo nombre
         choiceSingleCard.classList.add("disabled");
         choiceMultiCard.classList.add("disabled");
-
-        // El resto de la función se mantiene para limpiar las cotizaciones
         resetSingleQuoteCreator();
         resetMultiQuoteCreator();
         switchView("start");
@@ -504,19 +499,16 @@
         if (multiWeightPerPalletEl)
             multiWeightPerPalletEl.textContent = `${palletWeightLbs.toFixed(2)} lbs`;
 
-        // === LÍNEAS NUEVAS AÑADIDAS ===
         const casesPerPalletEl = document.getElementById(
             "qcf-multi-cases-per-pallet"
         );
         if (casesPerPalletEl)
             casesPerPalletEl.textContent = item.product.cases_per_pallet || 0;
-        // ============================
     }
 
-    // === INICIO DE CÓDIGO NUEVO: FUNCIÓN PARA VISUALIZADOR ===
     function updateTrailerVisualizer(totalPalletSpace) {
         const slots = document.querySelectorAll(".sq-trailer-slot .sq-slot-fill");
-        if (slots.length === 0) return; // Salir si los slots no existen
+        if (slots.length === 0) return;
 
         const fullPallets = Math.floor(totalPalletSpace);
         const partialPalletFill = (totalPalletSpace - fullPallets) * 100;
@@ -532,11 +524,11 @@
             slot.style.height = `${fillPercent}%`;
         });
     }
-    // === FIN DE CÓDIGO NUEVO ===
 
     function updateTruckCapacity() {
         let totalWeightLbs = 0;
         let totalPalletSpace = 0;
+
         currentMultiQuote.items.forEach((item) => {
             if (item.isCompleted && item.product) {
                 const caseWeightLbs = calculateCaseWeightLbs(item.product);
@@ -546,6 +538,7 @@
                 }
             }
         });
+
         currentMultiQuote.truckCapacity = {
             totalWeightLbs,
             totalPalletSpace,
@@ -553,54 +546,22 @@
             palletPercent: (totalPalletSpace / TRUCK_PALLET_LIMIT) * 100,
         };
 
-        if (
-            truckPalletBarFill &&
-            truckPalletText &&
-            truckWeightBarFill &&
-            truckWeightText
-        ) {
-            const palletPercent = Math.min(
-                100,
-                currentMultiQuote.truckCapacity.palletPercent
-            );
+        if (truckPalletBarFill && truckPalletText && truckWeightBarFill && truckWeightText) {
+            // --- PALLETS ---
+            let palletPercent = Math.max(0, Math.min(100, currentMultiQuote.truckCapacity.palletPercent));
+            truckPalletText.textContent = `${totalPalletSpace.toFixed(2)} / ${TRUCK_PALLET_LIMIT} Pallets`;
             truckPalletBarFill.style.width = `${palletPercent}%`;
-            truckPalletText.textContent = `${totalPalletSpace.toFixed(
-                2
-            )} / ${TRUCK_PALLET_LIMIT} Pallets`;
-            if (palletPercent > 90) {
-                truckPalletBarFill.style.backgroundColor =
-                    "var(--goldmex-accent-color)";
-            } else if (palletPercent > 75) {
-                truckPalletBarFill.style.backgroundColor =
-                    "var(--goldmex-secondary-color)";
-            } else {
-                truckPalletBarFill.style.backgroundColor =
-                    "var(--goldmex-primary-color)";
-            }
 
-            const weightPercent = Math.min(
-                100,
-                currentMultiQuote.truckCapacity.weightPercent
-            );
+            // --- PESO ---
+            let weightPercent = Math.max(0, Math.min(100, currentMultiQuote.truckCapacity.weightPercent));
+            truckWeightText.textContent = `${totalWeightLbs.toFixed(0).toLocaleString()} / ${TRUCK_WEIGHT_LIMIT_LBS.toLocaleString()} lbs`;
             truckWeightBarFill.style.width = `${weightPercent}%`;
-            truckWeightText.textContent = `${totalWeightLbs
-                .toFixed(0)
-                .toLocaleString()} / ${TRUCK_WEIGHT_LIMIT_LBS.toLocaleString()} lbs`;
-            if (weightPercent > 90) {
-                truckWeightBarFill.style.backgroundColor =
-                    "var(--goldmex-accent-color)";
-            } else if (weightPercent > 75) {
-                truckWeightBarFill.style.backgroundColor =
-                    "var(--goldmex-secondary-color)";
-            } else {
-                truckWeightBarFill.style.backgroundColor =
-                    "var(--goldmex-primary-color)";
-            }
         }
-        // === INICIO DE CÓDIGO NUEVO: LLAMADA A LA FUNCIÓN ===
+
         updateTrailerVisualizer(totalPalletSpace);
-        // === FIN DE CÓDIGO NUEVO ===
     }
+
+
 
     function renderQuotePreview(
         quoteObject = currentQuote,
@@ -1021,7 +982,7 @@
                 currentMultiQuote.companyName = companyName;
                 companyNameInput.disabled = true;
                 confirmCompanyBtn.disabled = true;
-                //choiceSingleCard.classList.remove("disabled");//
+                // choiceSingleCard.classList.remove("disabled");//
                 choiceMultiCard.classList.remove("disabled");
                 showSQNotification(
                     `Company set to: ${companyName}. Please select a quote type.`,
@@ -1110,7 +1071,7 @@
                     if (product) {
                         currentMultiQuote.items.push({
                             product: product,
-                            rawQuantity: '', // <-- LÍNEA ACTUALIZADA
+                            rawQuantity: '',
                             quotingUnit: "case",
                             totalCases: 1,
                             isCompleted: false,
@@ -1476,11 +1437,10 @@
         packagingWeightInput.value = product.packaging_weight_g;
         caseWeightInput.value = product.case_weight_g;
 
-        // === CAMBIO: SE MUESTRA UN MENSAJE AMIGABLE EN LUGAR DE LA URL ===
         if (product.image_url) {
             currentImageEl.textContent =
                 "An image is currently loaded for this product.";
-            currentImageEl.dataset.imageUrl = product.image_url; // Guardamos la URL internamente
+            currentImageEl.dataset.imageUrl = product.image_url;
         } else {
             currentImageEl.textContent = "";
             currentImageEl.dataset.imageUrl = "";
@@ -1548,12 +1508,29 @@
         }
     }
 
+    // (REQUERIMIENTO #3 y #4) - Función actualizada con todas las validaciones
     function handleSaveMultiItem() {
         const item = currentMultiQuote.items.find(
             (i) => i.product.id == activeMultiItemId
         );
         if (!item) return;
         const product = item.product;
+
+        // --- VALIDACIÓN #1: CAMPOS OBLIGATORIOS ---
+        const labelingValue = multiLabelingCostInput.value.trim();
+        const docsValue = multiCrossingDocsCostInput.value.trim();
+        const commissionValue = multiCommissionPercentInput.value.trim();
+
+        if (labelingValue === '' || docsValue === '' || commissionValue === '') {
+            showSQNotification(
+                'Please fill all required cost fields (Labeling, Docs, Commission).',
+                'warning',
+                5000
+            );
+            return; // Detiene la función si un campo está vacío
+        }
+
+        // --- VALIDACIÓN #2: LÍMITE DE TARIMAS ---
         const rawQuantity = parseInt(multiQuantityInput.value, 10) || 1;
         const quotingUnit = item.quotingUnit;
         let totalCases = 0;
@@ -1571,15 +1548,39 @@
                 totalCases = rawQuantity;
                 break;
         }
+
+        let oldPalletSpaceForItem = 0;
+        if (item.isCompleted && product.cases_per_pallet > 0) {
+            oldPalletSpaceForItem = item.totalCases / product.cases_per_pallet;
+        }
+
+        let newPalletSpaceForItem = 0;
+        if (product.cases_per_pallet > 0) {
+            newPalletSpaceForItem = totalCases / product.cases_per_pallet;
+        }
+
+        const potentialTotalPalletSpace =
+            (currentMultiQuote.truckCapacity.totalPalletSpace - oldPalletSpaceForItem) +
+            newPalletSpaceForItem;
+
+        if (potentialTotalPalletSpace > TRUCK_PALLET_LIMIT) {
+            showSQNotification(
+                `Cannot confirm item. Exceeds truck capacity of ${TRUCK_PALLET_LIMIT} pallets.`,
+                'warning',
+                6000
+            );
+            return; // Detiene la función si se excede el límite
+        }
+
+        // --- Si todas las validaciones pasan, se ejecuta el resto de la lógica ---
         item.rawQuantity = rawQuantity;
         item.totalCases = totalCases;
         const costPerCase = parseFloat(product.costo_base) || 0;
-        const labelingCost = parseFloat(multiLabelingCostInput.value) || 0;
-        const docsCost = parseFloat(multiCrossingDocsCostInput.value) || 0;
+        const labelingCost = parseFloat(labelingValue);
+        const docsCost = parseFloat(docsValue);
         const subtotalBeforeCommission =
             (costPerCase + labelingCost + docsCost) * item.totalCases;
-        const commissionPercent =
-            parseFloat(multiCommissionPercentInput.value) || 0;
+        const commissionPercent = parseFloat(commissionValue);
         const commissionAmount =
             subtotalBeforeCommission * (commissionPercent / 100);
         const totalMXN = subtotalBeforeCommission + commissionAmount;
@@ -1793,13 +1794,13 @@
             ".sq-preview-invoice-box"
         );
         const opt = {
-            margin: [0.3, 0.25], // Márgenes más finos: 0.3" (vertical), 0.25" (horizontal)
+            margin: [0.3, 0.25],
             filename: `Quote_${(quoteObject.companyName || "Multi-Item").replace(
                 /\s/g,
                 "_"
             )}_${new Date().toISOString().slice(0, 10)}.pdf`,
             image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 1, useCORS: true }, // Escala normal y habilitar CORS para imágenes
+            html2canvas: { scale: 1, useCORS: true },
             jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
         };
         html2pdf()
@@ -1868,10 +1869,9 @@
     function initializeModule() {
         setupEventListeners();
 
-        // === INICIO DE CÓDIGO NUEVO: GENERACIÓN DE SLOTS ===
         const trailerGrid = document.getElementById("sq-trailer-grid");
         if (trailerGrid) {
-            trailerGrid.innerHTML = ""; // Limpiamos por si acaso
+            trailerGrid.innerHTML = "";
             for (let i = 0; i < TRUCK_PALLET_LIMIT; i++) {
                 const slot = document.createElement("div");
                 slot.className = "sq-trailer-slot";
@@ -1882,7 +1882,6 @@
                 trailerGrid.appendChild(slot);
             }
         }
-        // === FIN DE CÓDIGO NUEVO ===
 
         const handleAuthChange = (event) => {
             currentUserSQ = event.detail?.user || null;
