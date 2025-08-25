@@ -1748,3 +1748,20 @@ body.dark-mode .sq-slot-number {
     border-radius: 4px;
     font-weight: 600;
 }
+
+/* css/quoting-module.css */
+
+
+
+.sq-progress-bar-fill {
+    min-width: 2px;
+    height: 100%;
+    transition: width 0.3s ease;
+    background-color: var(--goldmex-secondary-color); /* Dorado siempre */
+}
+
+/* Contenedores de barras */
+#truck-pallet-bar-fill,
+#truck-weight-bar-fill {
+    display: block;
+}
