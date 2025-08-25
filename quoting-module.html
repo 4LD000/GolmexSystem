@@ -61,12 +61,15 @@
                             <h4 class="sq-step-title"><span class="sq-step-number">1</span> Select Product</h4>
                             <div class="sq-product-selector">
                                 <i class='bx bx-search-alt'></i>
-                                <input type="text" id="sq-product-search-input" placeholder="Type to search for a product...">
-                                <button id="sq-explore-products-btn" class="btn-goldmex-secondary btn-small" title="Explore Products">
+                                <input type="text" id="sq-product-search-input"
+                                    placeholder="Type to search for a product...">
+                                <button id="sq-explore-products-btn" class="btn-goldmex-secondary btn-small"
+                                    title="Explore Products">
                                     <i class='bx bx-grid-alt'></i>
                                 </button>
                             </div>
-                            <div id="sq-selected-product-display" class="sq-selected-product-display" style="display: none;">
+                            <div id="sq-selected-product-display" class="sq-selected-product-display"
+                                style="display: none;">
                                 <img id="sq-product-image" src="" alt="Product Image">
                                 <div class="sq-product-details">
                                     <h5 id="sq-product-name"></h5>
@@ -93,7 +96,8 @@
                                 </div>
                             </div>
 
-                            <h4 class="sq-step-title sq-step-divider"><span class="sq-step-number">3</span> Costs & Commissions</h4>
+                            <h4 class="sq-step-title sq-step-divider"><span class="sq-step-number">3</span> Costs &
+                                Commissions</h4>
                             <div class="sq-input-grid sq-grid-4-cols">
                                 <div class="sq-form-group">
                                     <label for="sq-cost-per-case">Cost/Case (MXN)</label>
@@ -113,7 +117,8 @@
                                 </div>
                             </div>
 
-                            <h4 class="sq-step-title sq-step-divider"><span class="sq-step-number">4</span> Transportation</h4>
+                            <h4 class="sq-step-title sq-step-divider"><span class="sq-step-number">4</span>
+                                Transportation</h4>
                             <div class="sq-transport-grid">
                                 <div class="sq-form-group transport-type">
                                     <label for="sq-transport-type">Transport Type</label>
@@ -164,43 +169,61 @@
             </div>
 
             <div id="qcf-multi-item-view" class="qcf-view-container">
-                <div class="qcf-back-button-container">
-                    <button class="btn-goldmex-secondary btn-small qcf-back-to-start-btn">
-                        <i class='bx bx-arrow-back'></i> Change Mode
-                    </button>
-                </div>
                 <div class="qcf-multi-creator-layout">
+
                     <div class="qcf-multi-left-panel">
-                        <h4>Quotation Items</h4>
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.8rem; margin-bottom: 1rem; border-bottom: 1px solid var(--qcf-border-color-light);">
+                            <h4 style="margin: 0; padding: 0; border: none; color: var(--color-text-primary);">Quotation
+                                Items</h4>
+                            <button class="btn-goldmex-secondary btn-small qcf-back-to-start-btn">
+                                <i class='bx bx-arrow-back'></i> Change Mode
+                            </button>
+                        </div>
                         <div id="qcf-multi-item-list" class="qcf-multi-item-list">
-                            </div>
+                        </div>
                         <button id="qcf-multi-add-products-btn" class="btn-goldmex-secondary btn-full-width">
                             <i class='bx bx-plus'></i> Add / Edit Products
                         </button>
                     </div>
 
-                    <div class="qcf-multi-right-panel">
+                    <div class="qcf-multi-form-panel">
                         <div id="qcf-multi-form-placeholder" class="qcf-multi-form-placeholder">
                             <i class='bx bx-left-arrow-alt'></i>
                             <h2>Select an Item</h2>
                             <p>Add products to the list and select one to begin configuration.</p>
                         </div>
-                        
+
                         <div id="qcf-multi-form-container" class="qcf-multi-form-container">
                             <div class="sq-controls-panel sq-multi-controls">
-                                 <div class="sq-step">
-                                     <h4 class="sq-step-title" id="qcf-multi-form-product-title">
+                                <div class="sq-step">
+                                    <h4 class="sq-step-title" id="qcf-multi-form-product-title">
                                         <img src="assets/favicon.png" alt="Product">
                                         <span>Product Name</span>
-                                     </h4>
-                                    <div class="sq-input-grid sq-grid-3-cols">
-                                        <div class="sq-form-group">
-                                            <label for="qcf-multi-case-quantity">Case Quantity</label>
-                                            <input type="number" id="qcf-multi-case-quantity" value="1" min="1">
+                                    </h4>
+
+                                    <div class="sq-input-grid sq-grid-logistics">
+                                        <div class="sq-form-group-combined">
+                                            <label for="qcf-multi-quantity">Quantity</label>
+                                            <div class="sq-input-with-buttons">
+                                                <input type="number" id="qcf-multi-quantity" min="1">
+                                                <div id="qcf-multi-unit-selector" class="sq-unit-selector">
+                                                    <button type="button" class="sq-unit-btn"
+                                                        data-unit="piece">Pieces</button>
+                                                    <button type="button" class="sq-unit-btn active"
+                                                        data-unit="case">Case</button>
+                                                    <button type="button" class="sq-unit-btn"
+                                                        data-unit="pallet">Pallet</button>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="sq-form-group-readonly">
                                             <label>Wgt / Case (lbs)</label>
                                             <p id="qcf-multi-weight-per-case">0.00 lbs</p>
+                                        </div>
+                                        <div class="sq-form-group-readonly">
+                                            <label>Cases / Pal</label>
+                                            <p id="qcf-multi-cases-per-pallet">0</p>
                                         </div>
                                         <div class="sq-form-group-readonly">
                                             <label>Wgt / Pal (lbs)</label>
@@ -209,33 +232,63 @@
                                     </div>
 
                                     <h4 class="sq-step-title sq-step-divider">Costs & Commissions</h4>
-                                    <div class="sq-input-grid sq-grid-4-cols">
-                                        <div class="sq-form-group">
-                                            <label for="qcf-multi-cost-per-case">Cost/Case (MXN)</label>
-                                            <input type="number" id="qcf-multi-cost-per-case" placeholder="192.00">
+                                    <div class="sq-input-grid sq-grid-costs-2x2">
+                                        <div class="sq-form-group-readonly">
+                                            <label>Cost/Case (MXN)</label>
+                                            <p id="qcf-multi-cost-per-case-display">0.00</p>
                                         </div>
                                         <div class="sq-form-group">
-                                            <label for="qcf-multi-labeling-cost">Labeling (MXN)</label>
+                                            <label for="qcf-multi-labeling-cost" class="sq-label-highlight">Labeling (MXN)</label>
                                             <input type="number" id="qcf-multi-labeling-cost" placeholder="24.00">
                                         </div>
                                         <div class="sq-form-group">
-                                            <label for="qcf-multi-crossing-docs-cost">Docs (MXN)</label>
-                                            <input type="number"id="qcf-multi-crossing-docs-cost" placeholder="3.00">
+                                            <label for="qcf-multi-crossing-docs-cost" class="sq-label-highlight">Docs (MXN)</label>
+                                            <input type="number" id="qcf-multi-crossing-docs-cost" placeholder="3.00">
                                         </div>
                                         <div class="sq-form-group">
-                                            <label for="qcf-multi-commission-percent">Commission (%)</label>
-                                            <input type="number" id="qcf-multi-commission-percent" placeholder="5.0" step="0.5">
+                                            <label for="qcf-multi-commission-percent" class="sq-label-highlight">Commission (%)</label>
+                                            <input type="number" id="qcf-multi-commission-percent" placeholder="5.0"
+                                                step="0.5">
                                         </div>
                                     </div>
-                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="sq-truck-capacity-dashboard">
+                        <div class="sq-trailer-visualizer">
+                            <div class="sq-progress-bars-container">
+                                <div class="sq-capacity-meter">
+                                    <h5><i class='bx bxs-ruler'></i> Pallet Space</h5>
+                                    <div class="sq-progress-bar">
+                                        <div id="truck-pallet-bar-fill" class="sq-progress-bar-fill"></div>
+                                        <span id="truck-pallet-text" class="sq-progress-bar-text">0.00 / 22
+                                            Pallets</span>
+                                    </div>
+                                </div>
+                                <div class="sq-capacity-meter">
+                                    <h5><i class='bx bxs-analyse'></i> Weight Load</h5>
+                                    <div class="sq-progress-bar">
+                                        <div id="truck-weight-bar-fill" class="sq-progress-bar-fill"></div>
+                                        <span id="truck-weight-text" class="sq-progress-bar-text">0 / 40,000 lbs</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sq-trailer-grid-container">
+                                <span class="sq-trailer-label-rear"></span>
+                                <div id="sq-trailer-grid" class="sq-trailer-grid">
+                                </div>
+                                <span class="sq-trailer-label-front"></span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
-                 <div class="qcf-multi-footer-actions">
+                <div class="qcf-multi-footer-actions">
                     <div class="sq-form-group transport-group">
-                         <label for="qcf-multi-transport-type">Global Transportation (Optional)</label>
-                         <div class="sq-transport-grid">
+                        <label for="qcf-multi-transport-type">Global Transportation (Optional)</label>
+                        <div class="sq-transport-grid">
                             <div class="sq-form-group transport-type">
                                 <select id="qcf-multi-transport-type">
                                     <option value="none" selected>No transport</option>
@@ -259,10 +312,12 @@
                         </div>
                     </div>
                     <div class="qcf-footer-buttons">
-                        <button id="qcf-confirm-item-btn" class="btn-goldmex-primary"><i class='bx bx-check'></i> Confirm Item</button>
-                        <button id="qcf-save-full-quote-btn" class="btn-goldmex-primary" disabled><i class='bx bx-save'></i> Save Full Quote</button>
+                        <button id="qcf-confirm-item-btn" class="btn-goldmex-primary"><i class='bx bx-check'></i>
+                            Confirm Item</button>
+                        <button id="qcf-save-full-quote-btn" class="btn-goldmex-primary" disabled><i
+                                class='bx bx-save'></i> Save Full Quote</button>
                     </div>
-                 </div>
+                </div>
             </div>
 
         </div>
@@ -281,7 +336,8 @@
                     <label for="sq-hist-user">User</label>
                     <select id="sq-hist-user"></select>
                 </div>
-                <button id="sq-apply-filters-btn" class="btn-goldmex-primary"><i class='bx bx-filter-alt'></i> Filter</button>
+                <button id="sq-apply-filters-btn" class="btn-goldmex-primary"><i class='bx bx-filter-alt'></i>
+                    Filter</button>
             </div>
             <div class="sq-table-container">
                 <table id="sq-quotes-history-table" class="display responsive nowrap" style="width:100%"></table>
@@ -290,7 +346,8 @@
 
         <div id="qcf-database-tab" class="sq-tab-content">
             <div class="sq-db-actions">
-                <button id="sq-add-new-product-btn" class="btn-goldmex-primary"><i class='bx bx-plus-circle'></i> Add New Product</button>
+                <button id="sq-add-new-product-btn" class="btn-goldmex-primary"><i class='bx bx-plus-circle'></i> Add
+                    New Product</button>
             </div>
             <div class="sq-table-container">
                 <table id="sq-products-table" class="display responsive nowrap" style="width:100%"></table>
@@ -339,48 +396,70 @@
         <form id="sq-product-form" class="sq-modal-body">
             <input type="hidden" id="p-id">
             <h4>Product Details</h4>
-            <div class="sq-product-form-grid">
-                <div class="sq-form-group">
-                    <label for="p-name">Product Name <span class="sq-required">*</span></label>
-                    <input type="text" id="p-name" required>
-                </div>
-                <div class="sq-form-group">
-                    <label for="p-image">Product Image</label>
-                    <input type="file" id="p-image" accept="image/*">
-                    <small id="p-current-image"></small>
-                </div>
-                <div class="sq-form-group">
-                    <label for="p-pieces-per-case">Pieces per Case</label>
-                    <input type="number" id="p-pieces-per-case" placeholder="12">
-                </div>
-                
-                <div class="sq-form-group sq-form-group-combined">
-                    <label for="p-value-per-piece">Value per Piece</label>
-                    <div class="sq-input-with-select">
-                        <input type="number" id="p-value-per-piece" placeholder="625">
-                        <select id="p-unit-of-measure">
-                            <option value="g" selected>grams (g)</option>
-                            <option value="ml">milliliters (mL)</option>
-                            <option value="l">liters (L)</option>
-                        </select>
+            <div class="sq-product-form-grid"
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.5rem; grid-template-areas: 'name costo' 'details logistics' 'weights image';">
+
+                <div style="grid-area: name;">
+                    <div class="sq-form-group">
+                        <label for="p-name">Product Name <span class="sq-required">*</span></label>
+                        <input type="text" id="p-name" required>
                     </div>
                 </div>
 
-                <div class="sq-form-group">
-                    <label for="p-cases-per-pallet">Cases per Pallet</label>
-                    <input type="number" id="p-cases-per-pallet" placeholder="102">
+                <div style="grid-area: costo;">
+                    <div class="sq-form-group">
+                        <label for="p-costo-base">Base Cost per Case (MXN)</label>
+                        <input type="number" id="p-costo-base" placeholder="240.00" step="0.01">
+                    </div>
                 </div>
-                <div class="sq-form-group">
-                    <label for="p-pallets-per-truck">Pallets per Truck</label>
-                    <input type="number" id="p-pallets-per-truck" placeholder="22">
+
+                <div style="grid-area: details; display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="sq-form-group">
+                        <label for="p-pieces-per-case">Pieces per Case</label>
+                        <input type="number" id="p-pieces-per-case" placeholder="12">
+                    </div>
+                    <div class="sq-form-group sq-form-group-combined">
+                        <label for="p-value-per-piece">Value per Piece</label>
+                        <div class="sq-input-with-select">
+                            <input type="number" id="p-value-per-piece" placeholder="625">
+                            <select id="p-unit-of-measure">
+                                <option value="g" selected>grams (g)</option>
+                                <option value="ml">milliliters (mL)</option>
+                                <option value="l">liters (L)</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="sq-form-group">
-                    <label for="p-packaging-weight">Packaging Weight (grams)</label>
-                    <input type="number" id="p-packaging-weight" value="28">
+
+                <div style="grid-area: logistics; display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="sq-form-group">
+                        <label for="p-cases-per-pallet">Cases per Pallet</label>
+                        <input type="number" id="p-cases-per-pallet" placeholder="102">
+                    </div>
+                    <div class="sq-form-group">
+                        <label for="p-pallets-per-truck">Pallets per Truck</label>
+                        <input type="number" id="p-pallets-per-truck" placeholder="22">
+                    </div>
                 </div>
-                <div class="sq-form-group">
-                    <label for="p-case-weight">Empty Case Weight (grams)</label>
-                    <input type="number" id="p-case-weight" value="454">
+
+                <div style="grid-area: weights; display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="sq-form-group">
+                        <label for="p-packaging-weight">Packaging Weight (grams)</label>
+                        <input type="number" id="p-packaging-weight" value="28">
+                    </div>
+                    <div class="sq-form-group">
+                        <label for="p-case-weight">Empty Case Weight (grams)</label>
+                        <input type="number" id="p-case-weight" value="454">
+                    </div>
+                </div>
+
+                <div style="grid-area: image;">
+                    <div class="sq-form-group">
+                        <label for="p-image">Product Image</label>
+                        <input type="file" id="p-image" accept="image/*">
+                        <small id="p-current-image"
+                            style="font-style: italic; color: var(--color-text-secondary);"></small>
+                    </div>
                 </div>
             </div>
             <div class="sq-modal-footer">
@@ -415,7 +494,7 @@
             <span class="sq-modal-close-btn">&times;</span>
         </div>
         <div id="sq-view-multi-quote-body" class="sq-modal-body">
-            </div>
+        </div>
         <div class="sq-modal-footer">
             <button type="button" class="btn-goldmex-secondary sq-modal-cancel-btn">Close</button>
             <button type="button" id="sq-download-multi-pdf-btn" class="btn-goldmex-secondary">
