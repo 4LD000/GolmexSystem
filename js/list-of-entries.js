@@ -19,7 +19,7 @@
     let historyYearsPopulated = false;
     let originalEntryStatus = {}; 
 
-    const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Antidumping Tomatoes', 'Honey fee'];
+    const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Honey fee'];
     const dutyUnits = ['$', 'kg', 'L', 'unit'];
 
     // --- Element Caching ---
@@ -34,7 +34,8 @@
     const saveEntryBtn = document.getElementById('saveEntryBtn');
     const entryIdInput = document.getElementById('entryId');
     const customerTypeSelect = document.getElementById('le-customer-type-select');
-    const customerSelect = document.getElementById('le-customer-select');
+    // MODIFIED: Updated the selector for the new customer name input field.
+    const customerNameInput = document.getElementById('le-customer-name-input');
     const entryNumberSelect = document.getElementById('le-entry-number-select');
     const entryDetailsSection = document.getElementById('entryDetailsSection');
     const dutiesContainer = document.getElementById('le-duties-container');
@@ -398,7 +399,8 @@
         const entryId = entryIdInput.value;
         const dataToSave = {
             customer_type: customerTypeSelect.value,
-            customer_name: customerSelect.value,
+            // MODIFIED: Read value from the new text input field.
+            customer_name: customerNameInput.value.trim(),
             entry_number: entryNumberSelect.value,
             invoice: invoiceInput.value.trim() || null,
             duties: duties,
@@ -483,9 +485,10 @@
         entryIdInput.value = '';
         originalEntryStatus = {}; 
         customerTypeSelect.disabled = false;
-        customerSelect.innerHTML = '<option value="">Select type first...</option>';
-        customerSelect.disabled = true;
-        entryNumberSelect.innerHTML = '<option value="">Select customer first...</option>';
+        // MODIFIED: Reset logic for the new text input.
+        customerNameInput.value = '';
+        customerNameInput.disabled = true;
+        entryNumberSelect.innerHTML = '<option value="">Select type first...</option>';
         entryNumberSelect.disabled = true;
         dutiesContainer.innerHTML = '';
         fdaStatusSelect.value = 'Hold';
@@ -508,10 +511,15 @@
             entryIdInput.value = entry.id;
             customerTypeSelect.value = entry.customer_type;
             customerTypeSelect.disabled = true;
-            await fetchCustomersForType(entry.customer_type, entry.customer_name);
-            customerSelect.disabled = true;
-            await fetchAvailableEntriesForCustomer(entry.customer_name, entry.entry_number, true);
+
+            // MODIFIED: Populate the text input instead of a select.
+            customerNameInput.value = entry.customer_name;
+            customerNameInput.disabled = true; // Keep it disabled during edit.
+
+            // MODIFIED: Fetch entries for the type.
+            await fetchAvailableEntriesForType(entry.customer_type, entry.entry_number, true);
             entryNumberSelect.disabled = true;
+            
             invoiceInput.value = entry.invoice || '';
             notesInput.value = entry.notes || '';
             document.querySelector(`input[name="bondType"][value="${entry.bond_type}"]`).checked = true;
@@ -785,27 +793,19 @@
         });
     }
 
+    // MODIFIED: This function is no longer needed with the new logic.
+    /*
     async function fetchCustomersForType(customerType, selectedCustomer = null) {
-        customerSelect.innerHTML = '<option>Loading...</option>';
-        customerSelect.disabled = true;
-        const { data, error } = await supabase.from(AVAILABLE_ENTRIES_TABLE).select('customer_name').eq('customer_type', customerType);
-        if (error) { customerSelect.innerHTML = '<option>Error loading</option>'; return; }
-        const uniqueCustomers = [...new Set(data.map(item => item.customer_name))].sort();
-        customerSelect.innerHTML = '<option value="" selected disabled>Select customer...</option>';
-        uniqueCustomers.forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            if (selectedCustomer === name) option.selected = true;
-            customerSelect.appendChild(option);
-        });
-        customerSelect.disabled = false;
+        // ... (code removed)
     }
+    */
 
-    async function fetchAvailableEntriesForCustomer(customerName, selectedEntry = null, isEditing = false) {
+    // MODIFIED: Renamed and changed this function to fetch entries based on Customer Type.
+    async function fetchAvailableEntriesForType(customerType, selectedEntry = null, isEditing = false) {
         entryNumberSelect.innerHTML = '<option>Loading...</option>';
         entryNumberSelect.disabled = true;
-        let query = supabase.from(AVAILABLE_ENTRIES_TABLE).select('entry_number').eq('customer_name', customerName);
+        // MODIFIED: Query is now based on customer_type instead of customer_name.
+        let query = supabase.from(AVAILABLE_ENTRIES_TABLE).select('entry_number').eq('customer_type', customerType);
         if (!isEditing) {
             query = query.eq('is_used', false);
         }
@@ -837,6 +837,7 @@
         csvResultsMessage.textContent = '';
     }
 
+    // MODIFIED: This function is completely overhauled for the new 2-column CSV format.
     async function handleProcessCsv() {
         const file = csvUploadInput.files[0];
         if (!file) return showLENotification('Please select a CSV file.', 'warning');
@@ -850,29 +851,38 @@
                 if (parsedRows.length < 2) throw new Error('CSV is empty or has no data.');
                 const header = parsedRows.shift().map(h => h.toLowerCase().trim().replace(/"/g, ''));
                 const typeIdx = header.indexOf('customer_type');
-                const nameIdx = header.indexOf('customer_name');
                 const entryIdx = header.indexOf('entry_number');
-                if (typeIdx === -1 || nameIdx === -1 || entryIdx === -1) throw new Error('CSV must contain "customer_type", "customer_name", and "entry_number" columns.');
+
+                if (typeIdx === -1 || entryIdx === -1) {
+                    throw new Error('CSV must contain "customer_type" and "entry_number" columns.');
+                }
+
                 const entries = parsedRows.map(row => ({
                     customer_type: row[typeIdx]?.trim(),
-                    customer_name: row[nameIdx]?.trim(),
                     entry_number: row[entryIdx]?.trim()
-                })).filter(e => e.customer_type && e.customer_name && e.entry_number);
+                })).filter(e => e.customer_type && e.entry_number);
+                
                 if (entries.length === 0) throw new Error('No valid data rows found.');
-                const { data: existing } = await supabase.from(AVAILABLE_ENTRIES_TABLE).select('customer_name, entry_number');
-                const existingSet = new Set(existing.map(e => `${e.customer_name}|${e.entry_number}`));
-                const newEntries = entries.filter(e => !existingSet.has(`${e.customer_name}|${e.entry_number}`));
+
+                // Check for duplicates based on entry_number only, assuming they are globally unique.
+                // If entry_number can be the same for different types, change the check.
+                const { data: existing } = await supabase.from(AVAILABLE_ENTRIES_TABLE).select('entry_number');
+                const existingSet = new Set(existing.map(e => e.entry_number));
+                
+                const newEntries = entries.filter(e => !existingSet.has(e.entry_number));
+                
                 if (newEntries.length > 0) {
                     const { error } = await supabase.from(AVAILABLE_ENTRIES_TABLE).insert(newEntries);
                     if (error) throw error;
                 }
+
                 csvResultsMessage.textContent = `Processed ${parsedRows.length + 1} rows. Added ${newEntries.length} new entries. Skipped ${entries.length - newEntries.length} duplicates.`;
                 csvProcessingResultsDiv.style.display = 'block';
             } catch (error) {
                 showLENotification(error.message, 'error');
             } finally {
                 processCsvBtn.innerHTML = 'Process Data';
-                processCsvBtn.disabled = false;
+                // Do not re-enable the button to prevent double-uploads. User can close and reopen.
             }
         };
         reader.readAsText(file);
@@ -961,8 +971,22 @@
             if (typeof currentConfirmCallback === 'function') currentConfirmCallback();
             closeLeModal(leCustomConfirmModal);
         });
-        customerTypeSelect.addEventListener('change', () => fetchCustomersForType(customerTypeSelect.value));
-        customerSelect.addEventListener('change', () => fetchAvailableEntriesForCustomer(customerSelect.value));
+        
+        // MODIFIED: Event listener for Customer Type now fetches entry numbers directly.
+        customerTypeSelect.addEventListener('change', () => {
+            const selectedType = customerTypeSelect.value;
+            if (selectedType) {
+                customerNameInput.disabled = false;
+                fetchAvailableEntriesForType(selectedType);
+            } else {
+                customerNameInput.disabled = true;
+                entryNumberSelect.disabled = true;
+            }
+        });
+
+        // MODIFIED: Removed the event listener for the old customer select dropdown.
+        // customerSelect.addEventListener('change', () => fetchAvailableEntriesForCustomer(customerSelect.value));
+        
         entryNumberSelect.addEventListener('change', () => {
             if (entryNumberSelect.value) {
                 entryDetailsSection.classList.add('visible');
