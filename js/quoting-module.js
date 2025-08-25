@@ -1625,19 +1625,48 @@
         );
     }
 
+    // ⬇️ COPIA Y REEMPLAZA LA FUNCIÓN COMPLETA EN js/quoting-module.js ⬇️
+
     async function saveMultiQuote(event) {
         event.preventDefault();
+
+        // --- BLOQUE DE VALIDACIÓN AÑADIDO ---
+        // Obtenemos el valor actual del selector de tipo de transporte.
+        const transportType = multiTransportTypeSelect.value;
+
+        // Comprobamos si el tipo de transporte sigue siendo 'none' (la opción por defecto).
+        if (transportType === 'none') {
+            // Si la validación falla (sigue en 'none'):
+            // 1. Mostramos una notificación de advertencia al usuario.
+            showSQNotification(
+                'Please define the transportation details before saving the quotation.',
+                'warning',
+                5000 // Duración extendida para dar tiempo a leer
+            );
+            // 2. (Opcional, pero recomendado) Ponemos el foco en el selector para guiar al usuario.
+            multiTransportTypeSelect.focus();
+
+            // 3. (MUY IMPORTANTE) Detenemos la ejecución de la función aquí para evitar que se guarde.
+            return;
+        }
+        // --- FIN DEL BLOQUE DE VALIDACIÓN ---
+
+
+        // Si la validación de arriba es exitosa, el resto del código (tu lógica original) se ejecuta sin cambios.
         if (!currentUserSQ)
             return showSQNotification("Please be logged in to save.", "error");
+
         saveFullQuoteBtn.disabled = true;
         saveFullQuoteBtn.innerHTML =
             "<i class='bx bx-loader-alt bx-spin'></i> Saving...";
+
         let grandTotalMXN = 0;
         let totalCommission = 0;
         currentMultiQuote.items.forEach((item) => {
             grandTotalMXN += item.totals.totalMXN;
             totalCommission += item.totals.commission;
         });
+
         const transportPrice = parseFloat(multiTransportPriceInput.value) || 0;
         currentMultiQuote.transport = {
             type: multiTransportTypeSelect.value,
@@ -1647,6 +1676,7 @@
             price: transportPrice,
         };
         grandTotalMXN += transportPrice;
+
         currentMultiQuote.totals = {
             totalMXN: grandTotalMXN,
             totalUSD: grandTotalMXN / currentMultiQuote.exchangeRate,
@@ -1654,7 +1684,9 @@
             commissionPercent:
                 currentMultiQuote.items[0]?.totals.commissionPercent || 0,
         };
+
         currentMultiQuote.type = "multi";
+
         const quoteToSave = {
             user_id: currentUserSQ.id,
             user_email: currentUserSQ.email,
@@ -1662,13 +1694,16 @@
             product_name: `${currentMultiQuote.items.length} items`,
             quote_data: currentMultiQuote,
         };
+
         const { data, error } = await supabase
             .from(QUOTES_TABLE)
             .insert(quoteToSave)
             .select()
             .single();
+
         saveFullQuoteBtn.innerHTML =
             "<i class='bx bx-save'></i> Save Full Quotation";
+
         if (error) {
             console.error("Error saving multi-quote:", error);
             showSQNotification(`Error saving quote: ${error.message}`, "error");
