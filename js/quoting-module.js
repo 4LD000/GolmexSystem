@@ -4,7 +4,9 @@
         return;
     }
     document.body.dataset.quotingModuleInitialized = "true";
-    console.log("Sales & Quoting Module Initialized (v13 - Units & Search Update)");
+    console.log(
+        "Sales & Quoting Module Initialized (v16 - Final with Capacity Dashboard UI)"
+    );
 
     // SECTION 1: SUPABASE & CONFIGURATION
     if (typeof supabase === "undefined" || !supabase) {
@@ -23,6 +25,10 @@
     let currentQuoteMode = "start";
     let activeMultiItemId = null;
 
+    // --- Truck Capacity Limits ---
+    const TRUCK_PALLET_LIMIT = 22;
+    const TRUCK_WEIGHT_LIMIT_LBS = 40000;
+
     let currentQuote = {
         exchangeRate: 17.5,
         companyName: "",
@@ -35,12 +41,18 @@
         transport: { type: "none", name: "", cost: 0, margin: 0, price: 0 },
         totals: null,
         exchangeRate: 17.5,
+        truckCapacity: {
+            totalWeightLbs: 0,
+            totalPalletSpace: 0,
+            weightPercent: 0,
+            palletPercent: 0,
+        },
     };
 
     let isCalculatingTransport = false;
     let productExplorerMode = "single";
     let selectedProductsForMulti = new Set();
-    let activeUnitFilter = 'all';
+    let activeUnitFilter = "all";
 
     // --- DOM Element Caching ---
     const manageProductsBtn = document.getElementById("sq-manage-products-btn");
@@ -102,17 +114,16 @@
     const multiFormProductTitle = document.getElementById(
         "qcf-multi-form-product-title"
     );
-    const multiCaseQuantityInput = document.getElementById(
-        "qcf-multi-case-quantity"
-    );
+    const multiQuantityInput = document.getElementById("qcf-multi-quantity");
+    const multiUnitSelector = document.getElementById("qcf-multi-unit-selector");
     const multiWeightPerCaseEl = document.getElementById(
         "qcf-multi-weight-per-case"
     );
     const multiWeightPerPalletEl = document.getElementById(
         "qcf-multi-weight-per-pallet"
     );
-    const multiCostPerCaseInput = document.getElementById(
-        "qcf-multi-cost-per-case"
+    const multiCostPerCaseDisplay = document.getElementById(
+        "qcf-multi-cost-per-case-display"
     );
     const multiLabelingCostInput = document.getElementById(
         "qcf-multi-labeling-cost"
@@ -141,10 +152,17 @@
         "qcf-multi-transport-price"
     );
 
+    const truckCapacityDashboard = document.getElementById(
+        "qcf-truck-capacity-dashboard"
+    );
+    const truckPalletBarFill = document.getElementById("truck-pallet-bar-fill");
+    const truckPalletText = document.getElementById("truck-pallet-text");
+    const truckWeightBarFill = document.getElementById("truck-weight-bar-fill");
+    const truckWeightText = document.getElementById("truck-weight-text");
+
     const productsTableElement = document.getElementById("sq-products-table");
     const addNewProductBtn = document.getElementById("sq-add-new-product-btn");
     let productsDataTable;
-
     const historyTableElement = document.getElementById(
         "sq-quotes-history-table"
     );
@@ -153,7 +171,6 @@
     const histUserSelect = document.getElementById("sq-hist-user");
     const applyFiltersBtn = document.getElementById("sq-apply-filters-btn");
     let historyDataTable;
-
     const productExplorerModal = document.getElementById(
         "sq-product-explorer-modal"
     );
@@ -184,16 +201,15 @@
     const downloadSinglePdfBtn = document.getElementById(
         "sq-download-single-pdf-btn"
     );
-
     const modalCloseBtns = document.querySelectorAll(".sq-modal-close-btn");
     const modalCancelBtns = document.querySelectorAll(".sq-modal-cancel-btn");
     const modalSearchInput = document.getElementById("sq-modal-search-input");
     const filterBtns = document.querySelectorAll(".sq-filter-btn");
-
     const productForm = document.getElementById("sq-product-form");
     const productModalTitle = document.getElementById("sq-product-modal-title");
     const productIdInput = document.getElementById("p-id");
     const productNameInput = document.getElementById("p-name");
+    const costBaseInput = document.getElementById("p-costo-base");
     const productImageInput = document.getElementById("p-image");
     const currentImageEl = document.getElementById("p-current-image");
     const piecesPerCaseInput = document.getElementById("p-pieces-per-case");
@@ -204,7 +220,6 @@
     const packagingWeightInput = document.getElementById("p-packaging-weight");
     const caseWeightInput = document.getElementById("p-case-weight");
     const saveProductBtn = document.getElementById("sq-save-product-btn");
-
     const confirmModalElement = document.getElementById("sqCustomConfirmModal");
     const confirmTitleElement = document.getElementById("sqCustomConfirmTitle");
     const confirmMessageElement = document.getElementById(
@@ -228,14 +243,11 @@
         if (type === "success") iconClass = "bx bx-check-circle";
         if (type === "error") iconClass = "bx bx-x-circle";
         if (type === "warning") iconClass = "bx bx-error-circle";
-
         notification.innerHTML = `<i class='${iconClass}'></i><span>${message}</span>`;
         container.appendChild(notification);
-
         setTimeout(() => {
             notification.classList.add("show");
         }, 10);
-
         setTimeout(() => {
             notification.classList.remove("show");
             setTimeout(() => {
@@ -248,7 +260,6 @@
         startView.style.display = "none";
         singleItemView.style.display = "none";
         multiItemView.style.display = "none";
-
         if (viewName === "start") {
             startView.style.display = "flex";
         } else if (viewName === "single") {
@@ -258,34 +269,59 @@
         }
         currentQuoteMode = viewName;
     }
-    
+
+    function calculateCaseWeightLbs(product) {
+        if (!product) return 0;
+        const pieceWeightGrams = getPieceWeightInGrams(product);
+        const totalPieceWeightGrams =
+            pieceWeightGrams + (product.packaging_weight_g || 0);
+        const caseContentWeightGrams =
+            totalPieceWeightGrams * (product.pieces_per_case || 1);
+        const caseWeightGrams =
+            caseContentWeightGrams + (product.case_weight_g || 0);
+        return caseWeightGrams * 0.00220462;
+    }
+
     function getPieceWeightInGrams(product) {
-        if (!product || typeof product.value_per_piece !== 'number') return 0;
-    
+        if (!product || typeof product.value_per_piece !== "number") return 0;
         const value = product.value_per_piece;
-        const unit = product.unit_of_measure || 'g';
-    
+        const unit = product.unit_of_measure || "g";
         switch (unit) {
-            case 'g':
-                return value; // Already in grams
-            case 'ml':
-                return value; // Assuming density of 1 g/mL for liquids
-            case 'l':
-                return value * 1000; // 1 Liter = 1000 mL ≈ 1000 grams
+            case "g":
+                return value;
+            case "ml":
+                return value;
+            case "l":
+                return value * 1000;
             default:
                 return 0;
         }
     }
 
-    function resetToStartView() {
+    function hardResetCreator() {
         companyNameInput.value = "";
         confirmCompanyBtn.disabled = false;
         companyNameInput.disabled = false;
         choiceSingleCard.classList.add("disabled");
         choiceMultiCard.classList.add("disabled");
-        switchView("start");
         resetSingleQuoteCreator();
         resetMultiQuoteCreator();
+        switchView("start");
+    }
+
+    function softResetToModeSelection() {
+        // CAMBIO: Reactivamos el campo de nombre y el botón de confirmación
+        companyNameInput.disabled = false;
+        confirmCompanyBtn.disabled = false;
+
+        // CAMBIO: Deshabilitamos las tarjetas de selección hasta que se confirme un nuevo nombre
+        choiceSingleCard.classList.add("disabled");
+        choiceMultiCard.classList.add("disabled");
+
+        // El resto de la función se mantiene para limpiar las cotizaciones
+        resetSingleQuoteCreator();
+        resetMultiQuoteCreator();
+        switchView("start");
     }
 
     function resetSingleQuoteCreator() {
@@ -312,7 +348,6 @@
         if (transportCostInput) transportCostInput.value = "";
         if (transportMarginInput) transportMarginInput.value = "";
         if (transportPriceInput) transportPriceInput.value = "";
-
         updateAllCalculations();
         if (saveQuoteBtn) saveQuoteBtn.disabled = true;
         if (downloadPdfBtn) downloadPdfBtn.disabled = true;
@@ -325,6 +360,12 @@
             transport: { type: "none", name: "", cost: 0, margin: 0, price: 0 },
             totals: null,
             exchangeRate: currentQuote.exchangeRate,
+            truckCapacity: {
+                totalWeightLbs: 0,
+                totalPalletSpace: 0,
+                weightPercent: 0,
+                palletPercent: 0,
+            },
         };
         activeMultiItemId = null;
         if (multiItemListContainer) multiItemListContainer.innerHTML = "";
@@ -332,12 +373,12 @@
         if (multiFormContainer) multiFormContainer.style.display = "none";
         if (saveFullQuoteBtn) saveFullQuoteBtn.disabled = true;
         if (saveMultiItemBtn) saveMultiItemBtn.style.display = "none";
+        updateTruckCapacity();
     }
 
     function calculateTransportPriceFromMargin() {
         if (isCalculatingTransport) return;
         isCalculatingTransport = true;
-
         const costInput =
             currentQuoteMode === "single"
                 ? transportCostInput
@@ -350,12 +391,10 @@
             currentQuoteMode === "single"
                 ? transportPriceInput
                 : multiTransportPriceInput;
-
         const cost = parseFloat(costInput.value) || 0;
         const margin = parseFloat(marginInput.value) || 0;
         const price = cost * (1 + margin / 100);
         priceInput.value = price > 0 ? price.toFixed(2) : "";
-
         if (currentQuoteMode === "single") updateAllCalculations();
         isCalculatingTransport = false;
     }
@@ -375,7 +414,6 @@
             currentQuoteMode === "single"
                 ? transportPriceInput
                 : multiTransportPriceInput;
-
         const cost = parseFloat(costInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
         if (cost > 0 && price >= cost) {
@@ -384,7 +422,6 @@
         } else {
             marginInput.value = "";
         }
-
         if (currentQuoteMode === "single") updateAllCalculations();
         isCalculatingTransport = false;
     }
@@ -397,15 +434,7 @@
             renderQuotePreview();
             return;
         }
-        
-        const pieceWeightGrams = getPieceWeightInGrams(currentQuote.product);
-        const totalPieceWeightGrams = pieceWeightGrams + (currentQuote.product.packaging_weight_g || 0);
-
-        const caseContentWeightGrams =
-            totalPieceWeightGrams * (currentQuote.product.pieces_per_case || 1);
-        const caseWeightGrams =
-            caseContentWeightGrams + (currentQuote.product.case_weight_g || 0);
-        const caseWeightLbs = caseWeightGrams * 0.00220462;
+        const caseWeightLbs = calculateCaseWeightLbs(currentQuote.product);
         const palletWeightLbs =
             caseWeightLbs * (currentQuote.product.cases_per_pallet || 1);
         currentQuote.calculatedWeightPerCaseLbs = caseWeightLbs;
@@ -420,7 +449,6 @@
         const costPerCase = parseFloat(costPerCaseInput.value) || 0;
         const labelingCost = parseFloat(labelingCostInput.value) || 0;
         const docsCost = parseFloat(crossingDocsCostInput.value) || 0;
-
         const subtotalBeforeCommission =
             (costPerCase + labelingCost + docsCost) * currentQuote.quantity;
         const commissionPercent = parseFloat(commissionPercentInput.value) || 0;
@@ -467,19 +495,111 @@
             (i) => i.product.id == activeMultiItemId
         );
         if (!item) return;
-        const product = item.product;
-        const pieceWeightGrams = getPieceWeightInGrams(product);
-        const totalPieceWeightGrams = pieceWeightGrams + (product.packaging_weight_g || 0);
-        const caseContentWeightGrams =
-            totalPieceWeightGrams * (product.pieces_per_case || 1);
-        const caseWeightGrams =
-            caseContentWeightGrams + (product.case_weight_g || 0);
-        const caseWeightLbs = caseWeightGrams * 0.00220462;
-        const palletWeightLbs = caseWeightLbs * (product.cases_per_pallet || 1);
+        const caseWeightLbs = calculateCaseWeightLbs(item.product);
+        const palletWeightLbs =
+            caseWeightLbs * (item.product.cases_per_pallet || 1);
+
         if (multiWeightPerCaseEl)
             multiWeightPerCaseEl.textContent = `${caseWeightLbs.toFixed(2)} lbs`;
         if (multiWeightPerPalletEl)
             multiWeightPerPalletEl.textContent = `${palletWeightLbs.toFixed(2)} lbs`;
+
+        // === LÍNEAS NUEVAS AÑADIDAS ===
+        const casesPerPalletEl = document.getElementById(
+            "qcf-multi-cases-per-pallet"
+        );
+        if (casesPerPalletEl)
+            casesPerPalletEl.textContent = item.product.cases_per_pallet || 0;
+        // ============================
+    }
+
+    // === INICIO DE CÓDIGO NUEVO: FUNCIÓN PARA VISUALIZADOR ===
+    function updateTrailerVisualizer(totalPalletSpace) {
+        const slots = document.querySelectorAll(".sq-trailer-slot .sq-slot-fill");
+        if (slots.length === 0) return; // Salir si los slots no existen
+
+        const fullPallets = Math.floor(totalPalletSpace);
+        const partialPalletFill = (totalPalletSpace - fullPallets) * 100;
+
+        slots.forEach((slot, index) => {
+            let fillPercent = 0;
+            if (index < fullPallets) {
+                fillPercent = 100;
+            } else if (index === fullPallets && partialPalletFill > 0) {
+                fillPercent = partialPalletFill;
+            }
+
+            slot.style.height = `${fillPercent}%`;
+        });
+    }
+    // === FIN DE CÓDIGO NUEVO ===
+
+    function updateTruckCapacity() {
+        let totalWeightLbs = 0;
+        let totalPalletSpace = 0;
+        currentMultiQuote.items.forEach((item) => {
+            if (item.isCompleted && item.product) {
+                const caseWeightLbs = calculateCaseWeightLbs(item.product);
+                totalWeightLbs += caseWeightLbs * item.totalCases;
+                if (item.product.cases_per_pallet > 0) {
+                    totalPalletSpace += item.totalCases / item.product.cases_per_pallet;
+                }
+            }
+        });
+        currentMultiQuote.truckCapacity = {
+            totalWeightLbs,
+            totalPalletSpace,
+            weightPercent: (totalWeightLbs / TRUCK_WEIGHT_LIMIT_LBS) * 100,
+            palletPercent: (totalPalletSpace / TRUCK_PALLET_LIMIT) * 100,
+        };
+
+        if (
+            truckPalletBarFill &&
+            truckPalletText &&
+            truckWeightBarFill &&
+            truckWeightText
+        ) {
+            const palletPercent = Math.min(
+                100,
+                currentMultiQuote.truckCapacity.palletPercent
+            );
+            truckPalletBarFill.style.width = `${palletPercent}%`;
+            truckPalletText.textContent = `${totalPalletSpace.toFixed(
+                2
+            )} / ${TRUCK_PALLET_LIMIT} Pallets`;
+            if (palletPercent > 90) {
+                truckPalletBarFill.style.backgroundColor =
+                    "var(--goldmex-accent-color)";
+            } else if (palletPercent > 75) {
+                truckPalletBarFill.style.backgroundColor =
+                    "var(--goldmex-secondary-color)";
+            } else {
+                truckPalletBarFill.style.backgroundColor =
+                    "var(--goldmex-primary-color)";
+            }
+
+            const weightPercent = Math.min(
+                100,
+                currentMultiQuote.truckCapacity.weightPercent
+            );
+            truckWeightBarFill.style.width = `${weightPercent}%`;
+            truckWeightText.textContent = `${totalWeightLbs
+                .toFixed(0)
+                .toLocaleString()} / ${TRUCK_WEIGHT_LIMIT_LBS.toLocaleString()} lbs`;
+            if (weightPercent > 90) {
+                truckWeightBarFill.style.backgroundColor =
+                    "var(--goldmex-accent-color)";
+            } else if (weightPercent > 75) {
+                truckWeightBarFill.style.backgroundColor =
+                    "var(--goldmex-secondary-color)";
+            } else {
+                truckWeightBarFill.style.backgroundColor =
+                    "var(--goldmex-primary-color)";
+            }
+        }
+        // === INICIO DE CÓDIGO NUEVO: LLAMADA A LA FUNCIÓN ===
+        updateTrailerVisualizer(totalPalletSpace);
+        // === FIN DE CÓDIGO NUEVO ===
     }
 
     function renderQuotePreview(
@@ -496,27 +616,22 @@
                 : isLivePreview
                     ? quotePreviewContent
                     : viewQuoteBody);
-
         if (!targetElement) return;
-
         if (
             (!isMulti && (!quoteObject.product || !quoteObject.totals)) ||
             (isMulti && (!quoteObject.items || quoteObject.items.length === 0))
         ) {
             targetElement.innerHTML = `<p class="sq-preview-placeholder">${isMulti
-                    ? "Add and configure products to see the preview."
-                    : "Select a product to begin..."
+                ? "Add and configure products to see the preview."
+                : "Select a product to begin..."
                 }</p>`;
             return;
         }
-
         const { companyName, totals, transport, exchangeRate, items, quantity } =
             quoteObject;
-
         const totalCommissionMulti = isMulti
             ? items.reduce((acc, item) => acc + (item.totals?.commission || 0), 0)
             : 0;
-
         const itemsHtml = isMulti
             ? items
                 .map(
@@ -526,9 +641,12 @@
                 <td class="text-right">${item.totals.costPerCase.toFixed(
                         2
                     )}</td>
-                <td class="text-right">${item.quantity.toLocaleString()}</td>
+                <td class="text-right">${item.totalCases.toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 2 }
+                    )}</td>
                 <td class="text-right">${(
-                            item.totals.costPerCase * item.quantity
+                            item.totals.costPerCase * item.totalCases
                         ).toFixed(2)}</td>
             </tr>
             <tr class="item-details-row">
@@ -536,10 +654,13 @@
                 <td class="text-right">${(
                             item.totals.labelingCost + item.totals.docsCost
                         ).toFixed(2)}</td>
-                <td class="text-right">${item.quantity.toLocaleString()}</td>
+                <td class="text-right">${item.totalCases.toLocaleString(
+                            undefined,
+                            { maximumFractionDigits: 2 }
+                        )}</td>
                 <td class="text-right">${(
                             (item.totals.labelingCost + item.totals.docsCost) *
-                            item.quantity
+                            item.totalCases
                         ).toFixed(2)}</td>
             </tr>`
                 )
@@ -564,18 +685,15 @@
                 quantity
             ).toFixed(2)}</td>
             </tr>`;
-
         const transportHtml =
             transport && transport.price > 0
-                ? `
-            <tr>
-                <td>Transportation (${transport.name || transport.type})</td>
-                <td class="text-right">${transport.price.toFixed(2)}</td>
-                <td class="text-right">1</td>
-                <td class="text-right">${transport.price.toFixed(2)}</td>
-            </tr>`
+                ? `<tr><td>Transportation (${transport.name || transport.type
+                })</td><td class="text-right">${transport.price.toFixed(
+                    2
+                )}</td><td class="text-right">1</td><td class="text-right">${transport.price.toFixed(
+                    2
+                )}</td></tr>`
                 : "";
-
         const commissionHtml =
             (totals && totals.commission > 0) || totalCommissionMulti > 0
                 ? `
@@ -589,10 +707,8 @@
                     ? totalCommissionMulti.toFixed(2)
                     : totals.commission.toFixed(2)
                 }</td>
-            </tr>
-        `
+            </tr>`
                 : "";
-
         const perItemTotals = isMulti
             ? `
             <table class="sq-price-breakdown-table">
@@ -616,112 +732,64 @@
                             item.totals.pricePerCaseUSD /
                             (item.product.pieces_per_case || 1)
                         ).toFixed(4)}</td>
-                    </tr>
-                `
+                    </tr>`
                 )
                 .join("")}
               </tbody>
-            </table>
-        `
+            </table>`
             : `
-            <div class="footer-item">
-                <span class="footer-label">Price per Case (USD):</span>
-                <span class="footer-value">$${(
+            <div class="footer-item"><span class="footer-label">Price per Case (USD):</span><span class="footer-value">$${(
                 totals.pricePerCaseUSD || 0
-            ).toFixed(2)}</span>
-            </div>
-            <div class="footer-item">
-                <span class="footer-label">Price per Piece (USD):</span>
-                <span class="footer-value">$${(
+            ).toFixed(2)}</span></div>
+            <div class="footer-item"><span class="footer-label">Price per Piece (USD):</span><span class="footer-value">$${(
                 totals.pricePerPieceUSD || 0
-            ).toFixed(4)}</span>
-            </div>`;
-
+            ).toFixed(4)}</span></div>`;
         targetElement.innerHTML = `
             <div class="sq-preview-invoice-box">
-                <div class="sq-preview-top-section">
-                    <div class="sq-preview-company-info">
-                        <strong>Quotation Estimate For: ${companyName || "N/A"
-            }</strong>
-                        <span>Generated on: ${new Date().toLocaleDateString()}</span>
-                    </div>
-                </div>
-                <div class="sq-preview-details-section">
-                    <strong>Quote Type:</strong> ${isMulti ? "Multi-Item" : "Single Product"
-            }<br>
-                    ${isMulti
+                <div class="sq-preview-top-section"><div class="sq-preview-company-info"><strong>Quotation Estimate For: ${companyName || "N/A"
+            }</strong><span>Generated on: ${new Date().toLocaleDateString()}</span></div></div>
+                <div class="sq-preview-details-section"><strong>Quote Type:</strong> ${isMulti ? "Multi-Item" : "Single Product"
+            }<br>${isMulti
                 ? `<strong>Total Items:</strong> ${items.length}`
                 : `<strong>Product:</strong> ${quoteObject.product.name
                 }<br><strong>Quantity:</strong> ${quantity.toLocaleString()} case(s)`
-            }
-                </div>
+            }</div>
                 <table class="sq-preview-items-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th class="text-right">Unit Cost (MXN)</th>
-                            <th class="text-right">Quantity</th>
-                            <th class="text-right">Total (MXN)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsHtml}
-                        ${!isMulti ? transportHtml : ""}
-                        ${commissionHtml}
-                        ${isMulti && transport && transport.price > 0
-                ? `
-                            <tr>
-                                <td>Global Transportation (${transport.name || transport.type
-                })</td>
-                                <td colspan="2" style="text-align:center;">-</td>
-                                <td class="text-right">${transport.price.toFixed(
+                    <thead><tr><th>Description</th><th class="text-right">Unit Cost (MXN)</th><th class="text-right">Quantity</th><th class="text-right">Total (MXN)</th></tr></thead>
+                    <tbody>${itemsHtml}${!isMulti ? transportHtml : ""
+            }${commissionHtml}${isMulti && transport && transport.price > 0
+                ? `<tr><td>Global Transportation (${transport.name || transport.type
+                })</td><td colspan="2" style="text-align:center;">-</td><td class="text-right">${transport.price.toFixed(
                     2
-                )}</td>
-                            </tr>
-                        `
+                )}</td></tr>`
                 : ""
-            }
-                    </tbody>
+            }</tbody>
                 </table>
                 <div class="sq-preview-footer">
-                    <div class="sq-preview-footer-left">
-                        ${perItemTotals}
-                        <div class="footer-item exchange-rate">
-                            Exchange rate used: 1 USD ≈ ${exchangeRate.toFixed(
+                    <div class="sq-preview-footer-left">${perItemTotals}<div class="footer-item exchange-rate">Exchange rate used: 1 USD ≈ ${exchangeRate.toFixed(
                 4
-            )} MXN
-                        </div>
-                    </div>
+            )} MXN</div></div>
                     <div class="sq-preview-footer-right">
-                        <div class="footer-item">
-                            <span class="footer-label">Total (MXN):</span>
-                            <span class="footer-value">${(
+                        <div class="footer-item"><span class="footer-label">Total (MXN):</span><span class="footer-value">${(
                 totals.totalMXN || 0
-            ).toFixed(2)}</span>
-                        </div>
-                        <div class="footer-item grand-total">
-                            <span class="footer-label">Total Estimate (USD):</span>
-                            <span class="footer-value">$${(
+            ).toFixed(2)}</span></div>
+                        <div class="footer-item grand-total"><span class="footer-label">Total Estimate (USD):</span><span class="footer-value">$${(
                 totals.totalUSD || 0
-            ).toFixed(2)}</span>
-                        </div>
+            ).toFixed(2)}</span></div>
                     </div>
                 </div>
             </div>`;
-
         if (!isLivePreview && !customTarget) {
             const modal = isMulti ? viewMultiQuoteModal : viewQuoteModal;
             const titleEl = isMulti ? viewMultiQuoteTitle : viewQuoteTitle;
             if (titleEl)
                 titleEl.textContent = `Quotation Details #${quoteObject.savedId || "Preview"
                     }`;
-
             if (isMulti) {
                 downloadMultiPdfBtn.quoteData = quoteObject;
             } else {
                 downloadSinglePdfBtn.quoteData = quoteObject;
             }
-
             openModal(modal);
         }
     }
@@ -805,17 +873,17 @@
 
     function applyFiltersAndRenderCards() {
         const searchTerm = modalSearchInput.value.toLowerCase();
-        
         let filteredProducts = productsCache;
-
-        if (activeUnitFilter !== 'all') {
-            filteredProducts = filteredProducts.filter(p => p.unit_of_measure === activeUnitFilter);
+        if (activeUnitFilter !== "all") {
+            filteredProducts = filteredProducts.filter(
+                (p) => p.unit_of_measure === activeUnitFilter
+            );
         }
-
         if (searchTerm) {
-            filteredProducts = filteredProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+            filteredProducts = filteredProducts.filter((p) =>
+                p.name.toLowerCase().includes(searchTerm)
+            );
         }
-
         renderProductCards(filteredProducts);
     }
 
@@ -823,7 +891,8 @@
         if (!productCardsContainer) return;
         productCardsContainer.innerHTML = "";
         if (products.length === 0) {
-            productCardsContainer.innerHTML = "<p>No products found matching your criteria.</p>";
+            productCardsContainer.innerHTML =
+                "<p>No products found matching your criteria.</p>";
             return;
         }
         products.forEach((product) => {
@@ -836,13 +905,10 @@
             ) {
                 card.classList.add("selected");
             }
-            card.innerHTML = `
-                <img src="${product.image_url || "assets/favicon.png"}" alt="${product.name
-                }">
-                <div class="sq-product-card-info">
-                    <h5>${product.name}</h5>
-                    <p>${product.pieces_per_case || "N/A"} pieces / ${product.value_per_piece || "N/A"} ${product.unit_of_measure || 'N/A'}</p>
-                </div>`;
+            card.innerHTML = `<img src="${product.image_url || "assets/favicon.png"
+                }" alt="${product.name}"><div class="sq-product-card-info"><h5>${product.name
+                }</h5><p>${product.pieces_per_case || "N/A"} pieces / ${product.value_per_piece || "N/A"
+                } ${product.unit_of_measure || "N/A"}</p></div>`;
             card.addEventListener("click", () => {
                 if (productExplorerMode === "single") {
                     handleSingleProductSelection(product.id);
@@ -870,19 +936,40 @@
             if (item.isCompleted) itemEl.classList.add("completed");
             if (item.product.id == activeMultiItemId) itemEl.classList.add("active");
             itemEl.innerHTML = `
+                <button class="sq-multi-item-delete-btn" title="Remove Item"><i class='bx bx-trash'></i></button>
                 ${item.isCompleted
                     ? "<i class='bx bxs-check-circle status-icon'></i>"
                     : ""
                 }
                 <img src="${item.product.image_url || "assets/favicon.png"
                 }" alt="${item.product.name}">
-                <div class="product-info">
-                    <h5>${item.product.name}</h5>
-                    <p>${item.product.pieces_per_case || "N/A"} pcs / ${item.product.value_per_piece || "N/A"} ${item.product.unit_of_measure || 'N/A'}</p>
-                </div>`;
+                <div class="product-info"><h5>${item.product.name}</h5><p>${item.product.pieces_per_case || "N/A"
+                } pcs / ${item.product.value_per_piece || "N/A"} ${item.product.unit_of_measure || "N/A"
+                }</p></div>`;
             multiItemListContainer.appendChild(itemEl);
         });
         checkIfMultiQuoteCanBeSaved();
+    }
+
+    function handleDeleteItem(itemIdToDelete) {
+        showCustomConfirm(
+            "Delete Item",
+            "Are you sure you want to remove this item from the quote?",
+            () => {
+                currentMultiQuote.items = currentMultiQuote.items.filter(
+                    (item) => item.product.id != itemIdToDelete
+                );
+                if (activeMultiItemId == itemIdToDelete) {
+                    activeMultiItemId = null;
+                    multiFormPlaceholder.style.display = "flex";
+                    multiFormContainer.style.display = "none";
+                    if (saveMultiItemBtn) saveMultiItemBtn.style.display = "none";
+                }
+                renderMultiItemList();
+                updateTruckCapacity();
+                showSQNotification("Item removed.", "info");
+            }
+        );
     }
 
     function loadMultiItemForm(itemId) {
@@ -898,11 +985,16 @@
         const titleSpan = multiFormProductTitle.querySelector("span");
         titleImg.src = item.product.image_url || "assets/favicon.png";
         titleSpan.textContent = item.product.name;
-        multiCaseQuantityInput.value = item.quantity;
-        multiCostPerCaseInput.value = item.totals?.costPerCase || "";
+        multiQuantityInput.value = item.rawQuantity;
+        multiCostPerCaseDisplay.textContent = (
+            item.product.costo_base || 0
+        ).toFixed(2);
         multiLabelingCostInput.value = item.totals?.labelingCost || "";
         multiCrossingDocsCostInput.value = item.totals?.docsCost || "";
         multiCommissionPercentInput.value = item.totals?.commissionPercent || "";
+        multiUnitSelector.querySelectorAll(".sq-unit-btn").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.unit === item.quotingUnit);
+        });
         if (multiFormPlaceholder) multiFormPlaceholder.style.display = "none";
         if (multiFormContainer) multiFormContainer.style.display = "block";
         if (saveMultiItemBtn) saveMultiItemBtn.style.display = "flex";
@@ -920,10 +1012,8 @@
                 if (tabContent) tabContent.classList.add("active");
                 if (btn.dataset.tab === "qcf-history-tab") fetchQuotesHistory();
                 if (btn.dataset.tab === "qcf-database-tab") fetchProducts();
-                if (btn.dataset.tab === "qcf-creator-tab") resetToStartView();
             })
         );
-
         confirmCompanyBtn.addEventListener("click", () => {
             const companyName = companyNameInput.value.trim();
             if (companyName) {
@@ -931,7 +1021,7 @@
                 currentMultiQuote.companyName = companyName;
                 companyNameInput.disabled = true;
                 confirmCompanyBtn.disabled = true;
-                choiceSingleCard.classList.remove("disabled");
+                //choiceSingleCard.classList.remove("disabled");//
                 choiceMultiCard.classList.remove("disabled");
                 showSQNotification(
                     `Company set to: ${companyName}. Please select a quote type.`,
@@ -941,7 +1031,6 @@
                 showSQNotification("Please enter a company name.", "error");
             }
         });
-
         choiceSingleCard.addEventListener("click", () => {
             if (choiceSingleCard.classList.contains("disabled")) return;
             switchView("single");
@@ -950,11 +1039,9 @@
             if (choiceMultiCard.classList.contains("disabled")) return;
             switchView("multi");
         });
-
         backToStartBtns.forEach((btn) => {
-            btn.addEventListener("click", resetToStartView);
+            btn.addEventListener("click", softResetToModeSelection);
         });
-
         if (exploreProductsBtn)
             exploreProductsBtn.addEventListener("click", () => {
                 productExplorerMode = "single";
@@ -963,18 +1050,16 @@
                 applyFiltersAndRenderCards();
                 openModal(productExplorerModal);
             });
-        
         if (productSearchInput) {
             productSearchInput.addEventListener("input", (e) => {
                 const searchTerm = e.target.value;
-                if (productExplorerModal.style.display !== 'flex') {
+                if (productExplorerModal.style.display !== "flex") {
                     openModal(productExplorerModal);
                 }
                 modalSearchInput.value = searchTerm;
                 applyFiltersAndRenderCards();
             });
         }
-
         const inputsToWatch = [
             caseQuantityInput,
             costPerCaseInput,
@@ -990,7 +1075,6 @@
                 input.addEventListener(eventType, updateAllCalculations);
             }
         });
-
         if (transportCostInput)
             transportCostInput.addEventListener(
                 "input",
@@ -1006,7 +1090,6 @@
                 "input",
                 calculateTransportMarginFromPrice
             );
-
         addMultiProductsBtn.addEventListener("click", () => {
             productExplorerMode = "multi";
             addSelectedProductsBtn.style.display = "block";
@@ -1027,7 +1110,9 @@
                     if (product) {
                         currentMultiQuote.items.push({
                             product: product,
-                            quantity: 1,
+                            rawQuantity: '', // <-- LÍNEA ACTUALIZADA
+                            quotingUnit: "case",
+                            totalCases: 1,
                             isCompleted: false,
                             totals: null,
                         });
@@ -1040,17 +1125,17 @@
             renderMultiItemList();
             closeModal(productExplorerModal);
         });
-
         multiItemListContainer.addEventListener("click", (e) => {
+            const deleteBtn = e.target.closest(".sq-multi-item-delete-btn");
             const itemEl = e.target.closest(".sq-multi-item");
-            if (itemEl) {
+            if (deleteBtn && itemEl) {
+                e.stopPropagation();
+                handleDeleteItem(itemEl.dataset.id);
+            } else if (itemEl) {
                 loadMultiItemForm(itemEl.dataset.id);
             }
         });
-
         const multiInputsToWatch = [
-            multiCaseQuantityInput,
-            multiCostPerCaseInput,
             multiLabelingCostInput,
             multiCrossingDocsCostInput,
             multiCommissionPercentInput,
@@ -1058,10 +1143,25 @@
         multiInputsToWatch.forEach((input) => {
             if (input) input.addEventListener("input", updateMultiItemCalculations);
         });
-
         if (saveMultiItemBtn)
             saveMultiItemBtn.addEventListener("click", handleSaveMultiItem);
-
+        if (multiUnitSelector) {
+            multiUnitSelector.addEventListener("click", (e) => {
+                if (e.target.matches(".sq-unit-btn")) {
+                    const selectedUnit = e.target.dataset.unit;
+                    const item = currentMultiQuote.items.find(
+                        (i) => i.product.id == activeMultiItemId
+                    );
+                    if (item) {
+                        item.quotingUnit = selectedUnit;
+                        multiUnitSelector
+                            .querySelectorAll(".sq-unit-btn")
+                            .forEach((btn) => btn.classList.remove("active"));
+                        e.target.classList.add("active");
+                    }
+                }
+            });
+        }
         if (multiTransportCostInput)
             multiTransportCostInput.addEventListener(
                 "input",
@@ -1077,7 +1177,6 @@
                 "input",
                 calculateTransportMarginFromPrice
             );
-
         if (manageProductsBtn)
             manageProductsBtn.addEventListener("click", () => {
                 productForm.reset();
@@ -1090,14 +1189,12 @@
             addNewProductBtn.addEventListener("click", () =>
                 manageProductsBtn.click()
             );
-
         const genericModalButtons = document.querySelectorAll(
             ".sq-modal:not(#sq-view-quote-modal):not(#sq-view-multi-quote-modal):not(#sqCustomConfirmModal) .sq-modal-close-btn, .sq-modal:not(#sq-view-quote-modal):not(#sq-view-multi-quote-modal):not(#sqCustomConfirmModal) .sq-modal-cancel-btn"
         );
         genericModalButtons.forEach((btn) =>
             btn.addEventListener("click", () => closeModal(btn.closest(".sq-modal")))
         );
-
         if (confirmOkBtn)
             confirmOkBtn.addEventListener("click", () => {
                 if (typeof currentConfirmCallback === "function")
@@ -1108,7 +1205,6 @@
             confirmCancelBtn.addEventListener("click", hideCustomConfirmModal);
         if (confirmCloseBtn)
             confirmCloseBtn.addEventListener("click", hideCustomConfirmModal);
-
         viewQuoteModal.addEventListener("click", (e) => {
             if (e.target.matches(".sq-modal-close-btn, .sq-modal-cancel-btn")) {
                 closeModal(viewQuoteModal);
@@ -1117,25 +1213,22 @@
         viewMultiQuoteModal.addEventListener("click", (e) => {
             if (e.target.matches(".sq-modal-close-btn, .sq-modal-cancel-btn")) {
                 closeModal(viewMultiQuoteModal);
-                resetToStartView();
+                softResetToModeSelection();
             }
         });
-
         if (modalSearchInput) {
             modalSearchInput.addEventListener("input", applyFiltersAndRenderCards);
         }
-
         if (filterBtns) {
-            filterBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    filterBtns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
+            filterBtns.forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    filterBtns.forEach((b) => b.classList.remove("active"));
+                    btn.classList.add("active");
                     activeUnitFilter = btn.dataset.filter;
                     applyFiltersAndRenderCards();
                 });
             });
         }
-
         if (productForm) productForm.addEventListener("submit", handleProductSave);
         if (saveQuoteBtn) saveQuoteBtn.addEventListener("click", saveSingleQuote);
         if (downloadPdfBtn)
@@ -1146,7 +1239,6 @@
             applyFiltersBtn.addEventListener("click", applyHistoryFilters);
         if (saveFullQuoteBtn)
             saveFullQuoteBtn.addEventListener("click", saveMultiQuote);
-
         if (downloadMultiPdfBtn) {
             downloadMultiPdfBtn.addEventListener("click", () => {
                 if (downloadMultiPdfBtn.quoteData) {
@@ -1270,6 +1362,14 @@
             responsive: true,
             columns: [
                 { data: "name", title: "Product Name", className: "dt-left" },
+                {
+                    data: "costo_base",
+                    title: "Price/Case (MXN)",
+                    render: function (data, type, row) {
+                        const cost = parseFloat(data) || 0;
+                        return `$${cost.toFixed(2)}`;
+                    },
+                },
                 { data: "pieces_per_case", title: "Pieces/Case" },
                 { data: "cases_per_pallet", title: "Cases/Pallet" },
                 { data: "pallets_per_truck", title: "Pallets/Truck" },
@@ -1304,7 +1404,7 @@
             "<i class='bx bx-loader-alt bx-spin'></i> Saving...";
         const file = productImageInput.files[0];
         let imageUrl =
-            document.getElementById("p-current-image").textContent || null;
+            document.getElementById("p-current-image").dataset.imageUrl || null;
         const editingId = productIdInput.value;
         try {
             if (file) {
@@ -1326,6 +1426,7 @@
                 pallets_per_truck: parseInt(palletsPerTruckInput.value) || null,
                 packaging_weight_g: parseFloat(packagingWeightInput.value) || 28,
                 case_weight_g: parseFloat(caseWeightInput.value) || 454,
+                costo_base: parseFloat(costBaseInput.value) || 0,
             };
             let error, data;
             if (editingId) {
@@ -1340,14 +1441,12 @@
                     .insert(productData)
                     .select());
             }
-
             if (error) throw error;
             if (!data || data.length === 0) {
                 throw new Error(
                     "Product data was not saved. This might be due to database permissions (RLS)."
                 );
             }
-
             showSQNotification(
                 `Product ${editingId ? "updated" : "saved"} successfully!`,
                 "success"
@@ -1368,14 +1467,25 @@
         productModalTitle.textContent = "Edit Product";
         productIdInput.value = product.id;
         productNameInput.value = product.name;
+        costBaseInput.value = product.costo_base;
         piecesPerCaseInput.value = product.pieces_per_case;
         valuePerPieceInput.value = product.value_per_piece;
-        unitOfMeasureSelect.value = product.unit_of_measure || 'g';
+        unitOfMeasureSelect.value = product.unit_of_measure || "g";
         casesPerPalletInput.value = product.cases_per_pallet;
         palletsPerTruckInput.value = product.pallets_per_truck;
         packagingWeightInput.value = product.packaging_weight_g;
         caseWeightInput.value = product.case_weight_g;
-        currentImageEl.textContent = product.image_url || "";
+
+        // === CAMBIO: SE MUESTRA UN MENSAJE AMIGABLE EN LUGAR DE LA URL ===
+        if (product.image_url) {
+            currentImageEl.textContent =
+                "An image is currently loaded for this product.";
+            currentImageEl.dataset.imageUrl = product.image_url; // Guardamos la URL internamente
+        } else {
+            currentImageEl.textContent = "";
+            currentImageEl.dataset.imageUrl = "";
+        }
+
         openModal(manageProductsModal);
     }
 
@@ -1443,12 +1553,31 @@
             (i) => i.product.id == activeMultiItemId
         );
         if (!item) return;
-        item.quantity = parseInt(multiCaseQuantityInput.value, 10) || 1;
-        const costPerCase = parseFloat(multiCostPerCaseInput.value) || 0;
+        const product = item.product;
+        const rawQuantity = parseInt(multiQuantityInput.value, 10) || 1;
+        const quotingUnit = item.quotingUnit;
+        let totalCases = 0;
+        const piecesPerCase = product.pieces_per_case || 1;
+        const casesPerPallet = product.cases_per_pallet || 1;
+        switch (quotingUnit) {
+            case "piece":
+                totalCases = rawQuantity / piecesPerCase;
+                break;
+            case "pallet":
+                totalCases = rawQuantity * casesPerPallet;
+                break;
+            case "case":
+            default:
+                totalCases = rawQuantity;
+                break;
+        }
+        item.rawQuantity = rawQuantity;
+        item.totalCases = totalCases;
+        const costPerCase = parseFloat(product.costo_base) || 0;
         const labelingCost = parseFloat(multiLabelingCostInput.value) || 0;
         const docsCost = parseFloat(multiCrossingDocsCostInput.value) || 0;
         const subtotalBeforeCommission =
-            (costPerCase + labelingCost + docsCost) * item.quantity;
+            (costPerCase + labelingCost + docsCost) * item.totalCases;
         const commissionPercent =
             parseFloat(multiCommissionPercentInput.value) || 0;
         const commissionAmount =
@@ -1460,13 +1589,14 @@
             commission: commissionAmount,
             totalMXN: totalMXN,
             totalUSD: totalUSD,
-            pricePerCaseUSD: item.quantity > 0 ? totalUSD / item.quantity : 0,
+            pricePerCaseUSD: item.totalCases > 0 ? totalUSD / item.totalCases : 0,
             costPerCase,
             labelingCost,
             docsCost,
             commissionPercent,
         };
         item.isCompleted = true;
+        updateTruckCapacity();
         showSQNotification(`Item "${item.product.name}" confirmed!`, "success");
         renderMultiItemList();
         const nextItem = currentMultiQuote.items.find((i) => !i.isCompleted);
@@ -1501,14 +1631,12 @@
         saveFullQuoteBtn.disabled = true;
         saveFullQuoteBtn.innerHTML =
             "<i class='bx bx-loader-alt bx-spin'></i> Saving...";
-
         let grandTotalMXN = 0;
         let totalCommission = 0;
         currentMultiQuote.items.forEach((item) => {
             grandTotalMXN += item.totals.totalMXN;
             totalCommission += item.totals.commission;
         });
-
         const transportPrice = parseFloat(multiTransportPriceInput.value) || 0;
         currentMultiQuote.transport = {
             type: multiTransportTypeSelect.value,
@@ -1518,7 +1646,6 @@
             price: transportPrice,
         };
         grandTotalMXN += transportPrice;
-
         currentMultiQuote.totals = {
             totalMXN: grandTotalMXN,
             totalUSD: grandTotalMXN / currentMultiQuote.exchangeRate,
@@ -1527,7 +1654,6 @@
                 currentMultiQuote.items[0]?.totals.commissionPercent || 0,
         };
         currentMultiQuote.type = "multi";
-
         const quoteToSave = {
             user_id: currentUserSQ.id,
             user_email: currentUserSQ.email,
@@ -1535,7 +1661,6 @@
             product_name: `${currentMultiQuote.items.length} items`,
             quote_data: currentMultiQuote,
         };
-
         const { data, error } = await supabase
             .from(QUOTES_TABLE)
             .insert(quoteToSave)
@@ -1543,7 +1668,6 @@
             .single();
         saveFullQuoteBtn.innerHTML =
             "<i class='bx bx-save'></i> Save Full Quotation";
-
         if (error) {
             console.error("Error saving multi-quote:", error);
             showSQNotification(`Error saving quote: ${error.message}`, "error");
@@ -1553,14 +1677,10 @@
                 `Multi-item Quote #${data.id} saved successfully!`,
                 "success"
             );
-
             const savedQuoteData = JSON.parse(JSON.stringify(currentMultiQuote));
             savedQuoteData.savedId = data.id;
-
             downloadMultiPdfBtn.quoteData = savedQuoteData;
-
             renderQuotePreview(savedQuoteData, "multi");
-
             resetMultiQuoteCreator();
         }
     }
@@ -1570,179 +1690,118 @@
             return showSQNotification("PDF library is not loaded.", "error");
         if (!quoteObject)
             return showSQNotification("No quote data to download.", "error");
-
         const printContainer = document.createElement("div");
         printContainer.style.position = "absolute";
         printContainer.style.left = "-9999px";
         printContainer.style.width = "8.5in";
         printContainer.classList.add("pdf-render-mode");
         document.body.appendChild(printContainer);
-
         const { companyName, totals, transport, exchangeRate, items, quantity } =
             quoteObject;
         const isMulti = viewType === "multi";
-
         let totalServices = 0;
         let itemsHtmlPdf = "";
-
         if (isMulti) {
             items.forEach((item) => {
-                itemsHtmlPdf += `
-                    <tr>
-                        <td>${item.product.name}</td>
-                        <td class="text-right">${item.totals.costPerCase.toFixed(2)}</td>
-                        <td class="text-right">${item.quantity.toLocaleString()}</td>
-                        <td class="text-right">${(item.totals.costPerCase * item.quantity).toFixed(2)}</td>
-                    </tr>`;
+                const effectiveQuantity = item.totalCases || item.quantity;
+                itemsHtmlPdf += `<tr><td>${item.product.name
+                    }</td><td class="text-right">${item.totals.costPerCase.toFixed(
+                        2
+                    )}</td><td class="text-right">${effectiveQuantity.toLocaleString(
+                        undefined,
+                        { maximumFractionDigits: 2 }
+                    )} (cases)</td><td class="text-right">${(
+                        item.totals.costPerCase * effectiveQuantity
+                    ).toFixed(2)}</td></tr>`;
                 totalServices +=
-                    (item.totals.labelingCost + item.totals.docsCost) * item.quantity +
+                    (item.totals.labelingCost + item.totals.docsCost) *
+                    effectiveQuantity +
                     item.totals.commission;
             });
         } else {
-            itemsHtmlPdf = `
-                <tr>
-                    <td>${quoteObject.product.name}</td>
-                    <td class="text-right">${totals.costPerCase.toFixed(2)}</td>
-                    <td class="text-right">${quantity.toLocaleString()}</td>
-                    <td class="text-right">${(totals.costPerCase * quantity).toFixed(2)}</td>
-                </tr>`;
+            itemsHtmlPdf = `<tr><td>${quoteObject.product.name
+                }</td><td class="text-right">${totals.costPerCase.toFixed(
+                    2
+                )}</td><td class="text-right">${quantity.toLocaleString()}</td><td class="text-right">${(
+                    totals.costPerCase * quantity
+                ).toFixed(2)}</td></tr>`;
             totalServices =
                 (totals.labelingCost + totals.docsCost) * quantity + totals.commission;
         }
-
         if (totalServices > 0) {
             const unitServicesCost = totalServices / (isMulti ? 1 : quantity);
             const serviceQuantity = isMulti ? 1 : quantity.toLocaleString();
-            itemsHtmlPdf += `
-                <tr class="item-details-row">
-                    <td>Services</td>
-                    <td class="text-right">${unitServicesCost.toFixed(2)}</td>
-                    <td class="text-right">${serviceQuantity}</td>
-                    <td class="text-right">${totalServices.toFixed(2)}</td>
-                </tr>`;
+            itemsHtmlPdf += `<tr class="item-details-row"><td>Services</td><td class="text-right">${unitServicesCost.toFixed(
+                2
+            )}</td><td class="text-right">${serviceQuantity}</td><td class="text-right">${totalServices.toFixed(
+                2
+            )}</td></tr>`;
         }
-
         const transportHtmlPdf =
             transport && transport.price > 0
-                ? `
-            <tr>
-                <td>Transportation (${transport.name || transport.type})</td>
-                <td colspan="2" style="text-align:center;">-</td>
-                <td class="text-right">${transport.price.toFixed(2)}</td>
-            </tr>`
+                ? `<tr><td>Transportation (${transport.name || transport.type
+                })</td><td colspan="2" style="text-align:center;">-</td><td class="text-right">${transport.price.toFixed(
+                    2
+                )}</td></tr>`
                 : "";
-        
         const perItemTotalsPdf = isMulti
-            ? `
-            <table class="sq-price-breakdown-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th class="text-right">Price/Case (USD)</th>
-                  <th class="text-right">Price/Piece (USD)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${items
+            ? `<table class="sq-price-breakdown-table"><thead><tr><th>Item</th><th class="text-right">Price/Case (USD)</th><th class="text-right">Price/Piece (USD)</th></tr></thead><tbody>${items
                 .map(
-                    (item) => `
-                    <tr>
-                        <td>${item.product.name}</td>
-                        <td class="text-right">$${item.totals.pricePerCaseUSD.toFixed(2)}</td>
-                        <td class="text-right">$${(
+                    (item) =>
+                        `<tr><td>${item.product.name
+                        }</td><td class="text-right">$${item.totals.pricePerCaseUSD.toFixed(
+                            2
+                        )}</td><td class="text-right">$${(
                             item.totals.pricePerCaseUSD /
                             (item.product.pieces_per_case || 1)
-                        ).toFixed(4)}</td>
-                    </tr>`
+                        ).toFixed(4)}</td></tr>`
                 )
-                .join("")}
-              </tbody>
-            </table>`
-            : `
-            <div class="footer-item">
-                <span class="footer-label">Price per Case (USD):</span>
-                <span class="footer-value">$${(totals.pricePerCaseUSD || 0).toFixed(2)}</span>
-            </div>
-            <div class="footer-item">
-                <span class="footer-label">Price per Piece (USD):</span>
-                <span class="footer-value">$${(totals.pricePerPieceUSD || 0).toFixed(4)}</span>
-            </div>`;
-
-        const footerStyle = isMulti ? `style="flex-direction: column; gap: 1.5rem;"` : '';
-        const footerRightStyle = isMulti ? `style="order: 1; align-self: flex-end; max-width: 50%; min-width: 300px; width: 100%;"` : '';
-        const footerLeftStyle = isMulti ? `style="order: 2; width: 100%;"` : '';
-
-        const footerRightHtml = `
-            <div class="sq-preview-footer-right" ${footerRightStyle}>
-                <div class="footer-item">
-                    <span class="footer-label">Total (MXN):</span>
-                    <span class="footer-value">${(totals.totalMXN || 0).toFixed(2)}</span>
-                </div>
-                <div class="footer-item grand-total">
-                    <span class="footer-label">Total Estimate (USD):</span>
-                    <span class="footer-value">$${(totals.totalUSD || 0).toFixed(2)}</span>
-                </div>
-            </div>`;
-
-        const footerLeftHtml = `
-            <div class="sq-preview-footer-left" ${footerLeftStyle}>
-                ${perItemTotalsPdf}
-                <div class="footer-item exchange-rate">
-                    Exchange rate used: 1 USD ≈ ${exchangeRate.toFixed(4)} MXN
-                </div>
-            </div>`;
-
-        const pdfHtml = `
-            <div class="sq-preview-invoice-box">
-                <div class="sq-preview-top-section">
-                    <div class="sq-preview-company-info">
-                        <strong>Quotation Estimate For: ${companyName || "N/A"}</strong>
-                        <span>Generated on: ${new Date().toLocaleDateString()}</span>
-                    </div>
-                </div>
-                <div class="sq-preview-details-section">
-                     <strong>Quote Type:</strong> ${isMulti ? "Multi-Item" : "Single Product"}<br>
-                    ${isMulti
+                .join("")}</tbody></table>`
+            : `<div class="footer-item"><span class="footer-label">Price per Case (USD):</span><span class="footer-value">$${(
+                totals.pricePerCaseUSD || 0
+            ).toFixed(
+                2
+            )}</span></div><div class="footer-item"><span class="footer-label">Price per Piece (USD):</span><span class="footer-value">$${(
+                totals.pricePerPieceUSD || 0
+            ).toFixed(4)}</span></div>`;
+        const footerStyle = isMulti
+            ? `style="flex-direction: column; gap: 1.5rem;"`
+            : "";
+        const footerRightStyle = isMulti
+            ? `style="order: 1; align-self: flex-end; max-width: 50%; min-width: 300px; width: 100%;"`
+            : "";
+        const footerLeftStyle = isMulti ? `style="order: 2; width: 100%;"` : "";
+        const footerRightHtml = `<div class="sq-preview-footer-right" ${footerRightStyle}><div class="footer-item"><span class="footer-label">Total (MXN):</span><span class="footer-value">${(
+            totals.totalMXN || 0
+        ).toFixed(
+            2
+        )}</span></div><div class="footer-item grand-total"><span class="footer-label">Total Estimate (USD):</span><span class="footer-value">$${(
+            totals.totalUSD || 0
+        ).toFixed(2)}</span></div></div>`;
+        const footerLeftHtml = `<div class="sq-preview-footer-left" ${footerLeftStyle}>${perItemTotalsPdf}<div class="footer-item exchange-rate">Exchange rate used: 1 USD ≈ ${exchangeRate.toFixed(
+            4
+        )} MXN</div></div>`;
+        const pdfHtml = `<div class="sq-preview-invoice-box"><div class="sq-preview-top-section"><div class="sq-preview-company-info"><strong>Quotation Estimate For: ${companyName || "N/A"
+            }</strong><span>Generated on: ${new Date().toLocaleDateString()}</span></div></div><div class="sq-preview-details-section"><strong>Quote Type:</strong> ${isMulti ? "Multi-Item" : "Single Product"
+            }<br>${isMulti
                 ? `<strong>Total Items:</strong> ${items.length}`
-                : `<strong>Product:</strong> ${quoteObject.product.name}<br><strong>Quantity:</strong> ${quantity.toLocaleString()} case(s)`
-            }
-                </div>
-                <table class="sq-preview-items-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th class="text-right">Unit Cost (MXN)</th>
-                            <th class="text-right">Quantity</th>
-                            <th class="text-right">Total (MXN)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsHtmlPdf}
-                        ${transportHtmlPdf}
-                    </tbody>
-                </table>
-                <div class="sq-preview-footer" ${footerStyle}>
-                    ${footerLeftHtml}
-                    ${footerRightHtml}
-                </div>
-            </div>`;
-
+                : `<strong>Product:</strong> ${quoteObject.product.name
+                }<br><strong>Quantity:</strong> ${quantity.toLocaleString()} case(s)`
+            }</div><table class="sq-preview-items-table"><thead><tr><th>Description</th><th class="text-right">Unit Cost (MXN)</th><th class="text-right">Quantity</th><th class="text-right">Total (MXN)</th></tr></thead><tbody>${itemsHtmlPdf}${transportHtmlPdf}</tbody></table><div class="sq-preview-footer" ${footerStyle}>${footerLeftHtml}${footerRightHtml}</div></div>`;
         printContainer.innerHTML = pdfHtml;
         const contentToPrint = printContainer.querySelector(
             ".sq-preview-invoice-box"
         );
-
         const opt = {
-            margin: 0.5,
+            margin: [0.3, 0.25], // Márgenes más finos: 0.3" (vertical), 0.25" (horizontal)
             filename: `Quote_${(quoteObject.companyName || "Multi-Item").replace(
                 /\s/g,
                 "_"
             )}_${new Date().toISOString().slice(0, 10)}.pdf`,
             image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 1, useCORS: true }, // Escala normal y habilitar CORS para imágenes
             jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
         };
-
         html2pdf()
             .from(contentToPrint)
             .set(opt)
@@ -1756,7 +1815,7 @@
                 ) {
                     closeModal(modalToClose);
                 }
-                resetToStartView();
+                softResetToModeSelection();
             })
             .catch((err) => {
                 console.error("PDF generation failed", err);
@@ -1808,12 +1867,29 @@
 
     function initializeModule() {
         setupEventListeners();
+
+        // === INICIO DE CÓDIGO NUEVO: GENERACIÓN DE SLOTS ===
+        const trailerGrid = document.getElementById("sq-trailer-grid");
+        if (trailerGrid) {
+            trailerGrid.innerHTML = ""; // Limpiamos por si acaso
+            for (let i = 0; i < TRUCK_PALLET_LIMIT; i++) {
+                const slot = document.createElement("div");
+                slot.className = "sq-trailer-slot";
+                slot.innerHTML = `
+                    <div class="sq-slot-fill"></div>
+                    <span class="sq-slot-number">${i + 1}</span>
+                `;
+                trailerGrid.appendChild(slot);
+            }
+        }
+        // === FIN DE CÓDIGO NUEVO ===
+
         const handleAuthChange = (event) => {
             currentUserSQ = event.detail?.user || null;
             if (currentUserSQ) {
                 fetchInitialData();
             } else {
-                resetToStartView();
+                hardResetCreator();
                 productsCache = [];
             }
         };
@@ -1833,14 +1909,13 @@
         };
         document.addEventListener("supabaseAuthStateChange", handleAuthChange);
         document.addEventListener("moduleWillUnload", cleanupModule);
-
         supabase.auth.getSession().then(({ data: { session } }) => {
             currentUserSQ = session ? session.user : null;
             if (currentUserSQ) {
                 fetchInitialData();
             }
         });
-        resetToStartView();
+        hardResetCreator();
     }
 
     initializeModule();
