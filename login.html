@@ -6,44 +6,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - GoldMex</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
-  <!-- Asegúrate que la ruta a login-style.css sea correcta -->
   <link rel="stylesheet" href="css/login-style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Google Sign-In SDK -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <!-- jwt-decode para decodificar el token de Google, aunque con Supabase signInWithIdToken no es estrictamente necesario decodificarlo en el cliente para la info básica -->
   <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
 </head>
 
 <body class="login-page">
 
   <ul class="animated-bg-flow">
-    <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
-    <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
-    <li></li><li></li><li></li><li></li><li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
+    <li></li>
   </ul>
 
   <div class="login-wrapper">
-    <!-- Asegúrate que la ruta a tu logo sea correcta -->
-    <img src="assets/logo.png" alt="GoldMex Logo" class="login-logo" 
-         onerror="this.onerror=null; this.src='https://placehold.co/120x50/1a365d/d4af37?text=GoldMex+Logo&font=montserrat';" />
+    <img src="assets/logo.png" alt="GoldMex Logo" class="login-logo"
+      onerror="this.onerror=null; this.src='https://placehold.co/120x50/1a365d/d4af37?text=GoldMex+Logo&font=montserrat';" />
     <h2>GoldMex System</h2>
-    
-    <!-- Contenedor para el botón de Google Sign-In -->
-    <div id="g_id_onload" 
-      data-client_id="686783851365-nip1ufvpr15293d39ifisvs4q9182ab1.apps.googleusercontent.com" 
-      data-callback="handleCredentialResponse" 
-      data-auto_prompt="false">
+
+    <div id="g_id_onload" data-client_id="686783851365-nip1ufvpr15293d39ifisvs4q9182ab1.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse" data-auto_prompt="false">
     </div>
-    <div class="g_id_signin" 
-      data-type="standard" 
-      data-size="large" 
-      data-theme="outline"
-      data-text="sign_in_with"
-      data-shape="rectangular"
-      data-logo_alignment="left">
+    <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with"
+      data-shape="rectangular" data-logo_alignment="left">
     </div>
-    <div id="login-error-message" style="color: var(--goldmex-accent, #e31837); margin-top: 15px; font-size: 0.9rem; display: none;"></div>
+    <div id="login-error-message"
+      style="color: var(--goldmex-accent, #e31837); margin-top: 15px; font-size: 0.9rem; display: none;"></div>
   </div>
 
   <script>
@@ -65,9 +76,31 @@
       displayLoginError("No se pudo inicializar el servicio de datos. Por favor, refresca.");
     }
 
-    // Dominios permitidos para tu aplicación Goldmex System
+    // --- User Access Configuration ---
+    // Employee Domains
     const ALLOWED_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-    const ALLOWED_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"]; // Ajusta según necesites
+    // Specific allowed emails (e.g., admins, special users)
+    const ALLOWED_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"];
+    // Client emails that should be allowed to log in
+    const CLIENT_EMAILS = [
+    "norma.castro@estafeta.com",
+    "daniel.rozalez@estafeta.com",
+    "mario.martinez@estafeta.com",
+    "jorge.ocampol@estafeta.com",
+    "cinthya.argote@estafeta.com",
+    "jose.fragoso@estafeta.com",
+    "carolina.cota@estafeta.com",
+    "amairani.obregon@estafeta.com",
+    "manuel.mota@estafeta.com",
+    "ashley.aguilarhe@estafeta.com",
+    "marcos.mar@estafeta.com",
+    "eric.cuadrado@estafeta.com",
+    "liliana.duenez@estafeta.com",
+    "humberto.floresf@estafeta.com",
+    "alejandro.zamudio@estafeta.com",
+    "roberto.becerrac@estafeta.com",
+    "kikecanfir5@gmail.com"
+];
 
     function isUserAllowed(email) {
       if (!email) return false;
@@ -76,19 +109,20 @@
 
       if (ALLOWED_DOMAINS.includes(domain)) return true;
       if (ALLOWED_EXCEPTIONS.includes(lowerEmail)) return true;
-      
+      if (CLIENT_EMAILS.includes(lowerEmail)) return true; // Check if the email is in the client list
+
       console.warn(`Email ${lowerEmail} (domain: ${domain}) is not allowed for Goldmex System.`);
       return false;
     }
 
     function displayLoginError(message) {
-        const errorMessageElement = document.getElementById('login-error-message');
-        if (errorMessageElement) {
-            errorMessageElement.textContent = message;
-            errorMessageElement.style.display = 'block';
-        } else {
-            alert(message); // Fallback si el elemento no existe
-        }
+      const errorMessageElement = document.getElementById('login-error-message');
+      if (errorMessageElement) {
+        errorMessageElement.textContent = message;
+        errorMessageElement.style.display = 'block';
+      } else {
+        alert(message); // Fallback si el elemento no existe
+      }
     }
 
     // Función para manejar la respuesta de credenciales de Google
@@ -124,7 +158,7 @@
         // });
         return;
       }
-      
+
       document.getElementById('login-error-message').style.display = 'none'; // Ocultar errores previos
 
       try {
@@ -155,42 +189,43 @@
     // Verificar si el usuario ya está logueado al cargar la página de login
     // Si es así, y tiene una sesión válida en Supabase, redirigir a index.html
     async function checkInitialSession() {
-        if (!supabase) return;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user && isUserAllowed(session.user.email)) {
-            console.log("User already logged in and allowed, redirecting from login.html to index.html");
-            window.location.href = 'index.html';
-        } else if (session && session.user && !isUserAllowed(session.user.email)) {
-            // Usuario logueado pero no permitido, forzar logout de Supabase y mostrar error.
-            console.warn(`User ${session.user.email} logged in but not allowed. Forcing Supabase sign out.`);
-            await supabase.auth.signOut();
-            displayLoginError("Tu cuenta no tiene permiso para acceder. Has sido desconectado.");
-        }
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user && isUserAllowed(session.user.email)) {
+        console.log("User already logged in and allowed, redirecting from login.html to index.html");
+        window.location.href = 'index.html';
+      } else if (session && session.user && !isUserAllowed(session.user.email)) {
+        // Usuario logueado pero no permitido, forzar logout de Supabase y mostrar error.
+        console.warn(`User ${session.user.email} logged in but not allowed. Forcing Supabase sign out.`);
+        await supabase.auth.signOut();
+        displayLoginError("Tu cuenta no tiene permiso para acceder. Has sido desconectado.");
+      }
     }
     // Se ejecuta después de que Supabase se inicialice
     if (supabase) {
-       checkInitialSession();
+      checkInitialSession();
     } else {
-        // Si Supabase no se inicializó, el error ya se mostró.
-        // Podrías añadir un reintento o un mensaje más persistente aquí.
-        const ensureSupabaseLoaded = setInterval(() => {
-            if (window.supabase && !supabase) { // Intentar reinicializar si no lo hizo antes
-                try {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    console.log("Supabase client re-initialized successfully.");
-                    checkInitialSession(); // Ahora sí, verificar sesión
-                    clearInterval(ensureSupabaseLoaded);
-                } catch (e) {
-                    console.error("Failed to re-initialize Supabase:", e);
-                    // El error ya se mostró, no hacer más.
-                    clearInterval(ensureSupabaseLoaded);
-                }
-            } else if (supabase) { // Ya se inicializó
-                clearInterval(ensureSupabaseLoaded);
-            }
-        }, 500);
+      // Si Supabase no se inicializó, el error ya se mostró.
+      // Podrías añadir un reintento o un mensaje más persistente aquí.
+      const ensureSupabaseLoaded = setInterval(() => {
+        if (window.supabase && !supabase) { // Intentar reinicializar si no lo hizo antes
+          try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log("Supabase client re-initialized successfully.");
+            checkInitialSession(); // Ahora sí, verificar sesión
+            clearInterval(ensureSupabaseLoaded);
+          } catch (e) {
+            console.error("Failed to re-initialize Supabase:", e);
+            // El error ya se mostró, no hacer más.
+            clearInterval(ensureSupabaseLoaded);
+          }
+        } else if (supabase) { // Ya se inicializó
+          clearInterval(ensureSupabaseLoaded);
+        }
+      }, 500);
     }
 
   </script>
 </body>
+
 </html>
