@@ -15,8 +15,16 @@
     <link rel="stylesheet" href="css/service-tracking.css">
     <link rel="stylesheet" href="css/invoice-tracking.css">
     <link rel="stylesheet" href="css/list-of-entries.css">
-    <link rel="stylesheet" href="css/quoting-module.css"> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/quoting-module.css">
+    
+    <link rel="stylesheet" href="css/brokerage-cqp.css">
+    <link rel="stylesheet" href="css/classification-quoting.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -61,7 +69,14 @@
                     </a>
                 </li>
                 
-                <li class="menu-item menu-item-dropdown">
+                <li class="menu-item menu-item-static" id="client-portal-link">
+                    <a href="#" class="menu-link" data-module="brokerage-cqp">
+                        <i class='bx bx-file-find'></i>
+                        <span>Brokerage CQP</span>
+                    </a>
+                </li>
+
+                <li class="menu-item menu-item-dropdown" id="crm-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-briefcase'></i>
                         <span>CRM</span>
@@ -71,7 +86,7 @@
                         <li><a href="#" class="sub-menu-link" data-module="client-management">Client Management</a></li>
                     </ul>
                 </li>
-                <li class="menu-item menu-item-dropdown">
+                <li class="menu-item menu-item-dropdown" id="sales-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-calculator'></i>
                         <span>Sales & Quoting</span>
@@ -81,7 +96,7 @@
                         <li><a href="#" class="sub-menu-link" data-module="quoting-module">Quoting Tool</a></li>
                     </ul>
                 </li>
-                <li class="menu-item menu-item-dropdown">
+                <li class="menu-item menu-item-dropdown" id="warehouse-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-package'></i>
                         <span>Warehouse</span>
@@ -95,7 +110,7 @@
                     </ul>
                 </li>
 
-                <li class="menu-item menu-item-dropdown">
+                <li class="menu-item menu-item-dropdown" id="brokerage-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-truck'></i>
                         <span>Brokerage</span>
@@ -104,10 +119,11 @@
                     <ul class="sub-menu">
                         <li><a href="#" class="sub-menu-link" data-module="service-tracking">Service Tracking</a></li>
                         <li><a href="#" class="sub-menu-link" data-module="list-of-entries">List of Entries</a></li>
+                        <li><a href="#" class="sub-menu-link" data-module="classification-quoting">Classification & Quoting</a></li>
                     </ul>
                 </li>
 
-                <li class="menu-item menu-item-dropdown">
+                <li class="menu-item menu-item-dropdown" id="billing-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bx-file-blank'></i>
                         <span>Billing</span>
@@ -122,7 +138,7 @@
         <div class="footer">
             <div class="user" id="user-profile-area">
                 <div class="user-img">
-                    <img src="/user-placeholder.jpg" alt="User Avatar" id="user-avatar">
+                    <img src="assets/user-placeholder.jpg" alt="User Avatar" id="user-avatar">
                 </div>
                 <div class="user-data">
                     <span class="name" id="user-name">User Name</span>
