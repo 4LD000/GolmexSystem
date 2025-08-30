@@ -59,7 +59,8 @@ const CLIENT_EMAILS = [
     "humberto.floresf@estafeta.com",
     "alejandro.zamudio@estafeta.com",
     "roberto.becerrac@estafeta.com",
-    "kikecanfir5@gmail.com"
+    "kikecanfir5@gmail.com",
+    "tgarcia@goldmexintl.com"
 ];
 
 // --- BROKERAGE CQP MODULE ALLOWED USERS ---
@@ -666,3 +667,4 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
+
