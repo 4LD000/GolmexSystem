@@ -40,52 +40,41 @@ try {
   console.error("Error initializing Supabase in script.js:", error);
 }
 
-// --- Client Email Configuration ---
-// Add or remove client emails from this list to manage their menu visibility.
-const CLIENT_EMAILS = [
-    "norma.castro@estafeta.com",
-    "daniel.rozalez@estafeta.com",
-    "mario.martinez@estafeta.com",
-    "jorge.ocampol@estafeta.com",
-    "cinthya.argote@estafeta.com",
-    "jose.fragoso@estafeta.com",
-    "carolina.cota@estafeta.com",
-    "amairani.obregon@estafeta.com",
-    "manuel.mota@estafeta.com",
-    "ashley.aguilarhe@estafeta.com",
-    "marcos.mar@estafeta.com",
-    "eric.cuadrado@estafeta.com",
-    "liliana.duenez@estafeta.com",
-    "humberto.floresf@estafeta.com",
-    "alejandro.zamudio@estafeta.com",
-    "roberto.becerrac@estafeta.com",
-    "kikecanfir5@gmail.com",
-    "tgarcia@goldmexintl.com"
+// --- Centralized Access and Visibility Configuration ---
+
+// --- Role 1: Managers (Total Access) ---
+// This list of users can see ALL modules, including internal and client-facing ones.
+const MANAGER_USERS = [
+  "fulfillment@gmxecommerce.com",
+  "tgarcia@goldmexintl.com",
+  "kmartinez@goldmexintl.com",
+  "admin_user@gmail.com"
 ];
 
-// --- BROKERAGE CQP MODULE ALLOWED USERS ---
-// Add Goldmex employee emails here who should see the Brokerage CQP module.
-const BROKERAGE_CQP_ALLOWED = [
-    "fulfillment@gmxecommerce.com",
-    "kikecanfir@gmail.com"
-];
+// --- Role 2: Employees (Standard Access) ---
+// These users can see all modules EXCEPT those listed in CLIENT_VIEW_MODULES.
+const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+const EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"];
 
-// --- Domain and Exception Configuration for Login ---
-const ALLOWED_DOMAINS_MAIN = ["@gmxecommerce.com", "@goldmexintl.com"];
-const ALLOWED_EXCEPTIONS_MAIN = [
-  "kikecanfir@gmail.com",
-  "testuser@example.com",
-];
+// --- Role 3: Clients / Restricted (Limited Access) ---
+// These users can ONLY see the modules listed in CLIENT_VIEW_MODULES.
+const RESTRICTED_VIEW_DOMAINS = ["@estafeta.com"];
+const RESTRICTED_VIEW_USERS = ["kikecanfir5@gmail.com"];
+
+// --- Module Definitions ---
+// Define which modules are considered "client-facing". This list is used for both
+// showing modules to clients and hiding them from standard employees.
+const CLIENT_VIEW_MODULES = ["brokerage-cqp", "import-portal"];
 
 // --- Inactivity Logout Configuration ---
 let inactivityTimer;
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutos
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 // --- Global User State Tracking ---
 let currentGlobalUserId = null; // Stores the ID of the currently authenticated user
 
 /**
- * Checks if the user's email is allowed.
+ * Checks if the user's email is allowed to log in to the system.
  * @param {string} email
  * @returns {boolean}
  */
@@ -93,14 +82,20 @@ function isUserAllowed(email) {
   if (!email) return false;
   const lowerEmail = email.toLowerCase();
   const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
+
+  // Check if user exists in any of the defined roles
   if (
-    ALLOWED_DOMAINS_MAIN.includes(domain) ||
-    ALLOWED_EXCEPTIONS_MAIN.includes(lowerEmail) ||
-    CLIENT_EMAILS.includes(lowerEmail)
-  )
+    MANAGER_USERS.includes(lowerEmail) ||
+    EMPLOYEE_DOMAINS.includes(domain) ||
+    EMPLOYEE_EXCEPTIONS.includes(lowerEmail) ||
+    RESTRICTED_VIEW_DOMAINS.includes(domain) ||
+    RESTRICTED_VIEW_USERS.includes(lowerEmail)
+  ) {
     return true;
+  }
+
   console.warn(
-    `Email ${lowerEmail} (domain: ${domain}) is not allowed (checked in script.js).`
+    `Email ${lowerEmail} is not allowed to access the system (checked in script.js).`
   );
   return false;
 }
@@ -116,21 +111,17 @@ async function signOut(isDueToInactivity = false) {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error signing out:", error.message);
-      showCustomNotificationST(
-        `Error al cerrar sesión: ${error.message}`,
-        "error"
-      );
+      showCustomNotificationST(`Error signing out: ${error.message}`, "error");
     } else {
       console.log("Signed out successfully.");
       if (isDueToInactivity) {
         console.log("User logged out due to inactivity.");
       }
-      // onAuthStateChange will handle UI updates and redirection
     }
   } catch (error) {
     console.error("Exception during sign out:", error);
     showCustomNotificationST(
-      "Ocurrió un error inesperado al cerrar sesión.",
+      "An unexpected error occurred while signing out.",
       "error"
     );
   }
@@ -139,9 +130,8 @@ async function signOut(isDueToInactivity = false) {
 // --- Inactivity Logout Functions ---
 function logoutDueToInactivity() {
   console.log("Inactivity timeout reached. Logging out user...");
-  // Notificación opcional, pero puede ser útil si el usuario regresa justo cuando sucede.
   showCustomNotificationST(
-    "Has sido desconectado por inactividad.",
+    "You have been logged out due to inactivity.",
     "info",
     7000
   );
@@ -181,11 +171,7 @@ function stopInactivityTimer() {
 
 function handleVisibilityChange() {
   if (document.hidden) {
-    // Tab is hidden, timer continues as per requirement.
-    // console.log("script.js: Page hidden. Inactivity timer continues.");
   } else {
-    // Tab is visible again.
-    // console.log("script.js: Page visible. Inactivity timer reset.");
     resetInactivityTimer();
   }
 }
@@ -197,23 +183,7 @@ function updateUserUI(user) {
     user ? user.id : "null"
   );
 
-  // Select all menu items that can be hidden
-  const dashboardMenu = document.querySelector(
-    'a[data-module="dashboard"]'
-  )?.parentElement;
-  const crmMenu = document.getElementById("crm-menu");
-  const salesMenu = document.getElementById("sales-menu");
-  const warehouseMenu = document.getElementById("warehouse-menu");
-  const brokerageMenu = document.getElementById("brokerage-menu");
-  const billingMenu = document.getElementById("billing-menu");
-  const restrictedMenus = [
-    dashboardMenu,
-    crmMenu,
-    salesMenu,
-    warehouseMenu,
-    brokerageMenu,
-    billingMenu,
-  ];
+  const allMenuItems = document.querySelectorAll(".sidebar .menu > .menu-item");
 
   if (user) {
     if (userNameElement)
@@ -230,24 +200,93 @@ function updateUserUI(user) {
     if (authRequiredMessage) authRequiredMessage.style.display = "none";
     if (mainAppContent) mainAppContent.style.display = "block";
 
-    // --- Enhanced Menu Visibility Logic ---
-
-    // 1. Identify user role
+    // --- Tiered Menu Visibility Logic ---
     const userEmail = user.email.toLowerCase();
-    const isClient = CLIENT_EMAILS.includes(userEmail);
+    const userDomain = userEmail.substring(userEmail.lastIndexOf("@"));
 
-    // 2. Hide/Show restricted menus for employees
-    restrictedMenus.forEach(menu => {
-        if (menu) {
-            menu.style.display = isClient ? 'none' : 'list-item';
-        }
-    });
+    // 1. Determine User Role
+    let userRole = "Employee"; // Default role
+    if (MANAGER_USERS.includes(userEmail)) {
+      userRole = "Manager";
+    } else if (
+      RESTRICTED_VIEW_DOMAINS.includes(userDomain) ||
+      RESTRICTED_VIEW_USERS.includes(userEmail)
+    ) {
+      userRole = "Client";
+    }
 
-    // 3. Specific logic for the "Brokerage CQP" module
-    const brokerageCqpMenu = document.getElementById('client-portal-link');
-    if (brokerageCqpMenu) {
-        const canSeeCqpModule = isClient || BROKERAGE_CQP_ALLOWED.includes(userEmail);
-        brokerageCqpMenu.style.display = canSeeCqpModule ? 'list-item' : 'none';
+    console.log(`User ${userEmail} identified with role: ${userRole}`);
+
+    // 2. Apply visibility based on role
+    switch (userRole) {
+      case "Manager":
+        // Managers see everything
+        allMenuItems.forEach((item) => {
+          item.style.display = "list-item";
+          item
+            .querySelectorAll(".sub-menu > li")
+            .forEach((sub) => (sub.style.display = "list-item"));
+        });
+        break;
+
+      case "Client":
+        // Clients see only modules from CLIENT_VIEW_MODULES
+        allMenuItems.forEach((menuItem) => {
+          const link = menuItem.querySelector(".menu-link");
+          if (!link) return;
+
+          const moduleName = link.dataset.module;
+          const isDropdown = menuItem.classList.contains("menu-item-dropdown");
+
+          if (isDropdown) {
+            let hasVisibleSubMenu = false;
+            menuItem.querySelectorAll(".sub-menu-link").forEach((subLink) => {
+              if (CLIENT_VIEW_MODULES.includes(subLink.dataset.module)) {
+                hasVisibleSubMenu = true;
+                subLink.parentElement.style.display = "list-item";
+              } else {
+                subLink.parentElement.style.display = "none";
+              }
+            });
+            menuItem.style.display = hasVisibleSubMenu ? "list-item" : "none";
+          } else if (moduleName) {
+            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName)
+              ? "list-item"
+              : "none";
+          }
+        });
+        break;
+
+      case "Employee":
+      default:
+        // Employees see everything EXCEPT modules from CLIENT_VIEW_MODULES
+        allMenuItems.forEach((menuItem) => {
+          const link = menuItem.querySelector(".menu-link");
+          if (!link) return;
+
+          const moduleName = link.dataset.module;
+          const isDropdown = menuItem.classList.contains("menu-item-dropdown");
+
+          if (isDropdown) {
+            let hasVisibleSubMenu = false;
+            menuItem.querySelectorAll(".sub-menu-link").forEach((subLink) => {
+              // Hide sub-items that are client-only
+              if (CLIENT_VIEW_MODULES.includes(subLink.dataset.module)) {
+                subLink.parentElement.style.display = "none";
+              } else {
+                hasVisibleSubMenu = true;
+                subLink.parentElement.style.display = "list-item";
+              }
+            });
+            menuItem.style.display = hasVisibleSubMenu ? "list-item" : "none";
+          } else if (moduleName) {
+            // Hide top-level items that are client-only
+            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName)
+              ? "none"
+              : "list-item";
+          }
+        });
+        break;
     }
 
     startInactivityTimer();
@@ -395,7 +434,6 @@ async function loadModule(moduleName, clickedLink) {
     return;
   }
 
-  // Notifica al módulo actual que está a punto de ser descargado.
   document.dispatchEvent(new CustomEvent("moduleWillUnload"));
 
   if (authRequiredMessage) authRequiredMessage.style.display = "none";
@@ -498,49 +536,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.warn(
         `script.js: User ${newUser.email} logged in but is NOT allowed. Forcing sign out.`
       );
-      await supabase.auth.signOut(); // This will trigger another onAuthStateChange with session=null
-      // currentGlobalUserId will be cleared in the subsequent event.
-      // No need to update UI here as the signOut will lead to it.
-      accessDenied = true; // Mark access denied to inform modules if needed
-      userChanged = true; // Treat as a change for dispatching
+      await supabase.auth.signOut();
+      accessDenied = true;
+      userChanged = true;
     }
 
     if (userChanged && !accessDenied) {
-      // Only update UI and timer if user state genuinely changed and access is not denied
       console.log(
         "script.js: User state changed. Updating UI and global user ID."
       );
       currentGlobalUserId = newUser ? newUser.id : null;
-      updateUserUI(newUser); // This will start/stop inactivity timer appropriately
+      updateUserUI(newUser);
     } else if (!userChanged && newUser && !accessDenied) {
-      console.log(
-        "script.js: Auth state confirmed, user is the same. Inactivity timer NOT restarted by updateUserUI."
-      );
-      // If user is same, but maybe token refreshed, we still want to ensure inactivity timer IS running IF it should be.
-      // updateUserUI already handles this by calling startInactivityTimer if user is present.
-      // The key is not calling updateUserUI if user ID hasn't changed.
-      // However, ensure inactivity timer IS running if currentGlobalUserId is set.
-      if (currentGlobalUserId && inactivityTimer) {
-        // Check if timer exists, implies it should be running
-        // resetInactivityTimer(); // Optionally reset on any SIGNED_IN, even if user is same, for extra safety on token refresh
-        // For now, let's stick to resetting only on genuine activity or focus.
-      } else if (currentGlobalUserId && !inactivityTimer) {
-        // This case should ideally not happen if logic is correct. But as a safeguard:
+      console.log("script.js: Auth state confirmed, user is the same.");
+      if (currentGlobalUserId && !inactivityTimer) {
         console.warn(
           "script.js: User is current, but inactivity timer was not running. Restarting."
         );
         startInactivityTimer();
       }
-    } else if (accessDenied && currentGlobalUserId) {
-      // Access was denied for a previously logged-in user
-      console.log(
-        "script.js: Access denied for previously logged in user. UI should reflect no user soon via next auth event."
-      );
-      // currentGlobalUserId will be cleared when signOut's onAuthStateChange event comes.
     }
 
-    // Always dispatch the custom event for modules to react if they need to.
-    // Modules have their own logic to decide if they need to re-subscribe or reload data.
     console.log(
       "script.js: Dispatching supabaseAuthStateChange event to modules. User:",
       newUser ? newUser.id : "null",
@@ -553,7 +569,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
     );
 
-    // Handle redirection to login if no user, after dispatching event
     if (!newUser && !window.location.pathname.includes("/login.html")) {
       console.log("script.js: No user session, redirecting to login.html");
       window.location.href = "login.html";
@@ -562,7 +577,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.location.pathname.includes("/login.html") &&
       !accessDenied
     ) {
-      // If user is logged in and on login page (and not just denied access), redirect to index
       console.log(
         "script.js: User authenticated on login page, redirecting to index.html"
       );
@@ -570,7 +584,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Initial session check
   console.log("script.js: Performing initial session check...");
   const {
     data: { session: initialSession },
@@ -582,9 +595,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       initialSessionError.message
     );
   }
-  // The onAuthStateChange listener will be triggered by getSession(),
-  // so it will handle the initial UI update and redirection if necessary.
-  // No need to duplicate logic here.
   console.log(
     "script.js: Initial session check completed. onAuthStateChange will handle the result."
   );
@@ -593,7 +603,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 window.addEventListener("resize", handleResize);
 
 function showCustomNotificationST(message, type = "info", duration = 3800) {
-  // console.log(`Notification (${type}) from script.js: ${message}`); // Kept for debugging
   const containerId = "customNotificationContainerST_Global";
   let notificationContainer = document.getElementById(containerId);
   if (!notificationContainer) {
@@ -610,7 +619,6 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
   }
 
   const notification = document.createElement("div");
-  // Basic styling, assuming main CSS handles .custom-notification-st if defined there
   notification.style.padding = "12px 18px";
   notification.style.borderRadius = "6px";
   notification.style.color = "#fff";
@@ -656,9 +664,6 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
       notification.style.transform = "translateX(110%)";
       setTimeout(() => {
         notification.remove();
-        // if (notificationContainer.childElementCount === 0 && notificationContainer.id === containerId) {
-        //   notificationContainer.remove(); // Optional
-        // }
       }, 400);
     }
   };
@@ -667,4 +672,3 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
-
