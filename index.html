@@ -16,9 +16,13 @@
     <link rel="stylesheet" href="css/invoice-tracking.css">
     <link rel="stylesheet" href="css/list-of-entries.css">
     <link rel="stylesheet" href="css/quoting-module.css">
-    
+
     <link rel="stylesheet" href="css/brokerage-cqp.css">
     <link rel="stylesheet" href="css/classification-quoting.css">
+    
+    <link rel="stylesheet" href="css/import-operations.css">
+    <link rel="stylesheet" href="css/import-portal.css">
+
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -75,6 +79,13 @@
                         <span>Brokerage CQP</span>
                     </a>
                 </li>
+                
+                <li class="menu-item menu-item-static" id="import-portal-link">
+                    <a href="#" class="menu-link" data-module="import-portal">
+                        <i class='bx bxs-paper-plane'></i>
+                        <span>Import Portal</span>
+                    </a>
+                </li>
 
                 <li class="menu-item menu-item-dropdown" id="crm-menu">
                     <a href="#" class="menu-link">
@@ -117,6 +128,7 @@
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
+                        <li><a href="#" class="sub-menu-link" data-module="import-operations">Import Operations</a></li>
                         <li><a href="#" class="sub-menu-link" data-module="service-tracking">Service Tracking</a></li>
                         <li><a href="#" class="sub-menu-link" data-module="list-of-entries">List of Entries</a></li>
                         <li><a href="#" class="sub-menu-link" data-module="classification-quoting">Classification & Quoting</a></li>
