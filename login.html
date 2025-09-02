@@ -58,7 +58,7 @@
   </div>
 
   <script>
-    // Configuración de Supabase (igual que en tu script.js principal)
+    // Supabase Configuration
     const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
     let supabase;
@@ -77,40 +77,39 @@
     }
 
     // --- User Access Configuration ---
-    // Employee Domains
-    const ALLOWED_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-    // Specific allowed emails (e.g., admins, special users)
-    const ALLOWED_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"];
-    // Client emails that should be allowed to log in
-    const CLIENT_EMAILS = [
-    "norma.castro@estafeta.com",
-    "daniel.rozalez@estafeta.com",
-    "mario.martinez@estafeta.com",
-    "jorge.ocampol@estafeta.com",
-    "cinthya.argote@estafeta.com",
-    "jose.fragoso@estafeta.com",
-    "carolina.cota@estafeta.com",
-    "amairani.obregon@estafeta.com",
-    "manuel.mota@estafeta.com",
-    "ashley.aguilarhe@estafeta.com",
-    "marcos.mar@estafeta.com",
-    "eric.cuadrado@estafeta.com",
-    "liliana.duenez@estafeta.com",
-    "humberto.floresf@estafeta.com",
-    "alejandro.zamudio@estafeta.com",
-    "roberto.becerrac@estafeta.com",
-    "kikecanfir5@gmail.com",
-    "tgarcia@goldmexintl.com"
-];
+    
+    // Employee Domains (Full Access)
+    const ALLOWED_EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+    
+    // Specific Employee Emails (Full Access)
+    const ALLOWED_EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"];
+    
+    // Restricted View Domains (e.g., Clients)
+    const ALLOWED_RESTRICTED_DOMAINS = [
+        "@estafeta.com"
+        // You can add more domains here, e.g., "@anotherclient.com"
+    ];
+    
+    // Specific Emails with Restricted View
+    const ALLOWED_RESTRICTED_EXCEPTIONS = [
+        "kikecanfir5@gmail.com"
+        // You can add more emails here, e.g., "another_user@example.com"
+    ];
 
     function isUserAllowed(email) {
       if (!email) return false;
       const lowerEmail = email.toLowerCase();
       const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
 
-      if (ALLOWED_DOMAINS.includes(domain)) return true;
-      if (ALLOWED_EXCEPTIONS.includes(lowerEmail)) return true;
-      if (CLIENT_EMAILS.includes(lowerEmail)) return true; // Check if the email is in the client list
+      // Check for full access (employees)
+      if (ALLOWED_EMPLOYEE_DOMAINS.includes(domain) || ALLOWED_EMPLOYEE_EXCEPTIONS.includes(lowerEmail)) {
+        return true;
+      }
+      
+      // Check for restricted access (clients and exceptions)
+      if (ALLOWED_RESTRICTED_DOMAINS.includes(domain) || ALLOWED_RESTRICTED_EXCEPTIONS.includes(lowerEmail)) {
+        return true;
+      }
 
       console.warn(`Email ${lowerEmail} (domain: ${domain}) is not allowed for Goldmex System.`);
       return false;
@@ -122,19 +121,19 @@
         errorMessageElement.textContent = message;
         errorMessageElement.style.display = 'block';
       } else {
-        alert(message); // Fallback si el elemento no existe
+        alert(message); // Fallback if the element does not exist
       }
     }
 
-    // Función para manejar la respuesta de credenciales de Google
+    // Function to handle Google credential response
     async function handleCredentialResponse(response) {
       if (!supabase) {
-        displayLoginError("El cliente de Supabase no está inicializado. No se puede iniciar sesión.");
+        displayLoginError("Supabase client is not initialized. Cannot sign in.");
         console.error("Supabase client missing in handleCredentialResponse.");
         return;
       }
       if (!response.credential) {
-        displayLoginError("Respuesta de Google inválida. Intenta de nuevo.");
+        displayLoginError("Invalid response from Google. Please try again.");
         console.error("Google credential response is invalid:", response);
         return;
       }
@@ -145,50 +144,41 @@
         googleUserEmail = decodedToken.email;
       } catch (e) {
         console.error("Error decoding Google token:", e);
-        displayLoginError("Error procesando la información de Google. Intenta de nuevo.");
+        displayLoginError("Error processing Google information. Please try again.");
         return;
       }
 
       if (!isUserAllowed(googleUserEmail)) {
-        displayLoginError("Acceso denegado. Utiliza una cuenta de correo corporativa válida o contacta al administrador.");
+        displayLoginError("Access denied. Please use a valid corporate email account or contact the administrator.");
         console.error("Login attempt from unauthorized domain/email:", googleUserEmail);
-        // Opcionalmente, podrías intentar cerrar la sesión de Google aquí si es necesario,
-        // pero usualmente el usuario simplemente no podrá acceder a Supabase.
-        // google.accounts.id.revoke(googleUserEmail, done => {
-        //    console.log('consent revoked');
-        // });
         return;
       }
 
-      document.getElementById('login-error-message').style.display = 'none'; // Ocultar errores previos
+      document.getElementById('login-error-message').style.display = 'none'; // Hide previous errors
 
       try {
         console.log("Attempting Supabase sign-in with Google ID Token for:", googleUserEmail);
         const { data, error: supabaseError } = await supabase.auth.signInWithIdToken({
           provider: 'google',
-          token: response.credential, // El id_token de Google
-          // nonce: 'NONCE_STRING' // Opcional: si usas nonces para mayor seguridad
+          token: response.credential,
         });
 
         if (supabaseError) {
           console.error("Supabase signInWithIdToken error:", supabaseError);
-          displayLoginError(`Error de autenticación: ${supabaseError.message}. Intenta de nuevo.`);
+          displayLoginError(`Authentication error: ${supabaseError.message}. Please try again.`);
           return;
         }
 
         console.log("Supabase session established:", data);
-        // No es necesario guardar en localStorage 'user' manualmente si index.html usa onAuthStateChange
-        // para obtener la información del usuario directamente de Supabase.
-        window.location.href = 'index.html'; // Redirigir a la página principal
+        window.location.href = 'index.html'; // Redirect to the main page
 
       } catch (e) {
         console.error("Error during Supabase sign-in process:", e);
-        displayLoginError("Ocurrió un error inesperado durante el inicio de sesión.");
+        displayLoginError("An unexpected error occurred during sign-in.");
       }
     }
 
-    // Verificar si el usuario ya está logueado al cargar la página de login
-    // Si es así, y tiene una sesión válida en Supabase, redirigir a index.html
+    // Check if the user is already logged in when the login page loads
     async function checkInitialSession() {
       if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
@@ -196,31 +186,27 @@
         console.log("User already logged in and allowed, redirecting from login.html to index.html");
         window.location.href = 'index.html';
       } else if (session && session.user && !isUserAllowed(session.user.email)) {
-        // Usuario logueado pero no permitido, forzar logout de Supabase y mostrar error.
         console.warn(`User ${session.user.email} logged in but not allowed. Forcing Supabase sign out.`);
         await supabase.auth.signOut();
-        displayLoginError("Tu cuenta no tiene permiso para acceder. Has sido desconectado.");
+        displayLoginError("Your account does not have permission to access. You have been logged out.");
       }
     }
-    // Se ejecuta después de que Supabase se inicialice
+    
     if (supabase) {
       checkInitialSession();
     } else {
-      // Si Supabase no se inicializó, el error ya se mostró.
-      // Podrías añadir un reintento o un mensaje más persistente aquí.
       const ensureSupabaseLoaded = setInterval(() => {
-        if (window.supabase && !supabase) { // Intentar reinicializar si no lo hizo antes
+        if (window.supabase && !supabase) { 
           try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log("Supabase client re-initialized successfully.");
-            checkInitialSession(); // Ahora sí, verificar sesión
+            checkInitialSession(); 
             clearInterval(ensureSupabaseLoaded);
           } catch (e) {
             console.error("Failed to re-initialize Supabase:", e);
-            // El error ya se mostró, no hacer más.
             clearInterval(ensureSupabaseLoaded);
           }
-        } else if (supabase) { // Ya se inicializó
+        } else if (supabase) { 
           clearInterval(ensureSupabaseLoaded);
         }
       }, 500);
@@ -230,4 +216,3 @@
 </body>
 
 </html>
-
