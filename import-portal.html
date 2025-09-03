@@ -2,6 +2,9 @@
     <div class="imp-header">
         <h2><i class='bx bxs-paper-plane'></i> Import Management Portal</h2>
         <div class="imp-header-actions">
+            <button id="imp-resources-btn" class="btn-goldmex-info">
+                <i class='bx bx-library'></i> Resources
+            </button>
             <button id="imp-history-btn" class="btn-goldmex-secondary">
                 <i class='bx bx-history'></i> History
             </button>
@@ -309,6 +312,28 @@
         </div>
         <div class="imp-modal-footer">
             <button type="button" class="btn-goldmex-secondary" id="imp-assets-close-footer-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="imp-resources-modal" class="imp-modal">
+    <div class="imp-modal-content imp-modal-xlarge">
+        <div class="imp-modal-header">
+            <h3><i class='bx bx-library'></i> Resources</h3>
+            <button class="imp-close-button" id="imp-close-resources-btn">&times;</button>
+        </div>
+        <div class="imp-modal-body">
+            <div class="imp-resources-controls">
+                <div class="imp-resources-search">
+                    <i class='bx bx-search'></i>
+                    <input type="search" id="imp-resource-search-input" placeholder="Search resources by name...">
+                </div>
+            </div>
+            <div id="imp-resources-list-container">
+                </div>
+        </div>
+        <div class="imp-modal-footer">
+            <button type="button" id="imp-resources-close-footer-btn" class="btn-goldmex-secondary">Close</button>
         </div>
     </div>
 </div>
