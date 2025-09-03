@@ -282,6 +282,10 @@ body.dark-mode .cqp-scorecard-icon.completed {
     justify-content: center;
 }
 
+#cqpDocManagementModal {
+    z-index: 1251;
+}
+
 .cqp-modal.cqp-modal-open {
     display: flex;
     opacity: 1;
@@ -571,6 +575,10 @@ body.dark-mode .cqp-step.active span {
 
 .cqp-status-badge.status-awaiting-documents {
     background-color: #fd7e14;
+}
+
+.cqp-status-badge.status-documents-submitted {
+    background-color: #6f42c1;
 }
 
 .cqp-status-badge.status-completed {
@@ -929,12 +937,17 @@ hr.cqp-divider {
     line-height: 1.6;
     border-left: 4px solid var(--color-border);
     min-height: 100px;
+    overflow-wrap: break-word;
 }
 
 .cqp-upload-action-section {
     margin-top: 2rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+    align-items: center;
 }
 
 /* SECCION: Modal de Gestion de Documentos (Adaptado de client-management) */
