@@ -23,6 +23,7 @@
     let pendingDataTable, historyDataTable;
     let allRequests = [];
     let currentRequestData = null;
+    let realtimeCQChannel = null;
 
     // --- DOM Element Caching ---
     const pendingTableEl = document.getElementById("cqPendingTable");
@@ -115,7 +116,9 @@
         const { data, error } = await supabase
             .from(REQUESTS_TABLE)
             .select("*, updated_at, created_at") // Ensure updated_at is fetched
-            .order("created_at", { ascending: false });
+            .order("created_at", {
+                ascending: false,
+            });
         if (error) {
             showCQNotification("Error fetching requests: " + error.message, "error");
             return;
@@ -146,7 +149,9 @@
         // Card 1: Pending & Awaiting Info
         const pendingAndAwaiting = allRequests.filter(
             (r) =>
-                (r.status === "Pending" || r.status === "Awaiting Documents") &&
+                (r.status === "Pending" ||
+                    r.status === "Awaiting Documents" ||
+                    r.status === "Documents Submitted") &&
                 !r.is_archived
         );
         const newRequests = pendingAndAwaiting.filter(
@@ -268,6 +273,64 @@
                 "cq-db-completed-avg-time"
             ).innerHTML = `<i class='bx bx-tachometer'></i> Avg. Resolution: ~ 0 days`;
         }
+    }
+
+    function setupRealtimeSubscriptionCQ() {
+        if (realtimeCQChannel) return;
+
+        console.log("CQ: Setting up realtime subscription for all requests.");
+
+        realtimeCQChannel = supabase
+            .channel("public:classification_requests")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: REQUESTS_TABLE,
+                },
+                (payload) => {
+                    console.log("CQ: Realtime event received:", payload);
+
+                    const eventType = payload.eventType;
+                    const newRecord = payload.new;
+                    const oldRecord = payload.old;
+
+                    if (eventType === "INSERT") {
+                        allRequests.unshift(newRecord); // Add to the top of the list
+                        renderDashboard();
+                        showCQNotification(
+                            `New request #${newRecord.id.substr(-6).toUpperCase()} received.`,
+                            "success"
+                        );
+                    } else if (eventType === "UPDATE") {
+                        const requestIndex = allRequests.findIndex(
+                            (req) => req.id === newRecord.id
+                        );
+                        if (requestIndex !== -1) {
+                            allRequests[requestIndex] = newRecord;
+                            renderDashboard();
+                            // Only show notification for status changes
+                            if (oldRecord.status !== newRecord.status) {
+                                showCQNotification(
+                                    `Request #${newRecord.id
+                                        .substr(-6)
+                                        .toUpperCase()} status changed to ${newRecord.status}.`,
+                                    "info"
+                                );
+                            }
+                        }
+                    } else if (eventType === "DELETE") {
+                        allRequests = allRequests.filter((req) => req.id !== oldRecord.id);
+                        renderDashboard();
+                        showCQNotification(
+                            `Request #${oldRecord.id.substr(-6).toUpperCase()} was deleted.`,
+                            "warning"
+                        );
+                    }
+                }
+            )
+            .subscribe();
     }
 
     // SECTION 3: DATATABLE INITIALIZATION
@@ -426,6 +489,7 @@
             setTimeout(() => modalElement.classList.add("cq-modal-open"), 10);
         }
     }
+
     function closeModal(modalElement) {
         if (modalElement) {
             modalElement.classList.remove("cq-modal-open");
@@ -437,6 +501,7 @@
             }, 300);
         }
     }
+
     function openTextEditorModal(triggerElement) {
         const targetId = triggerElement.dataset.target,
             title = triggerElement.dataset.title,
@@ -448,9 +513,11 @@
             openModal(textEditorModal);
         }
     }
+
     function closeTextEditorModal() {
         closeModal(textEditorModal);
     }
+
     function saveTextEditorChanges() {
         const targetId = textEditorTargetIdInput.value,
             targetTextarea = document.getElementById(targetId);
@@ -652,9 +719,11 @@
         applyHistoryFilters();
         openModal(historyModal);
     }
+
     function closeHistoryModal() {
         closeModal(historyModal);
     }
+
     function populateHistoryFilters() {
         histMonthSelect.innerHTML = '<option value="all">All Months</option>';
         for (let i = 0; i < 12; i++) {
@@ -672,6 +741,7 @@
                 (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
         );
     }
+
     function applyHistoryFilters() {
         const completedRequests = allRequests.filter(
             (r) =>
@@ -752,7 +822,9 @@
             <div class="cq-report-printable-area">
                 <div class="cq-report-header">
                     <h3>Classification & Quoting Report</h3>
-                    <p>Request ID: ${data.id.substr(-6).toUpperCase()} | Client: ${data.user_email ? data.user_email.split("@")[0] : "N/A"
+                    <p>Request ID: ${data.id
+                .substr(-6)
+                .toUpperCase()} | Client: ${data.user_email ? data.user_email.split("@")[0] : "N/A"
             } | Date: ${new Date(data.created_at).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
@@ -860,7 +932,10 @@
     }
 
     async function downloadReportAsPdf(data) {
-        if (typeof html2canvas === "undefined" || typeof window.jspdf === "undefined") {
+        if (
+            typeof html2canvas === "undefined" ||
+            typeof window.jspdf === "undefined"
+        ) {
             return showCQNotification(
                 "PDF generation libraries are not available.",
                 "error"
@@ -876,9 +951,14 @@
         tempContainer.innerHTML = reportHtml;
         document.body.appendChild(tempContainer);
 
-        const contentToPrint = tempContainer.querySelector('.cq-report-printable-area');
+        const contentToPrint = tempContainer.querySelector(
+            ".cq-report-printable-area"
+        );
         if (!contentToPrint) {
-            showCQNotification("Could not find printable content for the PDF.", "error");
+            showCQNotification(
+                "Could not find printable content for the PDF.",
+                "error"
+            );
             document.body.removeChild(tempContainer);
             return;
         }
@@ -887,43 +967,59 @@
             const canvas = await html2canvas(contentToPrint, {
                 scale: 2,
                 useCORS: true,
-                backgroundColor: '#ffffff'
+                backgroundColor: "#ffffff",
             });
 
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL("image/png");
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'in',
-                format: 'letter'
+                orientation: "portrait",
+                unit: "in",
+                format: "letter",
             });
 
             const pageMargin = 0.5; // 0.5 inch margin
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
-            const contentWidth = pdfWidth - (pageMargin * 2);
+            const contentWidth = pdfWidth - pageMargin * 2;
 
             const canvasWidth = canvas.width;
             const canvasHeight = canvas.height;
             const ratio = canvasHeight / canvasWidth;
             const contentHeight = contentWidth * ratio;
 
-            pdf.addImage(imgData, 'PNG', pageMargin, pageMargin, contentWidth, contentHeight);
+            pdf.addImage(
+                imgData,
+                "PNG",
+                pageMargin,
+                pageMargin,
+                contentWidth,
+                contentHeight
+            );
 
             const pageCount = pdf.internal.getNumberOfPages();
-            if (pageCount > 1) { // Add page numbers only if there is more than one page
-                 for (let i = 1; i <= pageCount; i++) {
+            if (pageCount > 1) {
+                // Add page numbers only if there is more than one page
+                for (let i = 1; i <= pageCount; i++) {
                     pdf.setPage(i);
                     pdf.setFontSize(9);
                     pdf.setTextColor(150);
-                    pdf.text(`Page ${i} of ${pageCount}`, pdfWidth / 2, pdfHeight - 0.25, { align: 'center' });
+                    pdf.text(
+                        `Page ${i} of ${pageCount}`,
+                        pdfWidth / 2,
+                        pdfHeight - 0.25,
+                        {
+                            align: "center",
+                        }
+                    );
                 }
             }
 
             const clientName = (data.user_email || "report").split("@")[0];
-            const filename = `Classification_Report_${clientName}_${data.id.substr(-6).toUpperCase()}.pdf`;
+            const filename = `Classification_Report_${clientName}_${data.id
+                .substr(-6)
+                .toUpperCase()}.pdf`;
             pdf.save(filename);
-
         } catch (error) {
             console.error("PDF generation failed:", error);
             showCQNotification("An error occurred during PDF generation.", "error");
@@ -1134,7 +1230,9 @@
     async function handleCompleteRequest(requestId) {
         const { error } = await supabase
             .from(REQUESTS_TABLE)
-            .update({ is_archived: true })
+            .update({
+                is_archived: true,
+            })
             .eq("id", requestId);
 
         if (error) {
@@ -1265,10 +1363,16 @@
     function initializeModule() {
         const handleAuth = async (event) => {
             currentUserCQ = event.detail?.user;
-            if (currentUserCQ) await fetchRequests();
-            else {
+            if (currentUserCQ) {
+                await fetchRequests();
+                setupRealtimeSubscriptionCQ();
+            } else {
                 if (pendingDataTable) pendingDataTable.clear().draw();
                 if (historyDataTable) historyDataTable.clear().draw();
+                if (realtimeCQChannel) {
+                    supabase.removeChannel(realtimeCQChannel);
+                    realtimeCQChannel = null;
+                }
             }
         };
         const cleanup = () => {
@@ -1282,6 +1386,11 @@
                 historyDataTable.destroy();
                 historyDataTable = null;
             }
+            if (realtimeCQChannel) {
+                supabase.removeChannel(realtimeCQChannel);
+                realtimeCQChannel = null;
+                console.log("CQ: Realtime channel removed.");
+            }
             document.removeEventListener("supabaseAuthStateChange", handleAuth);
             document.removeEventListener("moduleWillUnload", cleanup);
             document.body.dataset.cqModuleInitialized = "false";
@@ -1290,7 +1399,12 @@
         document.addEventListener("moduleWillUnload", cleanup);
         if (supabase?.auth?.getSession) {
             supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session) handleAuth({ detail: { user: session.user } });
+                if (session)
+                    handleAuth({
+                        detail: {
+                            user: session.user,
+                        },
+                    });
             });
         }
         setupEventListeners();
