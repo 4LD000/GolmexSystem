@@ -7,6 +7,7 @@
   <title>Login - GoldMex</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="stylesheet" href="css/login-style.css" />
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
@@ -53,6 +54,13 @@
     <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with"
       data-shape="rectangular" data-logo_alignment="left">
     </div>
+
+    <div class="login-separator"><span>or</span></div>
+
+    <button id="microsoft-signin-btn" class="microsoft-btn">
+      <i class='bx bxl-microsoft' style="color: #0078D4;"></i> <span>Sign in with Microsoft</span>
+    </button>
+
     <div id="login-error-message"
       style="color: var(--goldmex-accent, #e31837); margin-top: 15px; font-size: 0.9rem; display: none;"></div>
   </div>
@@ -69,31 +77,33 @@
         console.log("Supabase client initialized in login page.");
       } else {
         console.error("Supabase library not loaded or createClient is not a function.");
-        displayLoginError("Error de inicialización. Por favor, refresca la página.");
+        displayLoginError("Initialization error. Please refresh the page.");
       }
     } catch (error) {
       console.error("Error initializing Supabase in login.html:", error);
-      displayLoginError("No se pudo inicializar el servicio de datos. Por favor, refresca.");
+      displayLoginError("Could not initialize data service. Please refresh.");
     }
 
     // --- User Access Configuration ---
-    
-    // Employee Domains (Full Access)
-    const ALLOWED_EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-    
-    // Specific Employee Emails (Full Access)
-    const ALLOWED_EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"];
-    
-    // Restricted View Domains (e.g., Clients)
-    const ALLOWED_RESTRICTED_DOMAINS = [
-        "@estafeta.com"
-        // You can add more domains here, e.g., "@anotherclient.com"
+    // This pre-check configuration MUST be kept in sync with script.js
+
+    // Role 1: Managers (Total Access)
+    const MANAGER_USERS = [
+      "fulfillment@gmxecommerce.com",
+      "tgarcia@goldmexintl.com",
+      "kmartinez@goldmexintl.com",
+      "goldmexgmx@hotmail.com"
     ];
-    
-    // Specific Emails with Restricted View
-    const ALLOWED_RESTRICTED_EXCEPTIONS = [
-        "kikecanfir5@gmail.com"
-        // You can add more emails here, e.g., "another_user@example.com"
+
+    // Role 2: Employees (Standard Access)
+    const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+    const EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "enriqueflores.10@hotmail.com"];
+
+    // Role 3: Clients / Restricted (Limited Access)
+    const RESTRICTED_VIEW_DOMAINS = ["@estafeta.com"];
+    const RESTRICTED_VIEW_USERS = [
+        "kikecanfir5@gmail.com",
+        ""
     ];
 
     function isUserAllowed(email) {
@@ -101,13 +111,14 @@
       const lowerEmail = email.toLowerCase();
       const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
 
-      // Check for full access (employees)
-      if (ALLOWED_EMPLOYEE_DOMAINS.includes(domain) || ALLOWED_EMPLOYEE_EXCEPTIONS.includes(lowerEmail)) {
-        return true;
-      }
-      
-      // Check for restricted access (clients and exceptions)
-      if (ALLOWED_RESTRICTED_DOMAINS.includes(domain) || ALLOWED_RESTRICTED_EXCEPTIONS.includes(lowerEmail)) {
+      // Check if user exists in any of the defined roles
+      if (
+        MANAGER_USERS.includes(lowerEmail) ||
+        EMPLOYEE_DOMAINS.includes(domain) ||
+        EMPLOYEE_EXCEPTIONS.includes(lowerEmail) ||
+        RESTRICTED_VIEW_DOMAINS.includes(domain) ||
+        RESTRICTED_VIEW_USERS.includes(lowerEmail)
+      ) {
         return true;
       }
 
@@ -148,6 +159,7 @@
         return;
       }
 
+      // Check if the user's email is allowed before proceeding
       if (!isUserAllowed(googleUserEmail)) {
         displayLoginError("Access denied. Please use a valid corporate email account or contact the administrator.");
         console.error("Login attempt from unauthorized domain/email:", googleUserEmail);
@@ -178,6 +190,32 @@
       }
     }
 
+    // Function to handle Microsoft sign-in
+    async function signInWithMicrosoft() {
+      if (!supabase) {
+        displayLoginError("Supabase client is not initialized. Cannot sign in.");
+        console.error("Supabase client missing in signInWithMicrosoft.");
+        return;
+      }
+
+      document.getElementById('login-error-message').style.display = 'none'; // Hide previous errors
+
+      console.log("Attempting Supabase sign-in with Microsoft (Azure) provider.");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          scopes: 'email'
+        }
+      });
+
+      if (error) {
+        console.error("Supabase signInWithOAuth (Azure) error:", error);
+        displayLoginError(`Authentication error: ${error.message}. Please try again.`);
+      }
+      // Note: After this call, Supabase handles the redirect to Microsoft, 
+      // and then back to the app. The onAuthStateChange listener in script.js will handle the login.
+    }
+
     // Check if the user is already logged in when the login page loads
     async function checkInitialSession() {
       if (!supabase) return;
@@ -191,26 +229,33 @@
         displayLoginError("Your account does not have permission to access. You have been logged out.");
       }
     }
-    
+
     if (supabase) {
       checkInitialSession();
     } else {
       const ensureSupabaseLoaded = setInterval(() => {
-        if (window.supabase && !supabase) { 
+        if (window.supabase && !supabase) {
           try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log("Supabase client re-initialized successfully.");
-            checkInitialSession(); 
+            checkInitialSession();
             clearInterval(ensureSupabaseLoaded);
           } catch (e) {
             console.error("Failed to re-initialize Supabase:", e);
             clearInterval(ensureSupabaseLoaded);
           }
-        } else if (supabase) { 
+        } else if (supabase) {
           clearInterval(ensureSupabaseLoaded);
         }
       }, 500);
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const microsoftButton = document.getElementById('microsoft-signin-btn');
+      if (microsoftButton) {
+        microsoftButton.addEventListener('click', signInWithMicrosoft);
+      }
+    });
 
   </script>
 </body>
