@@ -43,27 +43,25 @@ try {
 // --- Centralized Access and Visibility Configuration ---
 
 // --- Role 1: Managers (Total Access) ---
-// This list of users can see ALL modules, including internal and client-facing ones.
 const MANAGER_USERS = [
   "fulfillment@gmxecommerce.com",
   "tgarcia@goldmexintl.com",
   "kmartinez@goldmexintl.com",
-  "admin_user@gmail.com"
+  "goldmexgmx@hotmail.com",
 ];
 
 // --- Role 2: Employees (Standard Access) ---
-// These users can see all modules EXCEPT those listed in CLIENT_VIEW_MODULES.
 const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-const EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "testuser@example.com"];
+const EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "enriqueflores.10@hotmail.com"];
 
 // --- Role 3: Clients / Restricted (Limited Access) ---
-// These users can ONLY see the modules listed in CLIENT_VIEW_MODULES.
 const RESTRICTED_VIEW_DOMAINS = ["@estafeta.com"];
-const RESTRICTED_VIEW_USERS = ["kikecanfir5@gmail.com"];
+const RESTRICTED_VIEW_USERS = [
+  "kikecanfir5@gmail.com",
+  "",
+];
 
 // --- Module Definitions ---
-// Define which modules are considered "client-facing". This list is used for both
-// showing modules to clients and hiding them from standard employees.
 const CLIENT_VIEW_MODULES = ["brokerage-cqp", "import-portal"];
 
 // --- Inactivity Logout Configuration ---
@@ -146,7 +144,8 @@ function resetInactivityTimer() {
 function startInactivityTimer() {
   stopInactivityTimer();
   console.log(
-    `script.js: Starting inactivity timer for ${INACTIVITY_TIMEOUT_MS / 60000
+    `script.js: Starting inactivity timer for ${
+      INACTIVITY_TIMEOUT_MS / 60000
     } minutes.`
   );
   resetInactivityTimer();
@@ -192,7 +191,7 @@ function updateUserUI(user) {
     if (userEmailElement) userEmailElement.textContent = user.email;
     if (userAvatarElement)
       userAvatarElement.src =
-        user.user_metadata?.avatar_url || "assets/user-placeholder.jpg";
+        user.user_metadata?.avatar_url || "assets/favicon.png";
     if (authButton) {
       authButton.innerHTML = "<i class='bx bx-log-out'></i>";
       authButton.title = "Sign Out";
@@ -318,6 +317,7 @@ function updateUserUI(user) {
       authButton.title = "Sign In";
     }
     if (mainAppContent) mainAppContent.style.display = "none";
+    if (authRequiredMessage) authRequiredMessage.style.display = "block";
     setActiveMenuItem(null);
     stopInactivityTimer();
   }
@@ -464,7 +464,8 @@ async function loadModule(moduleName, clickedLink) {
         oldScript.parentNode.replaceChild(newScript, oldScript);
       else document.body.appendChild(newScript).remove();
       console.log(
-        `script.js: Script ${newScript.src || "inline"
+        `script.js: Script ${
+          newScript.src || "inline"
         } from module ${moduleName} processed.`
       );
     });
@@ -521,83 +522,43 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log(
-      `script.js: Auth state change event: ${event}`,
-      session ? `User: ${session.user?.id}` : "No session"
-    );
-    const newUser = session ? session.user : null;
-    let accessDenied = false;
-    let userChanged =
-      (!currentGlobalUserId && newUser) ||
-      (currentGlobalUserId && !newUser) ||
-      (currentGlobalUserId && newUser && currentGlobalUserId !== newUser.id);
+    console.log(`script.js: Auth state change event received: ${event}`);
 
-    if (newUser && !isUserAllowed(newUser.email)) {
-      console.warn(
-        `script.js: User ${newUser.email} logged in but is NOT allowed. Forcing sign out.`
-      );
-      await supabase.auth.signOut();
-      accessDenied = true;
-      userChanged = true;
+    const user = session?.user ?? null;
+
+    // First, check if the user exists and is allowed.
+    if (user && !isUserAllowed(user.email)) {
+      console.warn(`User ${user.email} is not allowed. Forcing sign out.`);
+      await signOut(false); // Use our custom signOut function
+      updateUserUI(null); // Explicitly update UI to guest state
+      return; // Stop further processing for this disallowed user
     }
 
-    if (userChanged && !accessDenied) {
-      console.log(
-        "script.js: User state changed. Updating UI and global user ID."
-      );
-      currentGlobalUserId = newUser ? newUser.id : null;
-      updateUserUI(newUser);
-    } else if (!userChanged && newUser && !accessDenied) {
-      console.log("script.js: Auth state confirmed, user is the same.");
-      if (currentGlobalUserId && !inactivityTimer) {
-        console.warn(
-          "script.js: User is current, but inactivity timer was not running. Restarting."
-        );
-        startInactivityTimer();
-      }
-    }
+    // Update UI for the valid user or guest.
+    updateUserUI(user);
+    currentGlobalUserId = user ? user.id : null;
 
-    console.log(
-      "script.js: Dispatching supabaseAuthStateChange event to modules. User:",
-      newUser ? newUser.id : "null",
-      "Access Denied:",
-      accessDenied
-    );
+    // Dispatch the custom event for other modules to listen to.
     document.dispatchEvent(
       new CustomEvent("supabaseAuthStateChange", {
-        detail: { user: newUser, event, accessDenied, source: "script.js" },
+        detail: { user, event, source: "script.js" },
       })
     );
 
-    if (!newUser && !window.location.pathname.includes("/login.html")) {
-      console.log("script.js: No user session, redirecting to login.html");
-      window.location.href = "login.html";
-    } else if (
-      newUser &&
-      window.location.pathname.includes("/login.html") &&
-      !accessDenied
+    // Handle redirects based on the final user state.
+    const isOAuthCallback = window.location.hash.includes("access_token");
+    if (
+      !user &&
+      !window.location.pathname.includes("/login.html") &&
+      !isOAuthCallback
     ) {
+      // Only redirect if there's no user AND this is not an OAuth callback in progress.
       console.log(
-        "script.js: User authenticated on login page, redirecting to index.html"
+        "No valid session found and not an OAuth callback, redirecting to login page."
       );
-      window.location.href = "index.html";
+      window.location.href = "login.html";
     }
   });
-
-  console.log("script.js: Performing initial session check...");
-  const {
-    data: { session: initialSession },
-    error: initialSessionError,
-  } = await supabase.auth.getSession();
-  if (initialSessionError) {
-    console.error(
-      "script.js: Error getting initial session:",
-      initialSessionError.message
-    );
-  }
-  console.log(
-    "script.js: Initial session check completed. onAuthStateChange will handle the result."
-  );
 });
 
 window.addEventListener("resize", handleResize);
