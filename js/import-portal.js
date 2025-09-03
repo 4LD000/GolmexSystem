@@ -19,6 +19,8 @@
     const LEDGER_ENTRIES_TABLE = "ledger_entries";
     const ACCOUNT_LEDGERS_TABLE = "account_ledgers";
     const BUCKET_NAME = "import-documents";
+    const SHARED_RESOURCES_TABLE = "shared_resources";
+    const RESOURCES_BUCKET_NAME = "shared-resources";
 
     let currentUserIMP = null;
     let clientAccount = null;
@@ -27,6 +29,7 @@
     let filesToUpload = [];
     let allClientShipments = [];
     let allLedgerEntries = [];
+    let allSharedResources = [];
     let currentShipmentIdForDocs = null;
     let currentShipmentDataForModals = null;
     let currentStep = 1; // Moved step counter to a persistent scope
@@ -145,6 +148,15 @@
         "imp-assets-close-footer-btn"
     );
 
+    // Resources Modal Elements
+    const resourcesBtn = document.getElementById("imp-resources-btn");
+    const resourcesModal = document.getElementById("imp-resources-modal");
+    const closeResourcesBtn = document.getElementById("imp-close-resources-btn");
+    const resourcesCloseFooterBtn = document.getElementById("imp-resources-close-footer-btn");
+    const resourceSearchInput = document.getElementById("imp-resource-search-input");
+    const resourcesListContainer = document.getElementById("imp-resources-list-container");
+
+
     function showIMPNotification(message, type = "info", duration = 4000) {
         if (window.showCustomNotificationST) {
             window.showCustomNotificationST(message, type, duration);
@@ -190,8 +202,7 @@
         shipmentSubscription = supabase
             .channel(`public:${SHIPMENTS_TABLE}:client_id=eq.${clientAccount.id}`)
             .on(
-                "postgres_changes",
-                {
+                "postgres_changes", {
                     event: "*",
                     schema: "public",
                     table: SHIPMENTS_TABLE,
@@ -211,7 +222,10 @@
         // --- MODIFIED SECTION: AUTO-CREATE CLIENT ACCOUNT ---
         if (!skipAccountCheck) {
             // 1. Check if a client account already exists for the user's email
-            const { data: existingAccount, error: fetchError } = await supabase
+            const {
+                data: existingAccount,
+                error: fetchError
+            } = await supabase
                 .from(CLIENT_ACCOUNTS_TABLE)
                 .select("*")
                 .eq("contact_email", currentUserIMP.email)
@@ -228,7 +242,10 @@
             } else {
                 // 2b. If not, create a new one automatically
                 const accountName = currentUserIMP.email.split('@')[0];
-                const { data: newAccount, error: insertError } = await supabase
+                const {
+                    data: newAccount,
+                    error: insertError
+                } = await supabase
                     .from(CLIENT_ACCOUNTS_TABLE)
                     .insert({
                         contact_email: currentUserIMP.email,
@@ -251,11 +268,14 @@
         // --- END OF MODIFIED SECTION ---
 
         if (!clientAccount) {
-             showIMPNotification("Could not retrieve client account information.", "error");
-             return;
+            showIMPNotification("Could not retrieve client account information.", "error");
+            return;
         }
 
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
             .select("*")
             .eq("client_account_id", clientAccount.id);
@@ -266,7 +286,9 @@
         }
 
         allClientShipments = data || [];
-        const { data: ledgerData } = await supabase
+        const {
+            data: ledgerData
+        } = await supabase
             .from(ACCOUNT_LEDGERS_TABLE)
             .select("balance")
             .eq("client_account_id", clientAccount.id)
@@ -305,7 +327,7 @@
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const completedLast30Days = shipments.filter(
-            (s) => s.status === "Completed" && new Date(s.updated_at) >= thirtyDaysAgo
+            (s) => ["Completed", "Archived"].includes(s.status) && new Date(s.updated_at) >= thirtyDaysAgo
         ).length;
         document.getElementById("imp-db-completed").textContent =
             completedLast30Days;
@@ -325,14 +347,17 @@
             data: data || [],
             responsive: true,
             columns: columnsConfig,
-            order: [[1, "desc"]],
-            language: { emptyTable: "No data available." },
+            order: [
+                [1, "desc"]
+            ],
+            language: {
+                emptyTable: "No data available."
+            },
         });
     }
 
     function initializeShipmentsTable(data) {
-        const columns = [
-            {
+        const columns = [{
                 data: "id",
                 title: "ID",
                 className: "dt-center",
@@ -480,7 +505,7 @@
                 list.innerHTML = shipmentData.attachments
                     .map(
                         (file) =>
-                            `<div class="imp-file-item"><span>${file.file_name}</span></div>`
+                        `<div class="imp-file-item"><span>${file.file_name}</span></div>`
                     )
                     .join("");
                 container.appendChild(list);
@@ -592,7 +617,7 @@
         fileListContainer.innerHTML = filesToUpload
             .map(
                 (file, index) =>
-                    `<div class="imp-file-item"><span>${file.name}</span><button type="button" data-index="${index}">&times;</button></div>`
+                `<div class="imp-file-item"><span>${file.name}</span><button type="button" data-index="${index}">&times;</button></div>`
             )
             .join("");
     }
@@ -631,7 +656,9 @@
             for (const file of filesToUpload) {
                 const filePath = `${clientAccount.id}/${editingId || tempId
                     }/${Date.now()}_${file.name}`;
-                const { error: uploadError } = await supabase.storage
+                const {
+                    error: uploadError
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .upload(filePath, file);
                 if (uploadError)
@@ -651,10 +678,10 @@
                 entry_type: entryType,
                 shipment_details: shipmentDetails,
                 attachments: [...existingAttachments, ...newAttachmentMetadata],
-                status: editingId
-                    ? allClientShipments.find((s) => s.id === editingId)?.status ||
-                    "Submitted"
-                    : "Submitted",
+                status: editingId ?
+                    allClientShipments.find((s) => s.id === editingId)?.status ||
+                    "Submitted" :
+                    "Submitted",
             };
 
             let result;
@@ -690,7 +717,11 @@
     }
 
     function populateDetailsModal(data) {
-        const { shipment_details, attachments, id } = data;
+        const {
+            shipment_details,
+            attachments,
+            id
+        } = data;
         detailsTitle.innerHTML = `<i class='bx bx-show-alt'></i> Details for Shipment #${id
             .substring(0, 8)
             .toUpperCase()}`;
@@ -760,11 +791,11 @@
         }
 
         const attachmentsHtml =
-            attachments && attachments.length > 0
-                ? `<ul class="imp-view-attachments-list">${attachments
+            attachments && attachments.length > 0 ?
+            `<ul class="imp-view-attachments-list">${attachments
                     .map((doc) => `<li>${doc.file_name}</li>`)
-                    .join("")}</ul>`
-                : "<p>No documents were attached.</p>";
+                    .join("")}</ul>` :
+            "<p>No documents were attached.</p>";
 
         const attachmentsSection = `
             <div class="imp-detail-section">
@@ -781,7 +812,9 @@
     }
 
     async function handleDeleteShipment(shipmentId) {
-        const { error } = await supabase
+        const {
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
             .delete()
             .eq("id", shipmentId);
@@ -794,9 +827,13 @@
     }
 
     async function handleArchiveShipment(shipmentId) {
-        const { error } = await supabase
+        const {
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
-            .update({ status: "Archived" })
+            .update({
+                status: "Archived"
+            })
             .eq("id", shipmentId);
 
         if (error) {
@@ -839,7 +876,7 @@
         histYearSelect.innerHTML = '<option value="all">All Years</option>';
         years.forEach(
             (year) =>
-                (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
+            (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
         );
     }
 
@@ -855,8 +892,7 @@
                 searchTerm === "" || (req.id || "").toLowerCase().includes(searchTerm);
             return yearMatch && monthMatch && searchMatch;
         });
-        const historyColumns = [
-            {
+        const historyColumns = [{
                 data: "id",
                 title: "Shipment ID",
                 className: "dt-center",
@@ -880,14 +916,8 @@
                 searchable: false,
                 className: "dt-center",
                 render: (data, type, row) => {
-                    const canViewQuote = [
-                        "Quote Sent",
-                        "Clarification",
-                        "Approved",
-                        "Paid",
-                        "Completed",
-                    ].includes(row.status);
-                    const canViewResults = row.status === "Completed";
+                    const canViewQuote = !!row.quote_details;
+                    const canViewResults = row.final_attachments && row.final_attachments.length > 0;
 
                     return `
                         <div class="imp-table-btn-group">
@@ -911,11 +941,16 @@
 
     async function openLedgerModal() {
         if (!clientAccount) return;
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(LEDGER_ENTRIES_TABLE)
             .select("*")
             .eq("client_account_id", clientAccount.id)
-            .order("created_at", { ascending: false });
+            .order("created_at", {
+                ascending: false
+            });
         if (error) {
             showIMPNotification("Failed to load ledger history.", "error");
             return;
@@ -944,7 +979,7 @@
         ledgerYearSelect.innerHTML = '<option value="all">All Years</option>';
         years.forEach(
             (year) =>
-                (ledgerYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
+            (ledgerYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
         );
     }
 
@@ -981,19 +1016,24 @@
             filteredData = filteredData.filter((entry) =>
                 (entry.associated_shipment_id || "").toLowerCase().includes(searchTerm)
             );
-        const ledgerColumns = [
-            {
+        const ledgerColumns = [{
                 data: "created_at",
                 title: "Date",
                 render: (d) => new Date(d).toLocaleDateString(),
             },
-            { data: "type", title: "Type" },
+            {
+                data: "type",
+                title: "Type"
+            },
             {
                 data: "amount",
                 title: "Amount",
                 render: (d) => `$${parseFloat(d).toFixed(2)}`,
             },
-            { data: "reference", title: "Reference" },
+            {
+                data: "reference",
+                title: "Reference"
+            },
             {
                 data: "associated_shipment_id",
                 title: "Shipment ID",
@@ -1020,13 +1060,15 @@
                 item.type,
                 item.amount,
                 `"${(item.reference || "-").replace(/"/g, '""')}"`,
-                item.associated_shipment_id
-                    ? item.associated_shipment_id.substring(0, 8).toUpperCase()
-                    : "-",
+                item.associated_shipment_id ?
+                item.associated_shipment_id.substring(0, 8).toUpperCase() :
+                "-",
             ];
             csvContent += row.join(",") + "\r\n";
         });
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob([csvContent], {
+            type: "text/csv;charset=utf-8;"
+        });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
@@ -1116,7 +1158,9 @@
         const filePath = `${clientAccount.id
             }/${currentShipmentIdForDocs}/${Date.now()}_${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
+        const {
+            error: uploadError
+        } = await supabase.storage
             .from(BUCKET_NAME)
             .upload(filePath, file);
 
@@ -1141,9 +1185,13 @@
         );
         const updatedAttachments = [...(shipment.attachments || []), newDocument];
 
-        const { error: dbError } = await supabase
+        const {
+            error: dbError
+        } = await supabase
             .from(SHIPMENTS_TABLE)
-            .update({ attachments: updatedAttachments })
+            .update({
+                attachments: updatedAttachments
+            })
             .eq("id", currentShipmentIdForDocs);
 
         uploadDocBtn.disabled = false;
@@ -1165,7 +1213,9 @@
             "Delete Document",
             "Are you sure you want to permanently delete this document?",
             async () => {
-                const { error: storageError } = await supabase.storage
+                const {
+                    error: storageError
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .remove([filePath]);
                 if (storageError) {
@@ -1183,9 +1233,13 @@
                     (d) => d.id !== docId
                 );
 
-                const { error: dbError } = await supabase
+                const {
+                    error: dbError
+                } = await supabase
                     .from(SHIPMENTS_TABLE)
-                    .update({ attachments: updatedAttachments })
+                    .update({
+                        attachments: updatedAttachments
+                    })
                     .eq("id", shipment.id);
 
                 if (dbError) {
@@ -1199,9 +1253,13 @@
 
     // --- NEW MODAL LOGIC ---
     async function updateShipmentStatus(shipmentId, newStatus) {
-        const { error } = await supabase
+        const {
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
-            .update({ status: newStatus })
+            .update({
+                status: newStatus
+            })
             .eq("id", shipmentId);
 
         if (error) {
@@ -1267,11 +1325,9 @@
             notes
         );
 
-        const isApprovedOrFurther = ["Approved", "Paid", "Completed"].includes(
-            shipmentData.status
-        );
-        approveQuoteBtn.disabled = isApprovedOrFurther;
-        clarificationQuoteBtn.disabled = isApprovedOrFurther;
+        const isActionable = ["Quote Sent", "Clarification"].includes(shipmentData.status);
+        approveQuoteBtn.disabled = !isActionable;
+        clarificationQuoteBtn.disabled = !isActionable;
 
         openImpModal(quoteModal);
     }
@@ -1403,7 +1459,9 @@
                 useCORS: true,
             });
             const imgData = canvas.toDataURL("image/png");
-            const { jsPDF } = window.jspdf;
+            const {
+                jsPDF
+            } = window.jspdf;
             const pdf = new jsPDF({
                 orientation: "portrait",
                 unit: "in",
@@ -1424,6 +1482,81 @@
             showIMPNotification("An error occurred during PDF generation.", "error");
         }
     }
+
+    async function openResourcesModal() {
+        resourcesListContainer.innerHTML = "<p>Loading resources...</p>";
+        openImpModal(resourcesModal);
+        const {
+            data,
+            error
+        } = await supabase
+            .from(SHARED_RESOURCES_TABLE)
+            .select('*')
+            .order('created_at', {
+                ascending: false
+            });
+
+        if (error) {
+            showIMPNotification(`Error fetching resources: ${error.message}`, 'error');
+            resourcesListContainer.innerHTML = "<p>Could not load resources.</p>";
+            return;
+        }
+        allSharedResources = data;
+        renderClientResources();
+    }
+
+    function renderClientResources(searchTerm = "") {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        const filteredResources = allSharedResources.filter(resource =>
+            resource.file_name.toLowerCase().includes(lowerCaseSearchTerm)
+        );
+
+        if (filteredResources.length === 0) {
+            resourcesListContainer.innerHTML = "<p>No resources found.</p>";
+            return;
+        }
+
+        resourcesListContainer.innerHTML = filteredResources.map((resource, index) => `
+            <div class="imp-resource-card">
+                <div class="imp-resource-card-header">
+                    <div class="imp-resource-number">${index + 1}</div>
+                    <div class="imp-resource-name" title="${resource.file_name}">${resource.file_name}</div>
+                </div>
+                <div class="imp-resource-card-footer">
+                    <button class="imp-resource-btn-download" data-path="${resource.file_path}" data-name="${resource.file_name}" title="Download">
+                        <i class='bx bxs-download'></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function handleResourceDownload(filePath, fileName) {
+        try {
+            const {
+                data,
+                error
+            } = await supabase.storage
+                .from(RESOURCES_BUCKET_NAME)
+                .download(filePath);
+
+            if (error) {
+                throw error;
+            }
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(data);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+        } catch (error) {
+            showIMPNotification(`Error downloading file: ${error.message}`, 'error');
+        }
+    }
+
 
     function setupEventListeners() {
         newShipmentBtn.addEventListener("click", () => openNewShipmentModal());
@@ -1539,11 +1672,11 @@
             }
         };
 
-        $(activeShipmentsTableEl).on("click", "button", function (e) {
+        $(activeShipmentsTableEl).on("click", "button", function(e) {
             handleTableButtonClick(activeShipmentsTable, e);
         });
 
-        $(historyTableEl).on("click", "button", function (e) {
+        $(historyTableEl).on("click", "button", function(e) {
             handleTableButtonClick(historyTable, e);
         });
 
@@ -1568,7 +1701,10 @@
             const action = button.dataset.action;
             const path = button.dataset.path;
             if (action === "download") {
-                const { data, error } = await supabase.storage
+                const {
+                    data,
+                    error
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .download(path);
                 if (error) {
@@ -1635,7 +1771,10 @@
             const button = event.target.closest(".imp-doc-action-btn");
             if (!button || button.dataset.action !== "download") return;
             const path = button.dataset.path;
-            const { data, error } = await supabase.storage
+            const {
+                data,
+                error
+            } = await supabase.storage
                 .from(BUCKET_NAME)
                 .download(path);
             if (error) {
@@ -1662,6 +1801,24 @@
         confirmCloseBtn.addEventListener("click", () =>
             closeImpModal(confirmModal)
         );
+
+        // Resources Modal Listeners
+        resourcesBtn.addEventListener("click", openResourcesModal);
+        closeResourcesBtn.addEventListener("click", () => closeImpModal(resourcesModal));
+        resourcesCloseFooterBtn.addEventListener("click", () => closeImpModal(resourcesModal));
+
+        resourceSearchInput.addEventListener('input', (e) => {
+            renderClientResources(e.target.value);
+        });
+
+        resourcesListContainer.addEventListener('click', (e) => {
+            const downloadBtn = e.target.closest('.imp-resource-btn-download');
+            if (downloadBtn) {
+                const filePath = downloadBtn.dataset.path;
+                const fileName = downloadBtn.dataset.name;
+                handleResourceDownload(filePath, fileName);
+            }
+        });
     }
 
     function initializeModule() {
@@ -1690,8 +1847,16 @@
         };
         document.addEventListener("moduleWillUnload", cleanup);
         if (supabase.auth.getSession) {
-            supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session) handleAuthChange({ detail: { user: session.user } });
+            supabase.auth.getSession().then(({
+                data: {
+                    session
+                }
+            }) => {
+                if (session) handleAuthChange({
+                    detail: {
+                        user: session.user
+                    }
+                });
             });
         }
         setupEventListeners();
