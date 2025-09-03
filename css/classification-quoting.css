@@ -858,6 +858,10 @@ body.dark-mode .cq-summary-line.grand-total {
     background-color: #fd7e14;
 }
 
+.status-documents-submitted {
+    background-color: #6f42c1;
+}
+
 .status-in-process {
     background-color: #17a2b8;
 }
@@ -1152,32 +1156,38 @@ inherited styles not suitable for print.
  */
 
 .pdf-render-mode .cq-report-printable-area {
-    font-size: 9pt; /* Establece el tamaño de fuente base para el documento */
+    font-size: 9pt;
+    /* Establece el tamaño de fuente base para el documento */
     line-height: 1.4;
 }
 
 .pdf-render-mode .cq-report-header h3 {
-    font-size: 18pt; /* Reduce el tamaño del título principal */
+    font-size: 18pt;
+    /* Reduce el tamaño del título principal */
     margin-bottom: 4px;
 }
 
 .pdf-render-mode .cq-report-header p {
-    font-size: 9pt; /* Reduce el tamaño del subtítulo */
+    font-size: 9pt;
+    /* Reduce el tamaño del subtítulo */
 }
 
 .pdf-render-mode .cq-report-section {
-    padding: 0.8rem; /* Reduce el espaciado interno de las secciones */
+    padding: 0.8rem;
+    /* Reduce el espaciado interno de las secciones */
     margin-bottom: 1rem;
 }
 
 .pdf-render-mode .cq-report-section h4 {
-    font-size: 11pt; /* Reduce el tamaño de los encabezados de sección */
+    font-size: 11pt;
+    /* Reduce el tamaño de los encabezados de sección */
     padding-bottom: 0.4rem;
     margin-bottom: 0.6rem;
 }
 
 .pdf-render-mode .cq-report-item {
-    padding: 0.25rem 0; /* Reduce el espaciado entre líneas de detalles */
+    padding: 0.25rem 0;
+    /* Reduce el espaciado entre líneas de detalles */
     font-size: 9pt;
 }
 
@@ -1188,7 +1198,8 @@ inherited styles not suitable for print.
 
 .pdf-render-mode .cq-report-quote-table th,
 .pdf-render-mode .cq-report-quote-table td {
-    padding: 0.35rem; /* Hace la tabla mucho más compacta */
+    padding: 0.35rem;
+    /* Hace la tabla mucho más compacta */
     font-size: 8.5pt;
 }
 
@@ -1196,7 +1207,7 @@ inherited styles not suitable for print.
     font-size: 10pt;
 }
 
-.pdf-render-mode .cq-report-section ul {
+.cq-report-section ul {
     margin-left: 1.2rem;
     padding-left: 0;
 }
