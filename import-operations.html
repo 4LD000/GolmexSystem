@@ -2,6 +2,9 @@
     <div class="iop-header">
         <h2><i class='bx bxs-truck'></i> Import Operations</h2>
         <div class="iop-header-actions">
+            <button id="iop-resources-btn" class="btn-goldmex-info">
+                <i class='bx bx-layer-plus'></i> Add Resources
+            </button>
             <button id="iop-history-btn" class="btn-goldmex-secondary">
                 <i class='bx bx-history'></i> History
             </button>
@@ -290,6 +293,34 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="iop-resources-modal" class="iop-modal">
+    <div class="iop-modal-content iop-modal-xlarge">
+        <div class="iop-modal-header">
+            <h3><i class='bx bx-library'></i> Manage Resources</h3>
+            <button class="iop-close-button" id="iop-close-resources-btn">&times;</button>
+        </div>
+        <div class="iop-modal-body">
+            <div class="iop-resources-controls">
+                <div class="iop-resources-uploader">
+                    <input type="file" id="iop-resource-file-input" style="display: none;">
+                    <button id="iop-resource-select-file-btn" class="btn-goldmex-secondary"><i class='bx bx-paperclip'></i> Select File</button>
+                    <span id="iop-resource-selected-file-name">No file selected</span>
+                    <button id="iop-resource-upload-btn" class="btn-goldmex-primary" disabled><i class='bx bx-upload'></i> Upload</button>
+                </div>
+                <div class="iop-resources-search">
+                    <i class='bx bx-search'></i>
+                    <input type="search" id="iop-resource-search-input" placeholder="Search resources by name...">
+                </div>
+            </div>
+            <div id="iop-resources-list-container">
+                </div>
+        </div>
+        <div class="iop-modal-footer">
+            <button type="button" id="iop-resources-close-footer-btn" class="btn-goldmex-secondary">Close</button>
         </div>
     </div>
 </div>
