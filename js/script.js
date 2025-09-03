@@ -52,13 +52,22 @@ const MANAGER_USERS = [
 
 // --- Role 2: Employees (Standard Access) ---
 const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-const EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "enriqueflores.10@hotmail.com"];
+const EMPLOYEE_EXCEPTIONS = [
+  "kikecanfir@gmail.com",
+  "enriqueflores.10@hotmail.com",
+];
 
 // --- Role 3: Clients / Restricted (Limited Access) ---
-const RESTRICTED_VIEW_DOMAINS = ["@estafeta.com"];
+const RESTRICTED_VIEW_DOMAINS = [
+  "estafeta.com",
+  "gelalogs.com",
+  "viettelpost.com.vn",
+];
+
 const RESTRICTED_VIEW_USERS = [
   "kikecanfir5@gmail.com",
-  "",
+  "quynhanhtruonga8@gmail.com",
+  "quanganhpn2002@gmail.com",
 ];
 
 // --- Module Definitions ---
@@ -144,8 +153,7 @@ function resetInactivityTimer() {
 function startInactivityTimer() {
   stopInactivityTimer();
   console.log(
-    `script.js: Starting inactivity timer for ${
-      INACTIVITY_TIMEOUT_MS / 60000
+    `script.js: Starting inactivity timer for ${INACTIVITY_TIMEOUT_MS / 60000
     } minutes.`
   );
   resetInactivityTimer();
@@ -464,8 +472,7 @@ async function loadModule(moduleName, clickedLink) {
         oldScript.parentNode.replaceChild(newScript, oldScript);
       else document.body.appendChild(newScript).remove();
       console.log(
-        `script.js: Script ${
-          newScript.src || "inline"
+        `script.js: Script ${newScript.src || "inline"
         } from module ${moduleName} processed.`
       );
     });
