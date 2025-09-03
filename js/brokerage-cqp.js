@@ -21,6 +21,7 @@
     let allClientRequests = [];
     let currentConfirmCallback = null;
     let currentRequestIdForDocs = null;
+    let realtimeChannel = null;
 
     // --- DOM Element Caching ---
     const newRequestBtn = document.getElementById("cqp-new-request-btn");
@@ -84,6 +85,7 @@
     const uploadMissingDocsBtn = document.getElementById(
         "cqpUploadMissingDocsBtn"
     );
+    const notifyAgentBtn = document.getElementById("cqpNotifyAgentBtn");
 
     const docManagementModal = document.getElementById("cqpDocManagementModal");
     const docModalTitle = document.getElementById("cqpDocModalTitle");
@@ -145,10 +147,16 @@
             clientCqpHistoryTable = null;
         }
 
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+            console.log("CQP: Realtime channel removed.");
+        }
+
         if (user) {
             clientView.style.display = "flex";
-
             await fetchClientRequests();
+            setupRealtimeSubscription();
         } else {
             clientView.innerHTML =
                 '<p style="padding: 2rem; text-align: center;">Please sign in to manage your requests.</p>';
@@ -157,7 +165,10 @@
 
     async function fetchClientRequests() {
         if (!currentUserCQP) return;
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(CLASSIFICATION_REQUESTS_TABLE)
             .select("*")
             .eq("user_id", currentUserCQP.id)
@@ -192,7 +203,7 @@
 
         // Card 2: Under Review & Oldest Active
         const underReviewRequests = allClientRequests.filter(
-            (r) => r.status === "In Process" || r.status === "Pending"
+            (r) => r.status === "In Process" || r.status === "Pending" || r.status === "Documents Submitted"
         );
         if (dbUnderReview) {
             dbUnderReview.textContent = underReviewRequests.length;
@@ -200,9 +211,9 @@
         if (dbOldestActive) {
             if (underReviewRequests.length > 0) {
                 const oldestRequest = underReviewRequests.reduce((oldest, current) => {
-                    return new Date(current.created_at) < new Date(oldest.created_at)
-                        ? current
-                        : oldest;
+                    return new Date(current.created_at) < new Date(oldest.created_at) ?
+                        current :
+                        oldest;
                 });
                 const daysOld = Math.floor(
                     (new Date() - new Date(oldestRequest.created_at)) /
@@ -230,7 +241,9 @@
     }
 
     async function deleteRequest(requestId) {
-        const { error } = await supabase
+        const {
+            error
+        } = await supabase
             .from(CLASSIFICATION_REQUESTS_TABLE)
             .delete()
             .eq("id", requestId);
@@ -242,12 +255,42 @@
         }
     }
 
+    function setupRealtimeSubscription() {
+        if (realtimeChannel || !currentUserCQP) return;
+
+        console.log(`CQP: Setting up realtime subscription for user ${currentUserCQP.id}`);
+
+        realtimeChannel = supabase
+            .channel(`public:${CLASSIFICATION_REQUESTS_TABLE}:user_id=eq.${currentUserCQP.id}`)
+            .on(
+                'postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: CLASSIFICATION_REQUESTS_TABLE,
+                    filter: `user_id=eq.${currentUserCQP.id}`
+                },
+                (payload) => {
+                    console.log('CQP: Realtime UPDATE received:', payload);
+                    const updatedRequest = payload.new;
+                    const requestIndex = allClientRequests.findIndex(req => req.id === updatedRequest.id);
+
+                    if (requestIndex !== -1) {
+                        allClientRequests[requestIndex] = updatedRequest;
+                        renderClientDashboard();
+                        showCQPNotification(`Request #${updatedRequest.id.substr(-6).toUpperCase()} has been updated.`, 'info');
+                    }
+                }
+            )
+            .subscribe();
+    }
+
+
     // SECTION 3: DATATABLE INITIALIZATION
     function initializeClientTable(tableId, data) {
         const isHistoryTable = tableId === "#clientCqpHistoryTable";
-        let dataTableInstance = isHistoryTable
-            ? clientCqpHistoryTable
-            : clientCqpActiveTable;
+        let dataTableInstance = isHistoryTable ?
+            clientCqpHistoryTable :
+            clientCqpActiveTable;
 
         if ($.fn.DataTable.isDataTable(tableId)) {
             dataTableInstance.clear().rows.add(data).draw();
@@ -257,8 +300,7 @@
         dataTableInstance = $(tableId).DataTable({
             data: data,
             responsive: true,
-            columns: [
-                {
+            columns: [{
                     data: "id",
                     title: "Request ID",
                     render: (d) => (d ? d.toString().substr(-6).toUpperCase() : ""),
@@ -348,7 +390,9 @@
                     },
                 },
             ],
-            order: [[2, "desc"]],
+            order: [
+                [2, "desc"]
+            ],
         });
 
         if (isHistoryTable) {
@@ -543,7 +587,9 @@
             for (const file of filesToUpload) {
                 const filePath = `${currentUserCQP.id}/${editingId || "new"
                     }/${Date.now()}_${file.name}`;
-                const { error: uploadError } = await supabase.storage
+                const {
+                    error: uploadError
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .upload(filePath, file);
                 if (uploadError)
@@ -617,9 +663,9 @@
             showCQPNotification(`Submission failed: ${error.message}`, "error");
         } finally {
             submitRequestBtn.disabled = false;
-            submitRequestBtn.innerHTML = editingId
-                ? "Update Request"
-                : "Submit Request";
+            submitRequestBtn.innerHTML = editingId ?
+                "Update Request" :
+                "Submit Request";
         }
     }
 
@@ -677,7 +723,7 @@
             existingFilesList.innerHTML = data.attachments
                 .map(
                     (file) =>
-                        `<div class="cqp-file-item cqp-existing-file-item"><span>${file.file_name}</span></div>`
+                    `<div class="cqp-file-item cqp-existing-file-item"><span>${file.file_name}</span></div>`
                 )
                 .join("");
         }
@@ -698,16 +744,16 @@
             .substr(-6)
             .toUpperCase()}`;
         const attachmentsHtml =
-            attachments && attachments.length > 0
-                ? attachments
-                    .map(
-                        (doc) =>
-                            `<li>${doc.file_name} (${(doc.file_size / 1024).toFixed(
+            attachments && attachments.length > 0 ?
+            attachments
+            .map(
+                (doc) =>
+                `<li>${doc.file_name} (${(doc.file_size / 1024).toFixed(
                                 2
                             )} KB)</li>`
-                    )
-                    .join("")
-                : "<li>No documents were attached.</li>";
+            )
+            .join("") :
+            "<li>No documents were attached.</li>";
 
         viewModalBody.innerHTML = `
             <div class="cqp-view-columns">
@@ -745,6 +791,10 @@
         const detailsText = document.getElementById("cqpMissingDetails");
 
         currentRequestIdForDocs = data.id;
+
+        if (notifyAgentBtn) {
+            notifyAgentBtn.disabled = true;
+        }
 
         modalTitle.innerHTML = `<i class='bx bx-error-circle' style="color: #fd7e14;"></i> Action Required: Request #${data.id
             .substr(-6)
@@ -788,12 +838,15 @@
         histYearSelect.innerHTML = '<option value="all">All Years</option>';
         years.forEach(
             (year) =>
-                (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
+            (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
         );
     }
 
     async function applyHistoryFilters() {
-        const { data: allHistoryRequests, error } = await supabase
+        const {
+            data: allHistoryRequests,
+            error
+        } = await supabase
             .from(CLASSIFICATION_REQUESTS_TABLE)
             .select("*")
             .in("status", ["Completed", "Cancelled"]);
@@ -814,8 +867,8 @@
             const searchMatch =
                 searchTerm === "" ||
                 (req.product_info.description || "")
-                    .toLowerCase()
-                    .includes(searchTerm) ||
+                .toLowerCase()
+                .includes(searchTerm) ||
                 (req.user_email || "").toLowerCase().includes(searchTerm);
             return yearMatch && monthMatch && searchMatch;
         });
@@ -913,7 +966,9 @@
         const filePath = `${currentUserCQP.id
             }/${currentRequestIdForDocs}/${Date.now()}_${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
+        const {
+            error: uploadError
+        } = await supabase.storage
             .from(BUCKET_NAME)
             .upload(filePath, file);
 
@@ -937,7 +992,9 @@
             (r) => r.id === currentRequestIdForDocs
         );
         const updatedAttachments = [...(request.attachments || []), newDocument];
-        const { error: dbError } = await supabase
+        const {
+            error: dbError
+        } = await supabase
             .from(CLASSIFICATION_REQUESTS_TABLE)
             .update({
                 attachments: updatedAttachments,
@@ -954,6 +1011,9 @@
             );
         } else {
             showCQPNotification("Document uploaded successfully!", "success");
+            if (notifyAgentBtn) {
+                notifyAgentBtn.disabled = false;
+            }
             await fetchClientRequests();
             renderClientDocuments();
             docFileInput.value = "";
@@ -965,7 +1025,9 @@
             "Delete Document",
             "Are you sure you want to permanently delete this document?",
             async () => {
-                const { error: storageError } = await supabase.storage
+                const {
+                    error: storageError
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .remove([filePath]);
                 if (storageError) {
@@ -982,7 +1044,9 @@
                 const updatedAttachments = request.attachments.filter(
                     (d) => d.id !== docId
                 );
-                const { error: dbError } = await supabase
+                const {
+                    error: dbError
+                } = await supabase
                     .from(CLASSIFICATION_REQUESTS_TABLE)
                     .update({
                         attachments: updatedAttachments,
@@ -1009,13 +1073,13 @@
         const q_results = data.quote_results || {};
 
         const renderItems = (items) =>
-            items && items.length > 0
-                ? `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>`
-                : "None";
+            items && items.length > 0 ?
+            `<ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>` :
+            "None";
         const renderText = (text) =>
-            text
-                ? `<div class="cq-report-notes">${text}</div>`
-                : `<div class="cq-report-notes">No additional notes.</div>`;
+            text ?
+            `<div class="cq-report-notes">${text}</div>` :
+            `<div class="cq-report-notes">No additional notes.</div>`;
 
         let totalDuties = 0;
         const customsValue = parseFloat(c_data.value * c_data.quantity) || 0;
@@ -1194,7 +1258,9 @@
             });
 
             const imgData = canvas.toDataURL("image/png");
-            const { jsPDF } = window.jspdf;
+            const {
+                jsPDF
+            } = window.jspdf;
             const pdf = new jsPDF({
                 orientation: "portrait",
                 unit: "in",
@@ -1229,8 +1295,7 @@
                     pdf.text(
                         `Page ${i} of ${pageCount}`,
                         pdfWidth / 2,
-                        pdfHeight - 0.25,
-                        {
+                        pdfHeight - 0.25, {
                             align: "center",
                         }
                     );
@@ -1289,8 +1354,28 @@
                 (r) => r.id === currentRequestIdForDocs
             );
             if (request) {
-                closeLeModal(missingInfoModal);
                 openDocManagementModal(request.id, request.product_info.description);
+            }
+        });
+
+        notifyAgentBtn.addEventListener("click", async () => {
+            if (!currentRequestIdForDocs) return;
+
+            const {
+                error
+            } = await supabase
+                .from(CLASSIFICATION_REQUESTS_TABLE)
+                .update({
+                    status: 'Documents Submitted'
+                })
+                .eq('id', currentRequestIdForDocs);
+
+            if (error) {
+                showCQPNotification(`Error notifying agent: ${error.message}`, "error");
+            } else {
+                showCQPNotification("Agent has been notified of the new documents.", "success");
+                closeLeModal(missingInfoModal);
+                await fetchClientRequests();
             }
         });
 
@@ -1303,7 +1388,10 @@
             const action = button.dataset.action;
             const path = button.dataset.path;
             if (action === "download") {
-                const { data, error } = await supabase.storage
+                const {
+                    data,
+                    error
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .download(path);
                 if (error) {
@@ -1426,12 +1514,20 @@
                 clientCqpHistoryTable.destroy();
                 clientCqpHistoryTable = null;
             }
+            if (realtimeChannel) {
+                supabase.removeChannel(realtimeChannel);
+                realtimeChannel = null;
+            }
             document.body.dataset.cqpModuleInitialized = "false";
         };
         document.addEventListener("supabaseAuthStateChange", handleAuthChange);
         document.addEventListener("moduleWillUnload", cleanupModule);
 
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({
+            data: {
+                session
+            }
+        }) => {
             if (session) {
                 handleAuthChange({
                     detail: {
