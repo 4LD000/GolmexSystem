@@ -20,13 +20,19 @@
     const LEDGER_ENTRIES_TABLE = "ledger_entries";
     const ACCOUNT_LEDGERS_TABLE = "account_ledgers";
     const BUCKET_NAME = "import-documents";
+    const SHARED_RESOURCES_TABLE = "shared_resources";
+    const RESOURCES_BUCKET_NAME = "shared-resources";
+
 
     let currentUserIOP = null;
     let activeShipmentsTable, historyTable, transactionHistoryTable;
     let allClients = [];
     let allHistoryRequests = [];
+    let allSharedResources = [];
+    let resourceFileToUpload = null;
     let selectedLedgerClientId = null;
     let currentShipmentData = null;
+    let shipmentSubscriptionIOP = null;
     let currentWorkspaceStep = 1;
     let maxStepReached = 1;
     let finalFilesToUpload = [];
@@ -140,6 +146,19 @@
         "iop-close-docs-viewer-btn"
     );
 
+    // Resources Modal Elements
+    const resourcesBtn = document.getElementById("iop-resources-btn");
+    const resourcesModal = document.getElementById("iop-resources-modal");
+    const closeResourcesBtn = document.getElementById("iop-close-resources-btn");
+    const resourcesCloseFooterBtn = document.getElementById("iop-resources-close-footer-btn");
+    const resourceFileInput = document.getElementById("iop-resource-file-input");
+    const resourceSelectFileBtn = document.getElementById("iop-resource-select-file-btn");
+    const resourceSelectedFileName = document.getElementById("iop-resource-selected-file-name");
+    const resourceUploadBtn = document.getElementById("iop-resource-upload-btn");
+    const resourceSearchInput = document.getElementById("iop-resource-search-input");
+    const resourcesListContainer = document.getElementById("iop-resources-list-container");
+
+
     function openIopModal(modalElement) {
         if (modalElement) {
             modalElement.style.display = "flex";
@@ -167,11 +186,12 @@
     async function fetchInitialData() {
         if (!currentUserIOP) return;
 
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
-            .select("*, client_accounts(account_name)")
-            .neq("status", "Archived")
-            .eq("is_archived_operator", false);
+            .select("*, client_accounts(account_name)");
         if (error) {
             showIOPNotification(
                 `Error fetching shipments: ${error.message}`,
@@ -183,11 +203,10 @@
         updateIOPDashboardMetrics(data);
 
         const activeShipments = data.filter(
-            (s) => s.status !== "Cancelled" && s.status !== "Archived"
+            (s) => s.status !== "Cancelled" && s.is_archived_operator === false
         );
 
-        const columns = [
-            {
+        const columns = [{
                 data: "id",
                 title: "Shipment ID",
                 render: (d) => (d ? d.substring(0, 8).toUpperCase() : ""),
@@ -210,10 +229,17 @@
             {
                 data: "status",
                 title: "Status",
-                render: (d) =>
-                    `<span class="iop-status-badge status-${(d || "pending")
-                        .toLowerCase()
-                        .replace(/\s+/g, "-")}">${d}</span>`,
+                render: (data, type, row) => {
+                    let displayStatus = row.status;
+                    let cssClass = (row.status || "pending").toLowerCase().replace(/\s+/g, "-");
+
+                    if (row.status === 'Archived' && row.is_archived_operator === false) {
+                        displayStatus = 'Completed';
+                        cssClass = 'completed';
+                    }
+
+                    return `<span class="iop-status-badge status-${cssClass}">${displayStatus}</span>`;
+                },
             },
             {
                 data: null,
@@ -227,6 +253,7 @@
                         "Approved",
                         "Paid",
                         "Completed",
+                        "Archived",
                     ].includes(row.status);
                     return `<button class="btn-sm iop-btn-view-quote" data-action="view_quote" ${!canViewQuote ? "disabled" : ""
                         }>View</button>`;
@@ -251,7 +278,7 @@
                 orderable: false,
                 searchable: false,
                 render: (data, type, row) => {
-                    if (row.status === "Completed") {
+                    if (["Completed", "Archived"].includes(row.status)) {
                         return `<div class="iop-table-btn-group">
                                 <button class="btn-sm iop-btn-view-docs" data-action="view_docs" title="View All Documents">Docs</button>
                                 <button data-action="archive" class="btn-iop-archive" title="Archive Request"><i class='bx bx-archive'></i></button>
@@ -285,7 +312,7 @@
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const completedLast7Days = shipments.filter(
-            (s) => s.status === "Completed" && new Date(s.updated_at) >= sevenDaysAgo
+            (s) => ["Completed", "Archived"].includes(s.status) && new Date(s.updated_at) >= sevenDaysAgo
         ).length;
 
         document.getElementById("iop-db-new-requests").textContent = newRequests;
@@ -297,9 +324,13 @@
     }
 
     async function handleArchiveShipmentIOP(shipmentId) {
-        const { error } = await supabase
+        const {
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
-            .update({ is_archived_operator: true })
+            .update({
+                is_archived_operator: true
+            })
             .eq("id", shipmentId);
 
         if (error) {
@@ -327,7 +358,9 @@
             data: data || [],
             responsive: true,
             columns: columnsConfig,
-            order: [[2, "desc"]],
+            order: [
+                [2, "desc"]
+            ],
         });
     }
 
@@ -356,7 +389,10 @@
     }
 
     async function openWorkspaceModal(shipmentId) {
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
             .select(
                 "*, client_accounts(id, account_name, contact_name, contact_email)"
@@ -392,14 +428,16 @@
             .toUpperCase()}`;
         statusSelect.value = data.status || "Submitted";
 
-        // If shipment is already completed, jump to step 3 and lock others
-        if (data.status === "Completed") {
+        // If shipment is already completed or archived, jump to step 3 and lock others
+        if (["Completed", "Archived"].includes(data.status)) {
             renderFinalFilesList(data.final_attachments);
             navigateToStep(3);
             stepperContainer.querySelectorAll(".iop-step").forEach((s) => {
                 if (parseInt(s.dataset.step, 10) !== 3) {
-                    s.classList.remove("unlocked");
+                    s.classList.remove("unlocked", "active");
                     s.style.pointerEvents = "none";
+                } else {
+                    s.classList.add("active", "unlocked");
                 }
             });
             openIopModal(workspaceModal);
@@ -419,14 +457,14 @@
         `;
         const attachments = data.attachments || [];
         clientDocumentsContainer.innerHTML =
-            attachments.length > 0
-                ? `<ul>${attachments
+            attachments.length > 0 ?
+            `<ul>${attachments
                     .map(
                         (doc) =>
                             `<li><span>${doc.file_name}</span><button class="iop-doc-download-btn" data-path="${doc.file_path}" title="Download"><i class='bx bxs-download'></i></button></li>`
                     )
-                    .join("")}</ul>`
-                : `<p>No documents attached.</p>`;
+                    .join("")}</ul>` :
+            `<p>No documents attached.</p>`;
 
         const status = data.status;
         let initialStep = 1;
@@ -488,7 +526,9 @@
     }
 
     async function updateShipmentStatus(newStatus, dataToSave = {}) {
-        const { error } = await supabase
+        const {
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
             .update({
                 status: newStatus,
@@ -515,12 +555,19 @@
             const amount = parseFloat(row.querySelector(".iop-charge-amount").value);
             const currency = row.querySelector(".iop-charge-currency").value;
             if (name && !isNaN(amount)) {
-                charges.push({ name, amount, currency });
+                charges.push({
+                    name,
+                    amount,
+                    currency
+                });
                 if (currency === "USD") totalUSD += amount;
                 // Note: MXN conversion logic would be needed for a single currency total
             }
         });
-        return { charges, totalUSD };
+        return {
+            charges,
+            totalUSD
+        };
     }
 
     function generateImportReportHtml(data, charges, notes) {
@@ -528,11 +575,11 @@
         const shipmentInfo = data.shipment_details || {};
         const attachments = data.attachments || [];
         const attachmentsHtml =
-            attachments.length > 0
-                ? `<ul>${attachments
+            attachments.length > 0 ?
+            `<ul>${attachments
                     .map((doc) => `<li>${doc.file_name}</li>`)
-                    .join("")}</ul>`
-                : "<li>None</li>";
+                    .join("")}</ul>` :
+            "<li>None</li>";
 
         const totals = {};
         const feesHtml = charges
@@ -607,7 +654,9 @@
 
     function openReportModal() {
         if (!reportModal || !reportBody || !currentShipmentData) return;
-        const { charges } = getChargesFromForm();
+        const {
+            charges
+        } = getChargesFromForm();
         if (charges.length === 0) {
             return showIOPNotification(
                 "Please add at least one charge before generating a report.",
@@ -650,15 +699,16 @@
         document.body.appendChild(tempContainer);
         try {
             const canvas = await html2canvas(
-                tempContainer.querySelector(".iop-report-printable-area"),
-                {
+                tempContainer.querySelector(".iop-report-printable-area"), {
                     scale: 2,
                     useCORS: true,
                     backgroundColor: "#ffffff",
                 }
             );
             const imgData = canvas.toDataURL("image/png");
-            const { jsPDF } = window.jspdf;
+            const {
+                jsPDF
+            } = window.jspdf;
             const pdf = new jsPDF({
                 orientation: "portrait",
                 unit: "in",
@@ -693,7 +743,9 @@
     }
 
     async function sendReportToClient() {
-        const { charges } = getChargesFromForm();
+        const {
+            charges
+        } = getChargesFromForm();
         const quote_details = {
             charges: charges,
             notes: rfiDetailsTextarea.value,
@@ -721,7 +773,10 @@
         openIopModal(ledgerModal);
         clientSelectLedger.innerHTML =
             '<option value="">Loading clients...</option>';
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(CLIENT_ACCOUNTS_TABLE)
             .select("id, account_name")
             .order("account_name");
@@ -743,8 +798,7 @@
         if (transactionHistoryTable) {
             transactionHistoryTable.clear().draw();
         } else {
-            const transColumns = [
-                {
+            const transColumns = [{
                     data: "created_at",
                     title: "Date",
                     render: (d) => new Date(d).toLocaleDateString(),
@@ -784,7 +838,10 @@
             if (transactionHistoryTable) transactionHistoryTable.clear().draw();
             return;
         }
-        const { data: ledgerData, error: ledgerError } = await supabase
+        const {
+            data: ledgerData,
+            error: ledgerError
+        } = await supabase
             .from(ACCOUNT_LEDGERS_TABLE)
             .select("balance")
             .eq("client_account_id", clientAccountId)
@@ -799,7 +856,10 @@
             )}`;
         }
 
-        const { data: transactions, error: transError } = await supabase
+        const {
+            data: transactions,
+            error: transError
+        } = await supabase
             .from(LEDGER_ENTRIES_TABLE)
             .select("*")
             .eq("client_account_id", clientAccountId)
@@ -826,7 +886,9 @@
             showIOPNotification("Please enter a valid positive amount.", "error");
             return;
         }
-        const { error } = await supabase.rpc("add_deposit", {
+        const {
+            error
+        } = await supabase.rpc("add_deposit", {
             p_client_account_id: selectedLedgerClientId,
             p_amount: amount,
             p_reference: reference,
@@ -842,10 +904,14 @@
 
     async function openHistoryModal() {
         openIopModal(historyModal);
-        const { data, error } = await supabase
+        const {
+            data,
+            error
+        } = await supabase
             .from(SHIPMENTS_TABLE)
             .select("*, client_accounts(account_name)")
-            .in("status", ["Completed", "Cancelled", "Archived"]);
+            .or("is_archived_operator.eq.true,status.eq.Cancelled");
+
         if (error) {
             showIOPNotification(`Error fetching history: ${error.message}`, "error");
             allHistoryRequests = [];
@@ -872,7 +938,7 @@
         histYearSelect.innerHTML = '<option value="all">All Years</option>';
         years.forEach(
             (year) =>
-                (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
+            (histYearSelect.innerHTML += `<option value="${year}">${year}</option>`)
         );
     }
 
@@ -887,13 +953,12 @@
             const searchMatch =
                 searchTerm === "" ||
                 (req.client_accounts?.account_name || "")
-                    .toLowerCase()
-                    .includes(searchTerm) ||
+                .toLowerCase()
+                .includes(searchTerm) ||
                 (req.id || "").toLowerCase().includes(searchTerm);
             return yearMatch && monthMatch && searchMatch;
         });
-        const columns = [
-            {
+        const columns = [{
                 data: "id",
                 title: "Shipment ID",
                 render: (d) => (d ? d.substring(0, 8).toUpperCase() : ""),
@@ -940,7 +1005,7 @@
         finalDocList.innerHTML = finalFilesToUpload
             .map(
                 (file, index) =>
-                    `<div class="iop-file-item"><span>${file.name}</span><button type="button" class="iop-remove-final-file" data-index="${index}">&times;</button></div>`
+                `<div class="iop-file-item"><span>${file.name}</span><button type="button" class="iop-remove-final-file" data-index="${index}">&times;</button></div>`
             )
             .join("");
     }
@@ -953,7 +1018,7 @@
         finalDocList.innerHTML = files
             .map(
                 (file) =>
-                    `<div class="iop-file-item"><span>${file.file_name}</span><button class="iop-doc-download-btn" data-path="${file.file_path}" title="Download"><i class='bx bxs-download'></i></button></div>`
+                `<div class="iop-file-item"><span>${file.file_name}</span><button class="iop-doc-download-btn" data-path="${file.file_path}" title="Download"><i class='bx bxs-download'></i></button></div>`
             )
             .join("");
     }
@@ -970,7 +1035,9 @@
             for (const file of finalFilesToUpload) {
                 const filePath = `${currentShipmentData.client_accounts.id}/${currentShipmentData.id
                     }/final/${Date.now()}_${file.name}`;
-                const { error } = await supabase.storage
+                const {
+                    error
+                } = await supabase.storage
                     .from(BUCKET_NAME)
                     .upload(filePath, file);
                 if (error) {
@@ -984,14 +1051,20 @@
             }
 
             const allFinalFiles = [...existingFiles, ...newFileMetadata];
-            const isFirstCompletion = currentShipmentData.status !== "Completed";
 
-            const { error: updateError } = await supabase
+            const dataToUpdate = {
+                final_attachments: allFinalFiles,
+            };
+
+            if (!["Completed", "Archived"].includes(currentShipmentData.status)) {
+                dataToUpdate.status = "Completed";
+            }
+
+            const {
+                error: updateError
+            } = await supabase
                 .from(SHIPMENTS_TABLE)
-                .update({
-                    final_attachments: allFinalFiles,
-                    status: "Completed", // Always ensure status is completed
-                })
+                .update(dataToUpdate)
                 .eq("id", currentShipmentData.id);
 
             if (updateError) {
@@ -999,15 +1072,18 @@
             }
 
             showIOPNotification("Final documents saved successfully!", "success");
-            if (isFirstCompletion) {
-                closeIopModal(workspaceModal);
-            } else {
-                currentShipmentData.final_attachments = allFinalFiles;
-                finalFilesToUpload = [];
-                updateFinalFilesList(); // Clear the "to upload" list
-                renderFinalFilesList(allFinalFiles); // Re-render the list of existing files
-            }
+
+            currentShipmentData.final_attachments = allFinalFiles;
+            finalFilesToUpload = [];
+            updateFinalFilesList();
+            renderFinalFilesList(allFinalFiles);
             fetchInitialData();
+            
+            // Only close modal if it was the first completion
+            if (dataToUpdate.status === "Completed") {
+                 closeIopModal(workspaceModal);
+            }
+
         } catch (error) {
             showIOPNotification(`Error: ${error.message}`, "error");
         } finally {
@@ -1025,7 +1101,10 @@
             return;
         }
         currentShipmentData = shipmentData; // Set for PDF download context
-        const { charges, notes } = shipmentData.quote_details;
+        const {
+            charges,
+            notes
+        } = shipmentData.quote_details;
         const reportHtml = generateImportReportHtml(shipmentData, charges, notes);
         quoteViewerBody.innerHTML = reportHtml;
         quoteViewerTitle.textContent = `Quote for Shipment #${shipmentData.id
@@ -1056,6 +1135,193 @@
 
         openIopModal(docsViewerModal);
     }
+
+    async function openResourcesModal() {
+        resourcesListContainer.innerHTML = "<p>Loading resources...</p>";
+        openIopModal(resourcesModal);
+        const {
+            data,
+            error
+        } = await supabase
+            .from(SHARED_RESOURCES_TABLE)
+            .select('*')
+            .order('created_at', {
+                ascending: false
+            });
+
+        if (error) {
+            showIOPNotification(`Error fetching resources: ${error.message}`, 'error');
+            resourcesListContainer.innerHTML = "<p>Could not load resources.</p>";
+            return;
+        }
+        allSharedResources = data;
+        renderResources();
+    }
+
+    function renderResources(searchTerm = "") {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        const filteredResources = allSharedResources.filter(resource =>
+            resource.file_name.toLowerCase().includes(lowerCaseSearchTerm)
+        );
+
+        if (filteredResources.length === 0) {
+            resourcesListContainer.innerHTML = "<p>No resources found.</p>";
+            return;
+        }
+
+        resourcesListContainer.innerHTML = filteredResources.map((resource, index) => `
+            <div class="iop-resource-card">
+                <div class="iop-resource-card-header">
+                    <div class="iop-resource-number">${index + 1}</div>
+                    <div class="iop-resource-name" title="${resource.file_name}">${resource.file_name}</div>
+                </div>
+                <div class="iop-resource-card-footer">
+                    <button class="iop-resource-btn iop-resource-btn-download" data-path="${resource.file_path}" data-name="${resource.file_name}" title="Download">
+                        <i class='bx bxs-download'></i>
+                    </button>
+                    <button class="iop-resource-btn iop-resource-btn-delete" data-id="${resource.id}" data-path="${resource.file_path}" title="Delete">
+                        <i class='bx bxs-trash'></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function handleResourceUpload() {
+        if (!resourceFileToUpload) {
+            showIOPNotification('Please select a file to upload.', 'warning');
+            return;
+        }
+
+        resourceUploadBtn.disabled = true;
+        resourceUploadBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i>";
+
+        try {
+            const file = resourceFileToUpload;
+            const filePath = `public/${Date.now()}_${file.name}`;
+
+            const {
+                error: uploadError
+            } = await supabase.storage
+                .from(RESOURCES_BUCKET_NAME)
+                .upload(filePath, file);
+
+            if (uploadError) {
+                throw new Error(`Storage Error: ${uploadError.message}`);
+            }
+
+            const {
+                error: dbError
+            } = await supabase
+                .from(SHARED_RESOURCES_TABLE)
+                .insert({
+                    file_name: file.name,
+                    file_path: filePath,
+                    file_size: file.size,
+                });
+
+            if (dbError) {
+                throw new Error(`Database Error: ${dbError.message}`);
+            }
+
+            showIOPNotification('Resource uploaded successfully!', 'success');
+            resourceFileToUpload = null;
+            resourceSelectedFileName.textContent = 'No file selected';
+            resourceFileInput.value = '';
+            openResourcesModal(); // Refresh the list
+
+        } catch (error) {
+            showIOPNotification(`Upload failed: ${error.message}`, 'error');
+        } finally {
+            resourceUploadBtn.disabled = false;
+            resourceUploadBtn.innerHTML = "<i class='bx bx-upload'></i> Upload";
+        }
+    }
+
+    async function handleResourceDelete(resourceId, filePath) {
+        if (!confirm(`Are you sure you want to delete this resource? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const {
+                error: storageError
+            } = await supabase.storage
+                .from(RESOURCES_BUCKET_NAME)
+                .remove([filePath]);
+
+            if (storageError) {
+                throw new Error(`Storage Error: ${storageError.message}`);
+            }
+
+            const {
+                error: dbError
+            } = await supabase
+                .from(SHARED_RESOURCES_TABLE)
+                .delete()
+                .eq('id', resourceId);
+
+            if (dbError) {
+                throw new Error(`Database Error: ${dbError.message}`);
+            }
+
+            showIOPNotification('Resource deleted successfully.', 'success');
+            openResourcesModal(); // Refresh the list
+
+        } catch (error) {
+            showIOPNotification(`Deletion failed: ${error.message}`, 'error');
+        }
+    }
+
+    async function handleResourceDownload(filePath, fileName) {
+        try {
+            const {
+                data,
+                error
+            } = await supabase.storage
+                .from(RESOURCES_BUCKET_NAME)
+                .download(filePath);
+
+            if (error) {
+                throw error;
+            }
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(data);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+        } catch (error) {
+            showIOPNotification(`Error downloading file: ${error.message}`, 'error');
+        }
+    }
+
+    function subscribeToShipmentChangesIOP() {
+        if (shipmentSubscriptionIOP) {
+            supabase.removeChannel(shipmentSubscriptionIOP);
+        }
+
+        shipmentSubscriptionIOP = supabase
+            .channel('public:import_shipments')
+            .on(
+                'postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: SHIPMENTS_TABLE,
+                },
+                (payload) => {
+                    console.log('IOP Realtime change received!', payload);
+                    fetchInitialData();
+                }
+            )
+            .subscribe();
+
+        console.log("IOP Realtime subscription is active.");
+    }
+
 
     function setupEventListeners() {
         ledgerManagementBtn.addEventListener("click", openLedgerModal);
@@ -1123,7 +1389,9 @@
         previewReportBtn.addEventListener("click", openReportModal);
 
         processPaymentBtn.addEventListener("click", async () => {
-            const { totalUSD } = getChargesFromForm();
+            const {
+                totalUSD
+            } = getChargesFromForm();
             if (totalUSD <= 0) {
                 return showIOPNotification(
                     "Quote amount must be greater than zero.",
@@ -1135,7 +1403,9 @@
             processPaymentBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i>";
 
             try {
-                const { error } = await supabase.rpc("process_shipment_payment", {
+                const {
+                    error
+                } = await supabase.rpc("process_shipment_payment", {
                     p_shipment_id: currentShipmentData.id,
                     p_client_account_id: currentShipmentData.client_accounts.id,
                     p_amount: totalUSD,
@@ -1209,17 +1479,20 @@
             }
         };
 
-        $(activeShipmentsTableEl).on("click", "button", function (e) {
+        $(activeShipmentsTableEl).on("click", "button", function(e) {
             handleTableButtonClick(activeShipmentsTable, e);
         });
 
-        $(historyTableEl).on("click", "button", function (e) {
+        $(historyTableEl).on("click", "button", function(e) {
             handleTableButtonClick(historyTable, e);
         });
 
-        $(workspaceModal).on("click", ".iop-doc-download-btn", async function () {
+        $(workspaceModal).on("click", ".iop-doc-download-btn", async function() {
             const path = this.dataset.path;
-            const { data, error } = await supabase.storage
+            const {
+                data,
+                error
+            } = await supabase.storage
                 .from(BUCKET_NAME)
                 .download(path);
             if (error) {
@@ -1249,9 +1522,12 @@
             closeIopModal(docsViewerModal)
         );
 
-        $(docsViewerModal).on("click", ".iop-doc-download-btn", async function () {
+        $(docsViewerModal).on("click", ".iop-doc-download-btn", async function() {
             const path = this.dataset.path;
-            const { data, error } = await supabase.storage
+            const {
+                data,
+                error
+            } = await supabase.storage
                 .from(BUCKET_NAME)
                 .download(path);
             if (error) {
@@ -1266,6 +1542,46 @@
             link.click();
             URL.revokeObjectURL(link.href);
         });
+
+        // Resources Modal Listeners
+        resourcesBtn.addEventListener("click", openResourcesModal);
+        closeResourcesBtn.addEventListener("click", () => closeIopModal(resourcesModal));
+        resourcesCloseFooterBtn.addEventListener("click", () => closeIopModal(resourcesModal));
+        resourceSelectFileBtn.addEventListener("click", () => resourceFileInput.click());
+        resourceUploadBtn.addEventListener("click", handleResourceUpload);
+
+        resourceFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                resourceFileToUpload = e.target.files[0];
+                resourceSelectedFileName.textContent = resourceFileToUpload.name;
+                resourceUploadBtn.disabled = false;
+            } else {
+                resourceFileToUpload = null;
+                resourceSelectedFileName.textContent = 'No file selected';
+                resourceUploadBtn.disabled = true;
+            }
+        });
+
+        resourceSearchInput.addEventListener('input', (e) => {
+            renderResources(e.target.value);
+        });
+
+        resourcesListContainer.addEventListener('click', (e) => {
+            const downloadBtn = e.target.closest('.iop-resource-btn-download');
+            const deleteBtn = e.target.closest('.iop-resource-btn-delete');
+
+            if (downloadBtn) {
+                const filePath = downloadBtn.dataset.path;
+                const fileName = downloadBtn.dataset.name;
+                handleResourceDownload(filePath, fileName);
+            }
+
+            if (deleteBtn) {
+                const resourceId = deleteBtn.dataset.id;
+                const filePath = deleteBtn.dataset.path;
+                handleResourceDelete(resourceId, filePath);
+            }
+        });
     }
 
     function initializeModule() {
@@ -1273,6 +1589,7 @@
             currentUserIOP = event.detail?.user;
             if (currentUserIOP) {
                 fetchInitialData();
+                subscribeToShipmentChangesIOP();
             } else {
                 if (activeShipmentsTable) activeShipmentsTable.clear().draw();
             }
@@ -1292,6 +1609,10 @@
                 $(transactionHistoryTableEl).DataTable().destroy();
                 transactionHistoryTable = null;
             }
+            if (shipmentSubscriptionIOP) {
+                supabase.removeChannel(shipmentSubscriptionIOP);
+                shipmentSubscriptionIOP = null;
+            }
             document.removeEventListener("supabaseAuthStateChange", handleAuth);
             document.removeEventListener("moduleWillUnload", cleanup);
             document.body.dataset.iopModuleInitialized = "false";
@@ -1301,7 +1622,11 @@
         document.addEventListener("moduleWillUnload", cleanup);
 
         if (supabase.auth.getSession) {
-            supabase.auth.getSession().then(({ data: { session } }) => {
+            supabase.auth.getSession().then(({
+                data: {
+                    session
+                }
+            }) => {
                 if (session)
                     handleAuth({
                         detail: {
