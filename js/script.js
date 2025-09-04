@@ -47,7 +47,7 @@ const MANAGER_USERS = [
   "fulfillment@gmxecommerce.com",
   "tgarcia@goldmexintl.com",
   "kmartinez@goldmexintl.com",
-  "goldmexgmx@hotmail.com",
+  "anogales@goldmexintl.com",
 ];
 
 // --- Role 2: Employees (Standard Access) ---
@@ -640,3 +640,4 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
+
