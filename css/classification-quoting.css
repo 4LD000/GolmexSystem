@@ -1211,3 +1211,18 @@ inherited styles not suitable for print.
     margin-left: 1.2rem;
     padding-left: 0;
 }
+
+/* ====================================================================
+ * == FIX DEFINITIVO PARA SCROLL HORIZONTAL CORTADO EN DATATABLES ==
+ * ====================================================================
+ */
+
+/* 1. Habilita el scroll en el contenedor directo de la tabla */
+.cq-table-container {
+    overflow-x: auto;
+}
+
+/* 2. (Opcional pero recomendado) Asegura que el texto no se parta en líneas */
+#cqPendingTable td, #cqPendingTable th {
+    white-space: nowrap;
+}
