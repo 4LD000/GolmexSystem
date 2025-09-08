@@ -470,7 +470,7 @@
 
         dataTableInstance = $(tableSelector).DataTable({
             data: data,
-            responsive: true,
+            rscrollX: true, //
             columns: columnsConfig,
             order: [[3, "desc"]],
         });
