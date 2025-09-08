@@ -48,6 +48,9 @@ const MANAGER_USERS = [
   "tgarcia@goldmexintl.com",
   "kmartinez@goldmexintl.com",
   "anogales@goldmexintl.com",
+  "carlos@flexbpo.com",
+  "alexandermontes@flexbpo.com",
+  "jorge@customscity.com"
 ];
 
 // --- Role 2: Employees (Standard Access) ---
@@ -640,4 +643,5 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
+
 
