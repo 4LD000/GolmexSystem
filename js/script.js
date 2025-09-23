@@ -56,9 +56,10 @@ const MANAGER_USERS = [
 // --- Role 2: Employees (Standard Access) ---
 const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
 const EMPLOYEE_EXCEPTIONS = [
-  "jachags@gmail.com",
-   "jatejix@gmail.com",
+  "kikecanfir@gmail.com",
   "enriqueflores.10@hotmail.com",
+  "jachags@gmail.com",    // <-- CORREO AGREGADO
+  "jatejix@gmail.com",      // <-- CORREO AGREGADO
 ];
 
 // --- Role 3: Clients / Restricted (Limited Access) ---
@@ -644,7 +645,5 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
-
-
 
 
