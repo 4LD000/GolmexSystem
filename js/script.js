@@ -71,6 +71,7 @@ const RESTRICTED_VIEW_USERS = [
   "kikecanfir5@gmail.com",
   "quynhanhtruonga8@gmail.com",
   "quanganhpn2002@gmail.com",
+  "jachags@gmail.com",
 ];
 
 // --- Module Definitions ---
@@ -643,5 +644,6 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
+
 
 
