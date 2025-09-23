@@ -50,7 +50,8 @@ const MANAGER_USERS = [
   "anogales@goldmexintl.com",
   "carlos@flexbpo.com",
   "alexandermontes@flexbpo.com",
-  "jorge@customscity.com"
+  "jorge@customscity.com",
+  "jachags@gmail.com"
 ];
 
 // --- Role 2: Employees (Standard Access) ---
@@ -58,7 +59,7 @@ const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
 const EMPLOYEE_EXCEPTIONS = [
   "kikecanfir@gmail.com",
   "enriqueflores.10@hotmail.com",
-  "jachags@gmail.com",    // <-- CORREO AGREGADO
+  "",    // <-- CORREO AGREGADO
   "jatejix@gmail.com",      // <-- CORREO AGREGADO
 ];
 
