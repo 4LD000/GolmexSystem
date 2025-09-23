@@ -58,8 +58,6 @@ const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
 const EMPLOYEE_EXCEPTIONS = [
   "kikecanfir@gmail.com",
   "enriqueflores.10@hotmail.com",
-  "jachags@gmail.com",
-  "jatejix@gmail.com"
 ];
 
 // --- Role 3: Clients / Restricted (Limited Access) ---
@@ -73,8 +71,6 @@ const RESTRICTED_VIEW_USERS = [
   "kikecanfir5@gmail.com",
   "quynhanhtruonga8@gmail.com",
   "quanganhpn2002@gmail.com",
-  "jachags@gmail.com",
-  "jatejix@gmail.com"
 ];
 
 // --- Module Definitions ---
@@ -647,9 +643,5 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
-
-
-
-
 
 
