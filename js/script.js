@@ -57,6 +57,7 @@ const MANAGER_USERS = [
 const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
 const EMPLOYEE_EXCEPTIONS = [
   "jachags@gmail.com",
+   "jatejix@gmail.com",
   "enriqueflores.10@hotmail.com",
 ];
 
@@ -643,6 +644,7 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
+
 
 
 
