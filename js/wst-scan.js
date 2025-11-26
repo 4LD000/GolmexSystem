@@ -34,7 +34,7 @@
 
     // --- INIT ---
     function init() {
-        console.log("WST Scanner Initialized (Mobile Ready)");
+        console.log("WST Scanner Initialized (Mobile/Reader Optimized)");
         loadTodaysHistory();
         
         // FORCE FOCUS ON LOAD
@@ -42,11 +42,9 @@
             scanInput.focus();
         }, 500);
 
-        // --- MOBILE SCANNER LOGIC (KEEP FOCUS) ---
-        // Esto asegura que si usan un lector bluetooth, el input siempre reciba el código
-        // aunque toquen la pantalla por accidente.
+        // --- MOBILE/READER LOGIC (KEEP FOCUS) ---
+        // 1. Click listener: Refocus unless clicking a button
         document.addEventListener('click', (e) => {
-            // Si el clic NO fue en un botón o enlace, regresamos el foco al input
             const isButton = e.target.closest('button') || e.target.tagName === 'A';
             const isInput = e.target === scanInput;
             
@@ -54,6 +52,14 @@
                 scanInput.focus();
             }
         });
+
+        // 2. Interval check: Ensure focus is kept periodically (aggressive mode)
+        // Useful if focus is lost due to system dialogs or other interruptions
+        setInterval(() => {
+            if (document.activeElement !== scanInput && !document.querySelector('.btn-block:active')) {
+               // scanInput.focus(); // Uncomment for very aggressive focus
+            }
+        }, 2000);
     }
 
     // --- HANDLERS ---
@@ -75,7 +81,9 @@
     // --- CORE LOGIC ---
     async function processScan(qrCode) {
         showState('loading');
-        scanInput.blur(); // Hide virtual keyboard on mobile to verify result
+        
+        // Optional: Blur to hide soft keyboard on mobile, then refocus later
+        // scanInput.blur(); 
 
         try {
             // 1. Fetch Pallet Data
@@ -96,10 +104,6 @@
                 throw new Error("This pallet was ALREADY registered previously.");
             }
 
-            if (pallet.status !== 'waiting_for_scan' && pallet.status !== 'in_progress') {
-                // Proceed anyway but log warning if needed
-            }
-
             // 3. CALCULATIONS
             const now = new Date();
             const startTime = new Date(pallet.start_time);
@@ -107,7 +111,7 @@
             // Real Time (Seconds)
             const realTimeSecs = Math.floor((now - startTime) / 1000);
             
-            // Standard Time (Seconds) - From Product Master
+            // Standard Time (Seconds)
             const stdTimeSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
             
             // Deviation
@@ -115,8 +119,8 @@
 
             // Rating Logic
             let rating = 'success';
-            if (realTimeSecs > stdTimeSecs * 1.20) rating = 'danger'; // >20% slower
-            else if (realTimeSecs > stdTimeSecs) rating = 'warning'; // Slightly slower
+            if (realTimeSecs > stdTimeSecs * 1.20) rating = 'danger'; 
+            else if (realTimeSecs > stdTimeSecs) rating = 'warning'; 
 
             // 4. UPDATE DB
             const { error: updateError } = await supabase
@@ -136,7 +140,7 @@
             // 5. SUCCESS UI
             showSuccess(pallet, realTimeSecs, rating);
             if(soundSuccess) soundSuccess.play().catch(()=>{});
-            loadTodaysHistory(); // Refresh list
+            loadTodaysHistory(); 
 
         } catch (err) {
             showError(err.message);
@@ -176,7 +180,7 @@
         if (rating === 'danger') { label = "Slow"; colorClass = "rating-bad"; }
         
         fRating.textContent = label;
-        fRating.className = ""; // reset
+        fRating.className = ""; 
         fRating.classList.add(colorClass);
     }
 
@@ -188,7 +192,7 @@
     function resetScanner() {
         scanInput.value = '';
         resultCard.classList.add('hidden');
-        scanInput.focus(); // Refocus specifically for next scan
+        scanInput.focus(); 
     }
 
     // --- HISTORY ---
@@ -198,7 +202,7 @@
         const { data, error } = await supabase
             .from('production_log')
             .select('*, production_products(name)')
-            .not('warehouse_scan_time', 'is', null) // Only scanned items
+            .not('warehouse_scan_time', 'is', null) 
             .gte('warehouse_scan_time', `${today} 00:00:00`)
             .order('warehouse_scan_time', { ascending: false })
             .limit(20);
