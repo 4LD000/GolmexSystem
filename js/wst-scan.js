@@ -1,4 +1,4 @@
-(function () {
+(function() {
     if (!window.supabase) return console.error("Supabase client not found.");
     const moduleContainer = document.querySelector('.wst-scan-container');
     if (!moduleContainer) return;
@@ -7,12 +7,12 @@
     const scanInput = document.getElementById('wst-scan-input');
     const searchBtn = document.getElementById('wst-manual-search-btn');
     const resultCard = document.getElementById('wst-scan-result');
-
+    
     // Result Sections
     const resSuccess = document.getElementById('wst-result-success');
     const resError = document.getElementById('wst-result-error');
     const resLoading = document.getElementById('wst-result-loading');
-
+    
     // Data Fields
     const fProd = document.getElementById('scan-prod-name');
     const fLine = document.getElementById('scan-line-name');
@@ -29,19 +29,30 @@
     const historyBody = document.getElementById('wst-scan-history-body');
 
     // Audio (Optional)
-    const soundSuccess = document.getElementById('audio-success'); // Ensure files exist or remove
+    const soundSuccess = document.getElementById('audio-success'); 
     const soundError = document.getElementById('audio-error');
 
     // --- INIT ---
     function init() {
-        console.log("WST Scanner Initialized");
+        console.log("WST Scanner Initialized (Mobile Ready)");
         loadTodaysHistory();
-        scanInput.focus();
+        
+        // FORCE FOCUS ON LOAD
+        setTimeout(() => {
+            scanInput.focus();
+        }, 500);
 
-        // Keep focus logic (optional, careful with UX)
-        document.addEventListener('click', () => {
-            // if(!resultCard.classList.contains('hidden')) return; // Don't steal focus if reading result
-            // scanInput.focus(); 
+        // --- MOBILE SCANNER LOGIC (KEEP FOCUS) ---
+        // Esto asegura que si usan un lector bluetooth, el input siempre reciba el código
+        // aunque toquen la pantalla por accidente.
+        document.addEventListener('click', (e) => {
+            // Si el clic NO fue en un botón o enlace, regresamos el foco al input
+            const isButton = e.target.closest('button') || e.target.tagName === 'A';
+            const isInput = e.target === scanInput;
+            
+            if (!isButton && !isInput) {
+                scanInput.focus();
+            }
         });
     }
 
@@ -64,7 +75,7 @@
     // --- CORE LOGIC ---
     async function processScan(qrCode) {
         showState('loading');
-        scanInput.blur(); // Hide keyboard on mobile
+        scanInput.blur(); // Hide virtual keyboard on mobile to verify result
 
         try {
             // 1. Fetch Pallet Data
@@ -86,19 +97,19 @@
             }
 
             if (pallet.status !== 'waiting_for_scan' && pallet.status !== 'in_progress') {
-                // Should ideally be 'waiting_for_scan' (line finished), but 'in_progress' works too if line forgot to finish
+                // Proceed anyway but log warning if needed
             }
 
             // 3. CALCULATIONS
             const now = new Date();
             const startTime = new Date(pallet.start_time);
-
+            
             // Real Time (Seconds)
             const realTimeSecs = Math.floor((now - startTime) / 1000);
-
+            
             // Standard Time (Seconds) - From Product Master
             const stdTimeSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
-
+            
             // Deviation
             const deviation = realTimeSecs - stdTimeSecs;
 
@@ -124,12 +135,12 @@
 
             // 5. SUCCESS UI
             showSuccess(pallet, realTimeSecs, rating);
-            if (soundSuccess) soundSuccess.play().catch(() => { });
+            if(soundSuccess) soundSuccess.play().catch(()=>{});
             loadTodaysHistory(); // Refresh list
 
         } catch (err) {
             showError(err.message);
-            if (soundError) soundError.play().catch(() => { });
+            if(soundError) soundError.play().catch(()=>{});
         }
     }
 
@@ -147,11 +158,11 @@
 
     function showSuccess(pallet, realSeconds, rating) {
         showState('success');
-
+        
         fProd.textContent = pallet.production_products.name;
         fLine.textContent = pallet.warehouse_lines ? pallet.warehouse_lines.line_name : 'N/A';
         fOp.textContent = pallet.operator_name;
-
+        
         // Format Time
         const h = Math.floor(realSeconds / 3600);
         const m = Math.floor((realSeconds % 3600) / 60);
@@ -163,7 +174,7 @@
         let colorClass = "rating-good";
         if (rating === 'warning') { label = "Average"; colorClass = "rating-avg"; }
         if (rating === 'danger') { label = "Slow"; colorClass = "rating-bad"; }
-
+        
         fRating.textContent = label;
         fRating.className = ""; // reset
         fRating.classList.add(colorClass);
@@ -177,13 +188,13 @@
     function resetScanner() {
         scanInput.value = '';
         resultCard.classList.add('hidden');
-        scanInput.focus();
+        scanInput.focus(); // Refocus specifically for next scan
     }
 
     // --- HISTORY ---
     async function loadTodaysHistory() {
         const today = new Date().toISOString().split('T')[0];
-
+        
         const { data, error } = await supabase
             .from('production_log')
             .select('*, production_products(name)')
@@ -198,17 +209,17 @@
     function renderHistory(logs) {
         historyBody.innerHTML = '';
         logs.forEach(log => {
-            const time = new Date(log.warehouse_scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const time = new Date(log.warehouse_scan_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             const tr = document.createElement('tr');
-
+            
             let statusIcon = "<i class='bx bxs-check-circle' style='color:var(--scan-success)'></i>";
-            if (log.performance_rating === 'danger') statusIcon = "<i class='bx bxs-error-circle' style='color:var(--scan-error)'></i>";
-            else if (log.performance_rating === 'warning') statusIcon = "<i class='bx bxs-minus-circle' style='color:#f59e0b'></i>";
+            if(log.performance_rating === 'danger') statusIcon = "<i class='bx bxs-error-circle' style='color:var(--scan-error)'></i>";
+            else if(log.performance_rating === 'warning') statusIcon = "<i class='bx bxs-minus-circle' style='color:#f59e0b'></i>";
 
             tr.innerHTML = `
                 <td>${time}</td>
                 <td>${log.production_products?.name || '?'}</td>
-                <td style="font-family:monospace; font-size:0.85rem;">${log.pallet_qr_id.substring(0, 12)}...</td>
+                <td style="font-family:monospace; font-size:0.85rem;">${log.pallet_qr_id.substring(0,12)}...</td>
                 <td style="text-align:center;">${statusIcon}</td>
             `;
             historyBody.appendChild(tr);
