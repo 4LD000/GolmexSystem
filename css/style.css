@@ -66,7 +66,6 @@ body {
     background-color: var(--color-bg);
     transition: color 0.5s ease, background-color 0.3s ease, left 0.5s ease;
     overflow: hidden;
-    zoom: 0.90;
 }
 
 /* Sidebar */
@@ -134,19 +133,17 @@ body.dark-mode .menu-btn {
     width: 100%;
     display: flex;
     align-items: center;
-    /* AJUSTE 1: Reducimos el espacio entre logo y texto. */
     gap: 0.5rem; 
-    /* AJUSTE 2: Eliminamos el padding de este elemento para ganar espacio vital. */
-    padding-left: 0; /* El contenedor padre '.sidebar' ya tiene su propio padding. */
+    padding-left: 0;
     margin-bottom: 1.8rem;
-    overflow: hidden; /* Se mantiene para la funcionalidad de minimizar */
+    overflow: hidden;
 }
 
 .brand img {
-    height: 45px; /* Aplicamos la reducción de tamaño para resolver el problema original */
+    height: 45px;
     width: auto;
-    flex-shrink: 0; /* Propiedad importante para que la imagen no se encoja */
-    transition: height 0.3s ease; /* Mantenemos la animación del segundo bloque */
+    flex-shrink: 0;
+    transition: height 0.3s ease;
 }
 
 
@@ -168,7 +165,7 @@ body.dark-mode .menu-btn {
 
 
 .brand span {
-    font-size: 1.05rem; /* <-- CAMBIA ESTO (Originalmente era 1.15rem) */
+    font-size: 1.05rem;
     font-weight: 600;
     color: var(--brand-text-color);
     line-height: 1.2; 
@@ -244,7 +241,7 @@ body.dark-mode .menu-btn {
 }
 
 .menu .menu-link,
-.sub-menu .sub-menu-link { /* Estilo base para todos los enlaces del menú */
+.sub-menu .sub-menu-link {
     display: flex;
     align-items: center;
     padding: 0.55rem 0;
@@ -518,23 +515,27 @@ body.sidebar-hidden .sidebar-btn .bx-x {
     display: flex;
 }
 
-/* Main */
+/* ============================================================ */
+/* == CORRECCIÓN DEL "BOXED IN": Eliminamos padding del main == */
+/* ============================================================ */
 main {
     flex-grow: 1;
-    padding: 2rem 3rem 3rem 17rem; 
+    /* CAMBIO: Padding 0 en vertical y derecha. Solo dejamos el espacio izquierdo para el sidebar */
+    padding: 0 0 0 15rem; 
     transition: padding-left 0.5s ease; 
     color: var(--color-text-primary);
     min-width: 0; 
     overflow-x: hidden;
     overflow-y: auto; 
     height: 100vh; 
+    position: relative;
 }
 
 .sidebar.minimize + main {
-    padding-left: calc(4.94rem + 3rem);
+    padding-left: 4.94rem; /* Solo espacio para sidebar minimizado */
 }
 body.sidebar-hidden main { 
-    padding-left: 3rem; 
+    padding-left: 0; /* Pantalla completa real en móviles */
 }
 
 /* Dark mode button */
@@ -643,8 +644,9 @@ body.dark-mode .brand-light { display: none; }
         display: flex;
     }
 
+    /* En móviles, main no tiene padding */
     main {
-        padding: 2rem 1.5rem 3rem 1.5rem; 
+        padding: 0; 
     }
 
     .dark-mode-btn {
@@ -652,9 +654,3 @@ body.dark-mode .brand-light { display: none; }
         bottom: 1rem;
     }
 }
-
-/* ====================================================================
- * == AJUSTE VISUAL PARA BOTONES DE ACCIÓN EN MODO OSCURO           ==
- * ====================================================================
- */
-
