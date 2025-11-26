@@ -1,0 +1,104 @@
+<!-- Warehouse Scanner Module (Final Checkpoint) -->
+<div class="wst-scan-container">
+
+    <!-- HEADER -->
+    <div class="wst-scan-header">
+        <h2><i class='bx bx-barcode-reader'></i> Inbound Scanner</h2>
+        <p>Scan pallet label to register warehouse entry.</p>
+    </div>
+
+    <!-- MAIN SCANNER AREA -->
+    <div class="wst-scan-box">
+        
+        <!-- Input Area (Always Focused) -->
+        <div class="wst-input-wrapper">
+            <i class='bx bx-qr-scan'></i>
+            <input type="text" id="wst-scan-input" placeholder="Scan QR or type ID..." autocomplete="off" autofocus>
+            <button id="wst-manual-search-btn" class="btn-icon"><i class='bx bx-search'></i></button>
+        </div>
+        <small class="hint-text">Press ENTER if typing manually.</small>
+
+        <!-- RESULT CARD (Hidden by default) -->
+        <div id="wst-scan-result" class="wst-result-card hidden">
+            
+            <!-- Success State -->
+            <div id="wst-result-success" class="result-content hidden">
+                <div class="result-icon success"><i class='bx bxs-check-shield'></i></div>
+                <h3>Pallet Registered!</h3>
+                
+                <div class="pallet-details">
+                    <div class="detail-row">
+                        <span>Product:</span>
+                        <strong id="scan-prod-name">--</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Line:</span>
+                        <strong id="scan-line-name">--</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Operator:</span>
+                        <strong id="scan-operator">--</strong>
+                    </div>
+                    <hr>
+                    <div class="detail-row highlight">
+                        <span>Total Time:</span>
+                        <strong id="scan-total-time">0h 0m</strong>
+                    </div>
+                    <div class="detail-row">
+                        <span>Rating:</span>
+                        <strong id="scan-rating-badge">--</strong>
+                    </div>
+                </div>
+
+                <button id="wst-scan-reset-btn" class="btn-goldmex-primary btn-block">
+                    Scan Next (Enter)
+                </button>
+            </div>
+
+            <!-- Error State -->
+            <div id="wst-result-error" class="result-content hidden">
+                <div class="result-icon error"><i class='bx bxs-error-circle'></i></div>
+                <h3>Scan Error</h3>
+                <p id="wst-error-msg">Invalid code or not found.</p>
+                <button id="wst-error-reset-btn" class="btn-goldmex-secondary btn-block">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="wst-result-loading" class="result-content hidden">
+                <div class="wst-spinner-scan"><i class='bx bx-loader-alt bx-spin'></i></div>
+                <p>Processing...</p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- RECENT HISTORY (Bottom) -->
+    <div class="wst-scan-history">
+        <h4><i class='bx bx-history'></i> Recent Scans (Today)</h4>
+        <div class="wst-history-scroll">
+            <table class="wst-scan-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Product</th>
+                        <th>Pallet ID</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="wst-scan-history-body">
+                    <!-- Injected by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Audio Elements for Feedback -->
+<audio id="audio-success" src="assets/success.mp3" preload="auto"></audio>
+<audio id="audio-error" src="assets/error.mp3" preload="auto"></audio>
+
+<script src="js/wst-scan.js"></script>
