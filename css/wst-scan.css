@@ -1,30 +1,30 @@
 /* ============================================================
-   Warehouse Scanner Module Styles (Table Fix)
+   Warehouse Scanner Styles
    File: css/wst-scan.css
    ============================================================ */
 
 :root {
     --scan-bg: #f0f2f5;
-    --scan-card-bg: #ffffff;
-    --scan-text: #333;
+    --scan-card: #ffffff;
+    --scan-text: #1f2937;
     --scan-light: #6b7280;
-    --scan-border: #e0e0e0;
+    --scan-border: #e5e7eb;
     --scan-primary: #0e2c4c;
     --scan-success: #10b981;
     --scan-error: #ef4444;
-    --scan-accent: #ffd700;
 }
 
 body.dark-mode {
     --scan-bg: #111827;
-    --scan-card-bg: #1f2937;
+    --scan-card: #1f2937;
     --scan-text: #f3f4f6;
+    --scan-light: #9ca3af;
     --scan-border: #374151;
 }
 
 .wst-scan-container {
     padding: 1.5rem;
-    max-width: 800px;
+    max-width: 600px;
     margin: 0 auto;
     height: calc(100vh - 80px);
     display: flex;
@@ -48,7 +48,6 @@ body.dark-mode {
 /* Header */
 .wst-scan-header {
     text-align: center;
-    margin-bottom: 0.5rem;
 }
 
 .wst-scan-header h2 {
@@ -59,48 +58,45 @@ body.dark-mode {
 
 .wst-scan-header p {
     color: var(--scan-light);
-    font-size: 0.95rem;
 }
 
-/* Scan Box */
+/* Main Box */
 .wst-scan-box {
-    background: var(--scan-card-bg);
+    background: var(--scan-card);
     border-radius: 16px;
     padding: 2rem;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--scan-border);
 }
 
-/* Input */
-.wst-input-wrapper {
+/* Input Section */
+.wst-input-group {
     display: flex;
     align-items: center;
     border: 2px solid var(--scan-border);
     border-radius: 12px;
     padding: 0.8rem;
     background: var(--scan-bg);
-    transition: all 0.2s;
+    transition: border-color 0.2s;
 }
 
-.wst-input-wrapper:focus-within {
+.wst-input-group:focus-within {
     border-color: var(--scan-primary);
-    box-shadow: 0 0 0 3px rgba(14, 44, 76, 0.1);
 }
 
-.wst-input-wrapper i {
-    font-size: 1.8rem;
+.wst-input-group i {
+    font-size: 1.5rem;
     color: var(--scan-light);
     margin-right: 0.8rem;
 }
 
-#wst-scan-input {
-    flex: 1;
+.wst-input-group input {
     border: none;
     background: transparent;
-    font-size: 1.2rem;
+    width: 100%;
+    font-size: 1.1rem;
     color: var(--scan-text);
     outline: none;
-    font-family: monospace;
 }
 
 .wst-divider {
@@ -122,20 +118,6 @@ body.dark-mode {
 
 .wst-divider span {
     padding: 0 10px;
-}
-
-/* Camera */
-.wst-camera-wrapper {
-    text-align: center;
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 1rem;
-}
-
-#wst-reader {
-    width: 100%;
-    min-height: 300px;
 }
 
 /* Buttons */
@@ -174,24 +156,16 @@ body.dark-mode {
     color: #374151;
 }
 
-.icon-btn-refresh {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--scan-light);
-    cursor: pointer;
-}
-
-.icon-btn-refresh:hover {
-    color: var(--scan-primary);
-}
-
 /* Result Card */
 .wst-result-card {
     margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 2px dashed var(--scan-border);
     text-align: center;
+    border-top: 1px dashed var(--scan-border);
+    padding-top: 2rem;
+}
+
+.result-state.hidden {
+    display: none;
 }
 
 .icon-circle {
@@ -202,7 +176,7 @@ body.dark-mode {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3.5rem;
+    font-size: 3rem;
     color: white;
 }
 
@@ -215,25 +189,30 @@ body.dark-mode {
 }
 
 .pallet-info {
-    background: rgba(0, 0, 0, 0.03);
+    background: var(--scan-bg);
     border-radius: 10px;
-    padding: 1.5rem;
+    padding: 1rem;
     margin: 1.5rem 0;
     text-align: left;
-    border: 1px solid var(--scan-border);
 }
 
 .info-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.8rem;
-    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.info-row.highlight {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--scan-border);
+    font-size: 1.1rem;
+    color: var(--scan-primary);
 }
 
 .info-row .label {
     color: var(--scan-light);
-    font-size: 0.9rem;
-    text-transform: uppercase;
 }
 
 .info-row .value {
@@ -241,77 +220,65 @@ body.dark-mode {
     color: var(--scan-text);
 }
 
-.info-row.highlight {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--scan-border);
-    color: var(--scan-primary);
-    font-size: 1.2rem;
-}
-
-/* HISTORY TABLE */
+/* History */
 .wst-scan-history {
     flex: 1;
-    background: var(--scan-card-bg);
+    background: var(--scan-card);
     border-radius: 16px;
     border: 1px solid var(--scan-border);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 .history-header {
-    padding: 1rem 1.5rem;
-    background: rgba(0, 0, 0, 0.02);
+    padding: 1rem;
     border-bottom: 1px solid var(--scan-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .history-header h4 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--scan-text);
 }
 
 .history-list-container {
     flex: 1;
     overflow-y: auto;
+    padding: 0.5rem;
 }
 
-.wst-scan-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.wst-scan-table th {
-    text-align: left;
-    padding: 1rem;
-    background: var(--scan-bg);
-    font-size: 0.8rem;
-    color: var(--scan-light);
-    text-transform: uppercase;
-    position: sticky;
-    top: 0;
-    z-index: 5;
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
     border-bottom: 1px solid var(--scan-border);
 }
 
-.wst-scan-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--scan-border);
-    color: var(--scan-text);
-    font-size: 0.95rem;
-}
-
-.wst-scan-table tr:last-child td {
+.history-item:last-child {
     border-bottom: none;
 }
 
-.wst-scan-table tr:nth-child(even) {
-    background-color: rgba(0, 0, 0, 0.01);
+.h-main strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--scan-text);
+}
+
+.h-main small {
+    color: var(--scan-light);
+    font-size: 0.8rem;
+}
+
+.h-time {
+    font-weight: 600;
+    color: var(--scan-primary);
+    font-size: 0.9rem;
 }
 
 .wst-spinner {
