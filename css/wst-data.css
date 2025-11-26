@@ -1,0 +1,263 @@
+/* ============================================================
+   Warehouse Data Manager Styles (WST)
+   File: css/wst-data.css
+   Based on: Quoting Module Design (v2) - Blue Header Fixed
+   ============================================================ */
+
+/* --- Theme Variables --- */
+:root {
+    --wst-bg-color: #ffffff;
+    --wst-text-main: #333333;
+    --wst-text-light: #6b7280;
+    --wst-border: #e5e7eb;
+    --wst-border-focus: #ffd700;
+    
+    /* HEADER COLORS - FIXED TO BLUE */
+    --wst-header-bg: #0e2c4c;     /* Corporate Blue */
+    --wst-header-text: #ffffff;
+    
+    --wst-tab-active-bg: #f3f4f6;
+    --wst-tab-inactive-text: #64748b;
+}
+
+body.dark-mode {
+    --wst-bg-color: #1f2937;
+    --wst-text-main: #f3f4f6;
+    --wst-text-light: #9ca3af;
+    --wst-border: #374151;
+    
+    /* Dark Mode Header - Slightly darker blue, not black */
+    --wst-header-bg: #0a1f35;     
+    
+    --wst-tab-active-bg: #374151;
+    --wst-tab-inactive-text: #9ca3af;
+}
+
+/* --- Main Container --- */
+.wst-data-container {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 1. Header Section (Corporate Blue Style) --- */
+.wst-header {
+    background-color: var(--wst-header-bg);
+    color: var(--wst-header-text);
+    padding: 0 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    height: 70px;
+}
+
+.wst-title-area h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #fff;
+    margin: 0;
+}
+
+/* Gold Icon Box */
+.wst-title-area h2 i {
+    color: #ffd700; /* Gold */
+    font-size: 1.6rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* --- Tabs Styling --- */
+.wst-tabs {
+    display: flex;
+    gap: 0.5rem;
+    height: 100%;
+    align-items: flex-end;
+}
+
+.wst-tab-button {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 1rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 4px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 100%;
+}
+
+.wst-tab-button:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.wst-tab-button.active {
+    color: #ffd700; /* Gold text for active tab */
+    border-bottom-color: #ffd700;
+    background: linear-gradient(to top, rgba(255, 215, 0, 0.15), transparent);
+    font-weight: 700;
+}
+
+.wst-tab-button i {
+    font-size: 1.1rem;
+}
+
+/* --- Tab Content --- */
+.wst-tab-content-wrapper {
+    position: relative;
+}
+
+.wst-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.wst-tab-content.active {
+    display: block;
+}
+
+/* --- Filters Section (Card Style with Border) --- */
+.wst-filters-section {
+    background-color: var(--wst-bg-color);
+    border: 1px solid var(--wst-border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.wst-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.wst-filter-group label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--wst-text-light);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.wst-date-inputs {
+    display: flex;
+    align-items: center;
+    background: var(--color-background);
+    border: 1px solid var(--wst-border);
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+.wst-date-inputs input[type="date"] {
+    border: none;
+    background: transparent;
+    color: var(--wst-text-main);
+    font-size: 0.9rem;
+    padding: 0.4rem;
+    outline: none;
+}
+
+.wst-date-inputs span {
+    color: var(--wst-text-light);
+    font-size: 0.85rem;
+    padding: 0 0.5rem;
+}
+
+.wst-filter-group select {
+    padding: 0.5rem 2rem 0.5rem 0.8rem;
+    border: 1px solid var(--wst-border);
+    border-radius: 6px;
+    background-color: var(--color-background);
+    color: var(--wst-text-main);
+    font-size: 0.9rem;
+    outline: none;
+    min-width: 160px;
+}
+
+/* --- Table Container --- */
+.wst-table-container {
+    background: var(--wst-bg-color);
+    border: 1px solid var(--wst-border);
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+table.dataTable {
+    width: 100% !important;
+    border-collapse: collapse !important;
+}
+
+table.dataTable thead th {
+    background-color: var(--color-background-secondary);
+    color: var(--wst-text-main);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    padding: 12px 10px !important;
+    border-bottom: 2px solid var(--wst-border) !important;
+    white-space: nowrap;
+}
+
+table.dataTable tbody td {
+    padding: 10px 10px !important;
+    border-bottom: 1px solid var(--wst-border);
+    color: var(--wst-text-main);
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+/* Action Buttons */
+.btn-icon-action {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--wst-text-light);
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: 4px;
+}
+
+.btn-icon-action:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--goldmex-primary-color); /* Gold hover */
+    border-color: var(--wst-border);
+}
+
+.btn-icon-action.delete:hover {
+    color: #ef4444;
+}
+
+/* --- Modal Styles --- */
+.cm-modal-content {
+    border: 1px solid var(--wst-border);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.ml-auto { margin-left: auto; }
+.max-w-600 { max-width: 600px; }

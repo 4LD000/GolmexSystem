@@ -1,0 +1,271 @@
+/* ============================================================
+   Warehouse Scanner Module Styles
+   File: css/wst-scan.css
+   ============================================================ */
+
+:root {
+    --scan-bg: #f0f2f5;
+    --scan-card-bg: #ffffff;
+    --scan-text: #333;
+    --scan-border: #e0e0e0;
+    --scan-primary: #0e2c4c;
+    --scan-success: #10b981;
+    --scan-error: #ef4444;
+    --scan-accent: #ffd700;
+}
+
+body.dark-mode {
+    --scan-bg: #111827;
+    --scan-card-bg: #1f2937;
+    --scan-text: #f3f4f6;
+    --scan-border: #374151;
+}
+
+.wst-scan-container {
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+    height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- HEADER --- */
+.wst-scan-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.wst-scan-header h2 {
+    font-size: 2rem;
+    color: var(--goldmex-primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.wst-scan-header p {
+    color: var(--scan-text);
+    opacity: 0.7;
+}
+
+/* --- SCANNER BOX --- */
+.wst-scan-box {
+    background: var(--scan-card-bg);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--scan-border);
+}
+
+.wst-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border: 3px solid var(--goldmex-primary-color);
+    border-radius: 12px;
+    background: var(--scan-card-bg);
+    transition: all 0.2s;
+    overflow: hidden;
+}
+
+.wst-input-wrapper:focus-within {
+    box-shadow: 0 0 0 4px rgba(14, 44, 76, 0.2);
+    border-color: var(--goldmex-secondary-color);
+}
+
+.wst-input-wrapper i {
+    font-size: 2rem;
+    padding: 0 1rem;
+    color: var(--scan-text);
+    opacity: 0.5;
+}
+
+#wst-scan-input {
+    flex: 1;
+    border: none;
+    padding: 1.5rem 1rem 1.5rem 0;
+    font-size: 1.5rem;
+    background: transparent;
+    color: var(--scan-text);
+    font-family: 'Courier New', monospace;
+    outline: none;
+    font-weight: 700;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    padding: 0 1.5rem;
+    cursor: pointer;
+    color: var(--goldmex-primary-color);
+    border-left: 1px solid var(--scan-border);
+    height: 100%;
+}
+
+.hint-text {
+    display: block;
+    text-align: center;
+    margin-top: 0.8rem;
+    color: var(--scan-text);
+    opacity: 0.6;
+    font-size: 0.9rem;
+}
+
+/* --- RESULT CARD --- */
+.wst-result-card {
+    margin-top: 2rem;
+    border-top: 2px dashed var(--scan-border);
+    padding-top: 2rem;
+    text-align: center;
+}
+
+.wst-result-card.hidden {
+    display: none;
+}
+
+.result-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+.result-icon.success {
+    color: var(--scan-success);
+}
+
+.result-icon.error {
+    color: var(--scan-error);
+}
+
+.wst-spinner-scan {
+    font-size: 3rem;
+    color: var(--goldmex-primary-color);
+    margin-bottom: 1rem;
+}
+
+.pallet-details {
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+    font-size: 1.1rem;
+}
+
+.detail-row span {
+    color: var(--scan-text);
+    opacity: 0.7;
+}
+
+.detail-row strong {
+    color: var(--scan-text);
+    font-weight: 700;
+}
+
+.detail-row.highlight {
+    color: var(--goldmex-primary-color);
+    font-size: 1.3rem;
+    margin-top: 1rem;
+}
+
+.detail-row.highlight strong {
+    color: var(--goldmex-primary-color);
+}
+
+.btn-block {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+}
+
+/* Rating Badges */
+.rating-good {
+    color: var(--scan-success);
+}
+
+.rating-avg {
+    color: #f59e0b;
+}
+
+.rating-bad {
+    color: var(--scan-error);
+}
+
+/* --- HISTORY --- */
+.wst-scan-history {
+    flex: 1;
+    background: var(--scan-card-bg);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid var(--scan-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.wst-scan-history h4 {
+    margin-bottom: 1rem;
+    color: var(--scan-text);
+}
+
+.wst-history-scroll {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.wst-scan-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.wst-scan-table th {
+    text-align: left;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.02);
+    font-size: 0.85rem;
+    color: var(--scan-text);
+    opacity: 0.8;
+    position: sticky;
+    top: 0;
+}
+
+.wst-scan-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--scan-border);
+    font-size: 0.95rem;
+    color: var(--scan-text);
+}
+
+.wst-scan-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Animations */
+.hidden {
+    display: none !important;
+}
