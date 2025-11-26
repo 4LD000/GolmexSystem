@@ -1,4 +1,4 @@
-<!-- Warehouse Scanner Module (Inbound Checkpoint) -->
+<!-- Warehouse Scanner Module (Camera Fixed + Table Styles) -->
 <div class="wst-scan-container">
 
     <!-- HEADER -->
@@ -7,22 +7,23 @@
         <p>Scan pallet label to verify reception.</p>
     </div>
 
-    <!-- MAIN ACTION BOX -->
+    <!-- MAIN SCANNER AREA -->
     <div class="wst-scan-box">
         
-        <!-- CAMERA REGION (Hidden by default) -->
+        <!-- CAMERA FEED (Hidden by default) -->
         <div id="wst-camera-wrapper" class="wst-camera-wrapper hidden">
             <div id="wst-reader"></div>
-            <button id="wst-close-camera-btn" class="btn-goldmex-danger btn-block">
+            <button id="wst-close-camera-btn" class="btn-goldmex-danger btn-block" style="margin-top: 10px;">
                 Close Camera
             </button>
         </div>
 
         <!-- MANUAL INPUT (Default) -->
         <div id="wst-input-section">
-            <div class="wst-input-group">
+            <div class="wst-input-wrapper">
                 <i class='bx bx-qr-scan'></i>
                 <input type="text" id="wst-scan-input" placeholder="Click here & scan..." autocomplete="off" autofocus>
+                <button id="wst-manual-search-btn" class="btn-icon"><i class='bx bx-search'></i></button>
             </div>
             
             <div class="wst-divider">
@@ -30,12 +31,12 @@
             </div>
 
             <button id="wst-open-camera-btn" class="btn-goldmex-primary btn-block">
-                <i class='bx bx-camera'></i> Use Camera
+                <i class='bx bx-camera'></i> Open Camera
             </button>
         </div>
 
-        <!-- FEEDBACK CARD (Result) -->
-        <div id="wst-result-card" class="wst-result-card hidden">
+        <!-- RESULT CARD (Feedback) -->
+        <div id="wst-scan-result" class="wst-result-card hidden">
             
             <!-- SUCCESS STATE -->
             <div id="wst-res-success" class="result-state hidden">
@@ -86,8 +87,19 @@
             <h4><i class='bx bx-history'></i> Recent Scans (Today)</h4>
             <button id="wst-refresh-history" class="icon-btn"><i class='bx bx-refresh'></i></button>
         </div>
-        <div class="history-list-container" id="wst-history-container">
-            <!-- Injected items -->
+        <div class="history-list-container">
+            <table class="wst-scan-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Product</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="wst-scan-history-body">
+                    <!-- Injected items -->
+                </tbody>
+            </table>
         </div>
     </div>
 
