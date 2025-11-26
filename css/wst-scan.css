@@ -1,5 +1,5 @@
 /* ============================================================
-   Warehouse Scanner Module Styles (Fixed Table)
+   Warehouse Scanner Module Styles (Table Fix)
    File: css/wst-scan.css
    ============================================================ */
 
@@ -23,88 +23,108 @@ body.dark-mode {
 }
 
 .wst-scan-container {
-    padding: 2rem;
-    max-width: 900px; /* Slightly wider for desktop table */
+    padding: 1.5rem;
+    max-width: 800px;
     margin: 0 auto;
     height: calc(100vh - 80px);
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
     animation: fadeIn 0.4s ease-out;
 }
 
-@keyframes fadeIn { from {opacity: 0; transform: translateY(10px);} to {opacity: 1; transform: translateY(0);} }
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 
-/* --- HEADER --- */
-.wst-scan-header { text-align: center; margin-bottom: 1rem; }
-.wst-scan-header h2 { font-size: 2rem; color: var(--goldmex-primary-color); margin-bottom: 0.5rem; }
-.wst-scan-header p { color: var(--scan-text); opacity: 0.7; }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-/* --- SCANNER BOX --- */
+/* Header */
+.wst-scan-header {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.wst-scan-header h2 {
+    font-size: 1.8rem;
+    color: var(--goldmex-primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.wst-scan-header p {
+    color: var(--scan-light);
+    font-size: 0.95rem;
+}
+
+/* Scan Box */
 .wst-scan-box {
     background: var(--scan-card-bg);
     border-radius: 16px;
     padding: 2rem;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
     border: 1px solid var(--scan-border);
 }
 
+/* Input */
 .wst-input-wrapper {
-    position: relative;
     display: flex;
     align-items: center;
-    border: 3px solid var(--goldmex-primary-color);
+    border: 2px solid var(--scan-border);
     border-radius: 12px;
-    background: var(--scan-card-bg);
+    padding: 0.8rem;
+    background: var(--scan-bg);
     transition: all 0.2s;
-    overflow: hidden;
 }
 
 .wst-input-wrapper:focus-within {
-    box-shadow: 0 0 0 4px rgba(14, 44, 76, 0.2);
-    border-color: var(--goldmex-secondary-color);
+    border-color: var(--scan-primary);
+    box-shadow: 0 0 0 3px rgba(14, 44, 76, 0.1);
 }
 
 .wst-input-wrapper i {
-    font-size: 2rem;
-    padding: 0 1rem;
-    color: var(--scan-text);
-    opacity: 0.5;
+    font-size: 1.8rem;
+    color: var(--scan-light);
+    margin-right: 0.8rem;
 }
 
 #wst-scan-input {
     flex: 1;
     border: none;
-    padding: 1.5rem 1rem 1.5rem 0;
-    font-size: 1.5rem;
     background: transparent;
+    font-size: 1.2rem;
     color: var(--scan-text);
-    font-family: 'Courier New', monospace;
     outline: none;
-    font-weight: 700;
+    font-family: monospace;
 }
 
-.btn-icon {
-    background: none;
-    border: none;
-    font-size: 2rem;
-    padding: 0 1.5rem;
-    cursor: pointer;
-    color: var(--goldmex-primary-color);
-    border-left: 1px solid var(--scan-border);
-    height: 100%;
+.wst-divider {
+    display: flex;
+    align-items: center;
+    margin: 1.5rem 0;
+    color: var(--scan-light);
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
-.hint-text {
-    display: block;
-    text-align: center;
-    margin-top: 0.8rem;
-    color: var(--scan-text);
-    opacity: 0.6;
-    font-size: 0.9rem;
+.wst-divider::before,
+.wst-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--scan-border);
 }
 
-/* Camera Container */
+.wst-divider span {
+    padding: 0 10px;
+}
+
+/* Camera */
 .wst-camera-wrapper {
     text-align: center;
     background: #000;
@@ -122,21 +142,49 @@ body.dark-mode {
 .btn-block {
     width: 100%;
     padding: 1rem;
-    font-size: 1.1rem;
-    border-radius: 8px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
     font-weight: 700;
     text-transform: uppercase;
     cursor: pointer;
-    border: none;
-    margin-top: 1rem;
-    transition: transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
-.btn-block:active { transform: scale(0.98); }
 
-.btn-goldmex-primary { background: var(--scan-primary); color: white; }
-.btn-goldmex-secondary { background: #e0e0e0; color: #333; }
-.btn-goldmex-success { background: var(--scan-success); color: white; }
-.btn-goldmex-danger { background: var(--scan-error); color: white; }
+.btn-goldmex-primary {
+    background: var(--scan-primary);
+    color: white;
+}
+
+.btn-goldmex-success {
+    background: var(--scan-success);
+    color: white;
+}
+
+.btn-goldmex-danger {
+    background: var(--scan-error);
+    color: white;
+}
+
+.btn-goldmex-secondary {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.icon-btn-refresh {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--scan-light);
+    cursor: pointer;
+}
+
+.icon-btn-refresh:hover {
+    color: var(--scan-primary);
+}
 
 /* Result Card */
 .wst-result-card {
@@ -145,39 +193,63 @@ body.dark-mode {
     border-top: 2px dashed var(--scan-border);
     text-align: center;
 }
-.result-state.hidden { display: none; }
 
 .icon-circle {
-    width: 80px; height: 80px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
     margin: 0 auto 1rem;
-    font-size: 3.5rem; color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+    color: white;
 }
-.icon-circle.success { background: var(--scan-success); }
-.icon-circle.error { background: var(--scan-error); }
+
+.icon-circle.success {
+    background: var(--scan-success);
+}
+
+.icon-circle.error {
+    background: var(--scan-error);
+}
 
 .pallet-info {
-    background: rgba(0,0,0,0.03);
+    background: rgba(0, 0, 0, 0.03);
     border-radius: 10px;
     padding: 1.5rem;
     margin: 1.5rem 0;
     text-align: left;
     border: 1px solid var(--scan-border);
 }
+
 .info-row {
-    display: flex; justify-content: space-between;
-    margin-bottom: 0.8rem; font-size: 1.1rem;
-}
-.info-row span.label { color: var(--scan-light); font-size: 0.9rem; text-transform: uppercase; }
-.info-row strong.value { color: var(--scan-text); font-weight: 700; }
-.info-row.highlight {
-    margin-top: 1rem; padding-top: 1rem;
-    border-top: 1px solid var(--scan-border);
-    font-size: 1.3rem; color: var(--scan-primary);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+    font-size: 1rem;
 }
 
-/* --- HISTORY TABLE (FIXED STYLES) --- */
+.info-row .label {
+    color: var(--scan-light);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.info-row .value {
+    font-weight: 700;
+    color: var(--scan-text);
+}
+
+.info-row.highlight {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--scan-border);
+    color: var(--scan-primary);
+    font-size: 1.2rem;
+}
+
+/* HISTORY TABLE */
 .wst-scan-history {
     flex: 1;
     background: var(--scan-card-bg);
@@ -186,42 +258,41 @@ body.dark-mode {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    min-height: 250px; /* Ensure it has visible height */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 .history-header {
-    padding: 1.2rem 1.5rem;
-    background: rgba(0,0,0,0.02);
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.02);
     border-bottom: 1px solid var(--scan-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.history-header h4 { margin: 0; font-size: 1.1rem; color: var(--scan-text); display: flex; align-items: center; gap: 0.5rem; }
+
+.history-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--scan-text);
+}
 
 .history-list-container {
     flex: 1;
     overflow-y: auto;
-    padding: 0; /* Remove padding to let table fill width */
 }
 
-/* TABLE SPECIFICS */
 .wst-scan-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.95rem;
 }
 
 .wst-scan-table th {
     text-align: left;
-    padding: 1rem 1.5rem;
-    background-color: var(--scan-bg);
+    padding: 1rem;
+    background: var(--scan-bg);
+    font-size: 0.8rem;
     color: var(--scan-light);
-    font-weight: 600;
-    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
     position: sticky;
     top: 0;
     z-index: 5;
@@ -229,39 +300,25 @@ body.dark-mode {
 }
 
 .wst-scan-table td {
-    padding: 1rem 1.5rem;
+    padding: 1rem;
     border-bottom: 1px solid var(--scan-border);
     color: var(--scan-text);
-    vertical-align: middle;
+    font-size: 0.95rem;
 }
 
 .wst-scan-table tr:last-child td {
     border-bottom: none;
 }
 
-.wst-scan-table tr:hover {
-    background-color: rgba(0,0,0,0.02); /* Subtle hover effect */
+.wst-scan-table tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.01);
 }
 
-/* Cell Specifics */
-.wst-scan-table td:first-child {
-    font-family: 'Courier New', monospace;
-    font-weight: 700;
+.wst-spinner {
+    font-size: 3rem;
     color: var(--scan-primary);
-    width: 120px;
 }
 
-.wst-scan-table td:nth-child(2) {
-    font-weight: 600;
+.hidden {
+    display: none !important;
 }
-
-/* Status Icons */
-.wst-scan-table i {
-    font-size: 1.4rem;
-}
-
-/* Animations */
-.hidden { display: none !important; }
-.wst-divider { display: flex; align-items: center; margin: 1.5rem 0; color: var(--scan-light); font-size: 0.8rem; font-weight: 600; }
-.wst-divider::before, .wst-divider::after { content: ""; flex: 1; height: 1px; background: var(--scan-border); }
-.wst-divider span { padding: 0 10px; }
