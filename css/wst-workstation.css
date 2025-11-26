@@ -1,5 +1,5 @@
 /* ============================================================
-   Workstation Module Styles (WST V4 - Dark Mode Fixed)
+   Workstation Module Styles (WST V4 - Mobile Responsive & Dark Mode)
    File: css/wst-workstation.css
    ============================================================ */
 
@@ -12,8 +12,10 @@
     --wst-border: #e5e7eb;
 
     /* Branding */
-    --wst-primary: var(--goldmex-primary-color, #0e2c4c);
-    --wst-accent: var(--goldmex-secondary-color, #ffd700);
+    --wst-primary: #0e2c4c;
+    /* Corporate Blue */
+    --wst-accent: #d4af37;
+    /* Gold */
 
     /* Semantic Colors */
     --wst-success: #10b981;
@@ -26,7 +28,7 @@
     --wst-sidebar-width: 350px;
 }
 
-/* --- DARK MODE OVERRIDES (FORZADOS) --- */
+/* --- DARK MODE OVERRIDES --- */
 body.dark-mode {
     --wst-bg: #111827;
     --wst-card-bg: #1f2937;
@@ -34,8 +36,11 @@ body.dark-mode {
     --wst-text-light: #9ca3af;
     --wst-border: #374151;
 
+    /* Dark Mode specific brand adjustments */
     --wst-primary: #3b82f6;
-    --wst-accent: #ffd700;
+    /* Lighter blue for UI elements/icons */
+    --wst-accent: #d4af37;
+    /* Keep Gold */
 }
 
 /* --- MAIN CONTAINER --- */
@@ -113,10 +118,15 @@ body.dark-mode {
 .wst-selection-header h2 {
     font-size: 2rem;
     color: var(--wst-text-main);
+    /* Fixed for Dark Mode */
     margin-bottom: 0.5rem;
 }
 
-/* FIX: Added padding to prevent hover cutoff */
+/* Gold Title in Dark Mode */
+body.dark-mode .wst-selection-header h2 {
+    color: var(--wst-accent);
+}
+
 .wst-lines-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -125,7 +135,6 @@ body.dark-mode {
     width: 90%;
     margin: 0 auto;
     padding: 3rem;
-    /* Increased padding specifically for hover effects */
     padding-bottom: 5rem;
     overflow-y: auto;
 }
@@ -140,10 +149,8 @@ body.dark-mode {
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     position: relative;
-    /* Removed overflow:hidden to allow borders/shadows to render correctly */
 }
 
-/* Indicator Top Bar using pseudo-element inside border radius */
 .wst-line-card::before {
     content: '';
     position: absolute;
@@ -162,7 +169,6 @@ body.dark-mode {
     border-color: var(--wst-primary);
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25);
     z-index: 10;
-    /* Ensure it stays on top */
 }
 
 .wst-line-card:hover::before {
@@ -213,7 +219,8 @@ body.dark-mode .wst-line-card.busy {
    ============================================================ */
 .wst-dashboard-header {
     height: var(--wst-header-height);
-    background-color: var(--goldmex-primary-color);
+    background-color: #0e2c4c;
+    /* Always Corporate Blue Header */
     color: white;
     display: flex;
     justify-content: space-between;
@@ -222,6 +229,13 @@ body.dark-mode .wst-line-card.busy {
     flex-shrink: 0;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     z-index: 10;
+}
+
+/* In Dark Mode, header stays dark blue but text pops */
+body.dark-mode .wst-dashboard-header {
+    background-color: #081a2f;
+    /* Slightly darker */
+    border-bottom: 1px solid var(--wst-border);
 }
 
 .wst-header-info {
@@ -376,7 +390,12 @@ body.dark-mode .wst-select-btn {
     text-overflow: ellipsis;
 }
 
-/* Card Specific Colors */
+/* Gold Value in Dark Mode */
+body.dark-mode .metric-value {
+    color: var(--wst-text-main);
+}
+
+/* Card Colors */
 .wst-metric-card:nth-child(1) .metric-icon {
     background: rgba(59, 130, 246, 0.15);
     color: var(--wst-info);
@@ -453,6 +472,10 @@ body.dark-mode .wst-select-btn {
     color: var(--wst-primary);
 }
 
+body.dark-mode .wst-status-bar span {
+    color: var(--wst-accent);
+}
+
 .wst-buttons-grid {
     display: flex;
     gap: 1.5rem;
@@ -523,7 +546,7 @@ body.dark-mode .wst-select-btn {
 }
 
 body.dark-mode .sidebar-header {
-    color: var(--wst-text-main);
+    color: var(--wst-accent);
 }
 
 .badge {
@@ -658,6 +681,11 @@ body.dark-mode .sidebar-header {
     color: var(--wst-text-main);
 }
 
+/* Dark Mode Modal Title */
+body.dark-mode .wst-modal-header h3 {
+    color: var(--wst-accent);
+}
+
 .wst-close-btn {
     background: transparent;
     border: none;
@@ -743,7 +771,7 @@ body.dark-mode .sidebar-header {
     opacity: 0.8;
 }
 
-/* Modal Boxes (Login, Confirm, etc) */
+/* Modal Boxes */
 .wst-login-box,
 .wst-confirm-box {
     background: var(--wst-card-bg);
@@ -779,6 +807,12 @@ body.dark-mode .sidebar-header {
     color: var(--wst-text-main);
 }
 
+/* Dark Mode Popups */
+body.dark-mode .wst-confirm-box h3,
+body.dark-mode .wst-login-box h3 {
+    color: var(--wst-accent);
+}
+
 .wst-confirm-box p {
     color: var(--wst-text-light);
     margin-bottom: 2rem;
@@ -796,4 +830,92 @@ body.dark-mode .sidebar-header {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE (Tablets & Phones < 1024px)
+   ============================================================ */
+@media (max-width: 1024px) {
+
+    /* Stack Layout Vertical */
+    .wst-main-layout {
+        flex-direction: column;
+        height: auto;
+        overflow-y: auto;
+        /* Allow scroll of entire page */
+    }
+
+    /* Top Control Panel */
+    .wst-control-panel {
+        flex: none;
+        width: 100%;
+        padding: 1rem;
+        overflow: visible;
+    }
+
+    /* Stack Top Dashboard (Select Button + Metrics) */
+    .wst-top-dashboard {
+        flex-direction: column;
+        height: auto;
+        gap: 1rem;
+    }
+
+    .wst-selection-wrapper {
+        flex: none;
+        width: 100%;
+        height: 80px;
+        /* Reduced height for button */
+    }
+
+    .wst-select-btn {
+        flex-direction: row;
+        /* Horizontal layout for button */
+        gap: 1rem;
+    }
+
+    .wst-select-btn .icon-box {
+        font-size: 2rem;
+        margin-bottom: 0;
+    }
+
+    /* Action Buttons - Increase Touch Area */
+    .wst-buttons-grid {
+        height: auto;
+        flex-wrap: wrap;
+    }
+
+    .wst-action-btn {
+        min-height: 80px;
+        /* Taller for fingers */
+        font-size: 0.9rem;
+    }
+
+    /* Sidebar moves to bottom */
+    .wst-sidebar {
+        width: 100%;
+        height: auto;
+        min-height: 300px;
+        border-left: none;
+        border-top: 1px solid var(--wst-border);
+    }
+
+    /* Header Adjustments */
+    .wst-dashboard-header {
+        padding: 0 1rem;
+    }
+
+    .wst-header-info {
+        gap: 0.8rem;
+    }
+
+    .wst-badge-line span,
+    .wst-badge-op span {
+        font-size: 0.85rem;
+    }
+
+    /* Line Grid Selection */
+    .wst-lines-grid {
+        padding: 1rem;
+        gap: 1rem;
+    }
 }
