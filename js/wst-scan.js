@@ -1,150 +1,162 @@
 (function() {
-    if (!window.supabase) return console.error("Supabase client not found.");
+    if (!window.supabase) return console.error("Supabase missing.");
     const moduleContainer = document.querySelector('.wst-scan-container');
     if (!moduleContainer) return;
 
-    // DOM Elements
+    // DOM
+    const inputSection = document.getElementById('wst-input-section');
+    const cameraWrapper = document.getElementById('wst-camera-wrapper');
     const scanInput = document.getElementById('wst-scan-input');
-    const searchBtn = document.getElementById('wst-manual-search-btn');
-    const resultCard = document.getElementById('wst-scan-result');
     
-    // Result Sections
-    const resSuccess = document.getElementById('wst-result-success');
-    const resError = document.getElementById('wst-result-error');
-    const resLoading = document.getElementById('wst-result-loading');
-    
-    // Data Fields
-    const fProd = document.getElementById('scan-prod-name');
-    const fLine = document.getElementById('scan-line-name');
-    const fOp = document.getElementById('scan-operator');
-    const fTime = document.getElementById('scan-total-time');
-    const fRating = document.getElementById('scan-rating-badge');
-    const errorMsg = document.getElementById('wst-error-msg');
-
     // Buttons
-    const btnReset = document.getElementById('wst-scan-reset-btn');
-    const btnError = document.getElementById('wst-error-reset-btn');
-
+    const openCameraBtn = document.getElementById('wst-open-camera-btn');
+    const closeCameraBtn = document.getElementById('wst-close-camera-btn');
+    
+    // Result Areas
+    const resultCard = document.getElementById('wst-scan-result');
+    const resSuccess = document.getElementById('wst-res-success');
+    const resError = document.getElementById('wst-res-error');
+    const resLoading = document.getElementById('wst-res-loading');
+    
+    // Success Data
+    const resProduct = document.getElementById('res-product');
+    const resLine = document.getElementById('res-line-op');
+    const resTime = document.getElementById('res-time');
+    const nextBtn = document.getElementById('wst-next-scan-btn');
+    const retryBtn = document.getElementById('wst-retry-btn');
+    
     // History
     const historyBody = document.getElementById('wst-scan-history-body');
+    const refreshHistoryBtn = document.getElementById('wst-refresh-history');
 
-    // Audio (Optional)
-    const soundSuccess = document.getElementById('audio-success'); 
-    const soundError = document.getElementById('audio-error');
+    let html5QrCode = null;
 
     // --- INIT ---
     function init() {
-        console.log("WST Scanner Initialized (Mobile/Reader Optimized)");
-        loadTodaysHistory();
+        console.log("Scanner Module Initialized");
+        loadHistory();
         
-        // FORCE FOCUS ON LOAD
-        setTimeout(() => {
-            scanInput.focus();
-        }, 500);
-
-        // --- MOBILE/READER LOGIC (KEEP FOCUS) ---
-        // 1. Click listener: Refocus unless clicking a button
+        // Auto-focus for USB scanners
+        setTimeout(() => scanInput.focus(), 500);
         document.addEventListener('click', (e) => {
-            const isButton = e.target.closest('button') || e.target.tagName === 'A';
-            const isInput = e.target === scanInput;
-            
-            if (!isButton && !isInput) {
+            if(cameraWrapper.classList.contains('hidden') && !e.target.closest('button') && !e.target.closest('input')) {
                 scanInput.focus();
             }
         });
-
-        // 2. Interval check: Ensure focus is kept periodically (aggressive mode)
-        // Useful if focus is lost due to system dialogs or other interruptions
-        setInterval(() => {
-            if (document.activeElement !== scanInput && !document.querySelector('.btn-block:active')) {
-               // scanInput.focus(); // Uncomment for very aggressive focus
-            }
-        }, 2000);
     }
 
     // --- HANDLERS ---
     scanInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const code = scanInput.value.trim();
-            if (code) processScan(code);
+            if(code) handleScan(code);
         }
     });
 
-    searchBtn.onclick = () => {
+    document.getElementById('wst-manual-search-btn').onclick = () => {
         const code = scanInput.value.trim();
-        if (code) processScan(code);
+        if(code) handleScan(code);
     };
 
-    btnReset.onclick = resetScanner;
-    btnError.onclick = resetScanner;
+    openCameraBtn.onclick = startCamera;
+    closeCameraBtn.onclick = stopCamera;
+    nextBtn.onclick = resetUI;
+    retryBtn.onclick = resetUI;
+    refreshHistoryBtn.onclick = loadHistory;
 
-    // --- CORE LOGIC ---
-    async function processScan(qrCode) {
+    // --- CAMERA LOGIC ---
+    async function startCamera() {
+        inputSection.classList.add('hidden');
+        cameraWrapper.classList.remove('hidden');
+        resultCard.classList.add('hidden');
+
+        html5QrCode = new Html5Qrcode("wst-reader");
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    stopCamera();
+                    handleScan(decodedText);
+                }
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Camera error: " + err);
+            stopCamera();
+        }
+    }
+
+    function stopCamera() {
+        if(html5QrCode) {
+            html5QrCode.stop().then(() => {
+                html5QrCode.clear();
+                cameraWrapper.classList.add('hidden');
+                inputSection.classList.remove('hidden');
+                scanInput.focus();
+            }).catch(err => console.error(err));
+        } else {
+            cameraWrapper.classList.add('hidden');
+            inputSection.classList.remove('hidden');
+        }
+    }
+
+    // --- PROCESS LOGIC ---
+    async function handleScan(qrCode) {
         showState('loading');
-        
-        // Optional: Blur to hide soft keyboard on mobile, then refocus later
-        // scanInput.blur(); 
+        scanInput.value = '';
+        scanInput.blur(); // Hide mobile keyboard
 
         try {
-            // 1. Fetch Pallet Data
+            // 1. Search Pallet
             const { data: pallet, error } = await supabase
                 .from('production_log')
                 .select(`
                     *,
                     production_products (name, cases_per_pallet, seconds_per_case),
-                    warehouse_lines (line_name)
+                    warehouse_lines (line_name, current_operator)
                 `)
                 .eq('pallet_qr_id', qrCode)
                 .single();
 
-            if (error || !pallet) throw new Error("Code not found in system.");
-
-            // 2. Validations
-            if (pallet.warehouse_scan_time) {
-                throw new Error("This pallet was ALREADY registered previously.");
+            if(error || !pallet) throw new Error("Pallet ID not found.");
+            
+            // 2. Check Status
+            if(pallet.warehouse_scan_time) {
+                throw new Error("Pallet ALREADY scanned at " + new Date(pallet.warehouse_scan_time).toLocaleTimeString());
             }
 
-            // 3. CALCULATIONS
+            // 3. Calculate Stats
             const now = new Date();
-            const startTime = new Date(pallet.start_time);
+            const start = new Date(pallet.start_time);
+            const realSecs = Math.floor((now - start) / 1000);
+            const stdSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
             
-            // Real Time (Seconds)
-            const realTimeSecs = Math.floor((now - startTime) / 1000);
-            
-            // Standard Time (Seconds)
-            const stdTimeSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
-            
-            // Deviation
-            const deviation = realTimeSecs - stdTimeSecs;
-
-            // Rating Logic
+            // Calculate Performance
             let rating = 'success';
-            if (realTimeSecs > stdTimeSecs * 1.20) rating = 'danger'; 
-            else if (realTimeSecs > stdTimeSecs) rating = 'warning'; 
+            if(realSecs > stdSecs * 1.2) rating = 'danger';
+            else if(realSecs > stdSecs) rating = 'warning';
 
-            // 4. UPDATE DB
+            // 4. Update DB
             const { error: updateError } = await supabase
                 .from('production_log')
                 .update({
                     warehouse_scan_time: now.toISOString(),
-                    final_time_seconds: realTimeSecs,
-                    standard_time_seconds: stdTimeSecs,
-                    deviation_seconds: deviation,
+                    final_time_seconds: realSecs,
+                    standard_time_seconds: stdSecs,
                     performance_rating: rating,
                     status: 'completed'
                 })
                 .eq('id', pallet.id);
 
-            if (updateError) throw new Error("Error saving data: " + updateError.message);
+            if(updateError) throw updateError;
 
-            // 5. SUCCESS UI
-            showSuccess(pallet, realTimeSecs, rating);
-            if(soundSuccess) soundSuccess.play().catch(()=>{});
-            loadTodaysHistory(); 
+            // 5. Show Success
+            displaySuccess(pallet, realSecs);
+            loadHistory();
 
         } catch (err) {
             showError(err.message);
-            if(soundError) soundError.play().catch(()=>{});
         }
     }
 
@@ -155,76 +167,65 @@
         resSuccess.classList.add('hidden');
         resError.classList.add('hidden');
 
-        if (state === 'loading') resLoading.classList.remove('hidden');
-        if (state === 'success') resSuccess.classList.remove('hidden');
-        if (state === 'error') resError.classList.remove('hidden');
+        if(state === 'loading') resLoading.classList.remove('hidden');
+        if(state === 'success') resSuccess.classList.remove('hidden');
+        if(state === 'error') resError.classList.remove('hidden');
     }
 
-    function showSuccess(pallet, realSeconds, rating) {
+    function displaySuccess(pallet, seconds) {
         showState('success');
+        resProduct.textContent = pallet.production_products.name;
         
-        fProd.textContent = pallet.production_products.name;
-        fLine.textContent = pallet.warehouse_lines ? pallet.warehouse_lines.line_name : 'N/A';
-        fOp.textContent = pallet.operator_name;
+        // Handle potential null line relation if line was deleted
+        const lineName = pallet.warehouse_lines ? pallet.warehouse_lines.line_name : 'Unknown Line';
+        const opName = pallet.operator_name || 'Unknown';
+        resLine.textContent = `${lineName} (${opName})`;
         
-        // Format Time
-        const h = Math.floor(realSeconds / 3600);
-        const m = Math.floor((realSeconds % 3600) / 60);
-        const s = realSeconds % 60;
-        fTime.textContent = `${h}h ${m}m ${s}s`;
-
-        // Rating Badge
-        let label = "Excellent";
-        let colorClass = "rating-good";
-        if (rating === 'warning') { label = "Average"; colorClass = "rating-avg"; }
-        if (rating === 'danger') { label = "Slow"; colorClass = "rating-bad"; }
-        
-        fRating.textContent = label;
-        fRating.className = ""; 
-        fRating.classList.add(colorClass);
+        const h = Math.floor(seconds/3600);
+        const m = Math.floor((seconds%3600)/60);
+        resTime.textContent = `${h}h ${m}m`;
     }
 
     function showError(msg) {
         showState('error');
-        errorMsg.textContent = msg;
+        document.getElementById('wst-error-message').textContent = msg;
     }
 
-    function resetScanner() {
-        scanInput.value = '';
+    function resetUI() {
         resultCard.classList.add('hidden');
-        scanInput.focus(); 
+        scanInput.value = '';
+        scanInput.focus();
     }
 
-    // --- HISTORY ---
-    async function loadTodaysHistory() {
+    // --- HISTORY (TABLE FIX) ---
+    async function loadHistory() {
         const today = new Date().toISOString().split('T')[0];
-        
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('production_log')
             .select('*, production_products(name)')
-            .not('warehouse_scan_time', 'is', null) 
+            .not('warehouse_scan_time', 'is', null)
             .gte('warehouse_scan_time', `${today} 00:00:00`)
             .order('warehouse_scan_time', { ascending: false })
-            .limit(20);
+            .limit(15);
 
-        if (data) renderHistory(data);
-    }
-
-    function renderHistory(logs) {
         historyBody.innerHTML = '';
-        logs.forEach(log => {
-            const time = new Date(log.warehouse_scan_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        if(!data || data.length === 0) {
+            historyBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1rem; color:#999;">No scans today.</td></tr>';
+            return;
+        }
+
+        data.forEach(log => {
             const tr = document.createElement('tr');
+            const time = new Date(log.warehouse_scan_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             
-            let statusIcon = "<i class='bx bxs-check-circle' style='color:var(--scan-success)'></i>";
-            if(log.performance_rating === 'danger') statusIcon = "<i class='bx bxs-error-circle' style='color:var(--scan-error)'></i>";
-            else if(log.performance_rating === 'warning') statusIcon = "<i class='bx bxs-minus-circle' style='color:#f59e0b'></i>";
+            let iconColor = 'var(--scan-success)';
+            if(log.performance_rating === 'warning') iconColor = '#f59e0b';
+            if(log.performance_rating === 'danger') iconColor = 'var(--scan-error)';
 
             tr.innerHTML = `
-                <td>${time}</td>
-                <td>${log.production_products?.name || '?'}</td>
-                <td style="font-family:monospace; font-size:0.85rem;">${log.pallet_qr_id.substring(0,12)}...</td>
-                <td style="text-align:center;">${statusIcon}</td>
+                <td style="font-family:monospace; font-weight:bold;">${time}</td>
+                <td>${log.production_products.name}</td>
+                <td style="text-align:center;"><i class='bx bxs-circle' style="color:${iconColor}; font-size:1.2rem;"></i></td>
             `;
             historyBody.appendChild(tr);
         });
