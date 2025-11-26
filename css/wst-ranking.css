@@ -1,0 +1,505 @@
+/* ============================================================
+   GMX Performance Board (TV View) - COLUMNS LAYOUT
+   File: css/wst-ranking.css
+   ============================================================ */
+
+:root {
+    --rank-bg: #f8f9fa;
+    --rank-card-bg: #ffffff;
+    --rank-text: #1f2937;
+    --rank-text-muted: #6b7280;
+
+    /* Semantic Colors */
+    --rank-green: #059669;
+    --rank-yellow: #d97706;
+    --rank-red: #dc2626;
+
+    --rank-gold: #d4af37;
+    --rank-blue: #0e2c4c;
+}
+
+body.dark-mode {
+    --rank-bg: #0f172a;
+    --rank-card-bg: #1e293b;
+    --rank-text: #f3f4f6;
+    --rank-text-muted: #9ca3af;
+
+    --rank-green: #10b981;
+    --rank-yellow: #f59e0b;
+    --rank-red: #ef4444;
+}
+
+/* --- MAIN CONTAINER --- */
+.wst-ranking-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 15rem;
+
+    display: flex;
+    flex-direction: column;
+    background-color: var(--rank-bg);
+    padding: 1.5rem;
+    gap: 1.5rem;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    z-index: 50;
+    transition: left 0.5s ease;
+}
+
+/* Ajuste sidebar minimizado */
+body.sidebar-minimize .wst-ranking-container,
+.sidebar.minimize~main .wst-ranking-container {
+    left: 4.94rem;
+}
+
+/* --- HEADER --- */
+.wst-rank-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--rank-card-bg);
+    padding: 1.2rem 2rem;
+    border-radius: 16px;
+    border-left: 6px solid var(--rank-gold);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.wst-rank-title h2 {
+    font-size: 1.8rem;
+    margin: 0;
+    color: var(--rank-text);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.wst-rank-title span {
+    color: var(--rank-gold);
+    font-weight: 800;
+}
+
+.live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--rank-red);
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.live-dot {
+    width: 10px;
+    height: 10px;
+    background-color: var(--rank-red);
+    border-radius: 50%;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+/* --- SUMMARY CARDS --- */
+.wst-rank-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    flex-shrink: 0;
+}
+
+.summary-card {
+    background: var(--rank-card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sum-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--rank-gold);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+}
+
+.sum-data {
+    display: flex;
+    flex-direction: column;
+}
+
+.sum-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--rank-text-muted);
+    font-weight: 600;
+}
+
+.sum-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--rank-text);
+    line-height: 1;
+}
+
+/* --- LEADERBOARD LIST --- */
+.wst-leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-bottom: 2rem;
+    overflow-y: auto;
+    flex-grow: 1;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.wst-leaderboard::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- CARD GRID LAYOUT --- */
+.rank-card {
+    display: grid;
+    /* Ajuste de columnas para dar más espacio */
+    /* 1. Rank: 60px
+       2. Info: 1.5fr
+       3. Producto: 2fr
+       4. Status: 1fr
+       5. Timer: 1fr (Más ancho para separar)
+       6. Saved: 1.2fr (Columna ancha para separar)
+       7. Pallets: 0.6fr
+    */
+    grid-template-columns: 60px 1.5fr 2fr 1fr 1fr 1.2fr 0.6fr;
+    align-items: center;
+    background: var(--rank-card-bg);
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+    border-left: 6px solid transparent;
+    position: relative;
+    animation: slideIn 0.5s ease-out;
+
+    /* AUMENTADO: Gap de 3rem para separar mucho más el grupo izquierdo del derecho */
+    gap: 3rem;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rank-card:hover {
+    transform: scale(1.005);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Position Badge */
+.rank-pos {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--rank-text-muted);
+    opacity: 0.3;
+    font-style: italic;
+    text-align: center;
+}
+
+.rank-card.pos-1 .rank-pos {
+    color: var(--rank-gold);
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.rank-card.pos-2 .rank-pos {
+    color: #c0c0c0;
+    opacity: 0.8;
+}
+
+.rank-card.pos-3 .rank-pos {
+    color: #cd7f32;
+    opacity: 0.8;
+}
+
+/* Line Info */
+.rank-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.line-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--rank-text);
+    white-space: nowrap;
+}
+
+.line-op {
+    font-size: 0.9rem;
+    color: var(--rank-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- ELEMENTOS DEL GRID --- */
+
+/* Columna 3: Product Name */
+.current-item-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--rank-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    padding-right: 1rem;
+}
+
+/* Columna 4: Status Badge */
+.rank-status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    white-space: nowrap;
+
+    /* TRUCO VISUAL: Baja el elemento 12px para alinearlo con los números 
+       de la derecha (que están más abajo por tener etiqueta arriba) */
+    transform: translateY(12px);
+}
+
+.status-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--rank-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    animation: pulseBorder 2s infinite;
+}
+
+.status-idle {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--rank-text-muted);
+}
+
+/* Columna 5: Timer */
+.live-timer-display {
+    font-family: 'Courier New', monospace;
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--rank-blue);
+    background: rgba(0, 0, 0, 0.03);
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    width: 100%;
+    text-align: center;
+
+    /* TRUCO VISUAL: Mismo ajuste, bajar 12px para nivelar */
+    transform: translateY(12px);
+}
+
+body.dark-mode .live-timer-display {
+    color: #60a5fa;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Columna 6: Saved Time */
+.rank-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Columna 7: Pallets */
+.rank-stat-pallets {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    justify-self: end;
+    text-align: right;
+    padding-right: 0.5rem;
+}
+
+/* ESTILOS PARA LA ETIQUETA ARRIBA Y VALOR ABAJO */
+.stat-val {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--rank-text);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--rank-text-muted);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    /* Separación de la etiqueta */
+    letter-spacing: 0.5px;
+}
+
+/* Time Diff Styles */
+.time-diff {
+    font-family: 'Courier New', monospace;
+    font-weight: 900;
+    font-size: 1.5rem;
+    padding: 0.2rem 0.8rem;
+    border-radius: 8px;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.diff-positive {
+    color: var(--rank-green);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.diff-neutral {
+    color: var(--rank-yellow);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.diff-negative {
+    color: var(--rank-red);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Borders Status */
+.rank-card.status-good {
+    border-left-color: var(--rank-green);
+}
+
+.rank-card.status-warn {
+    border-left-color: var(--rank-yellow);
+}
+
+.rank-card.status-bad {
+    border-left-color: var(--rank-red);
+}
+
+@keyframes pulseBorder {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+/* MOBILE RESPONSIVE */
+@media (max-width: 1024px) {
+    .wst-ranking-container {
+        left: 0;
+        padding: 1rem;
+    }
+
+    .rank-card {
+        gap: 1rem;
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .rank-card {
+        grid-template-columns: 50px 1fr;
+        grid-auto-rows: auto;
+        gap: 0.8rem;
+        padding: 1rem;
+    }
+
+    .rank-pos {
+        grid-row: 1 / 2;
+        grid-column: 1 / 2;
+        font-size: 1.5rem;
+    }
+
+    .rank-info {
+        grid-row: 1 / 2;
+        grid-column: 2 / 3;
+    }
+
+    .current-item-name {
+        grid-column: 1 / 3;
+        grid-row: 2;
+        font-size: 1rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        padding-top: 0.5rem;
+        padding-right: 0;
+    }
+
+    /* Resetear transformaciones en móvil */
+    .rank-status-badge {
+        grid-column: 1 / 2;
+        grid-row: 3;
+        width: auto;
+        justify-content: flex-start;
+        transform: none;
+        /* Reset */
+    }
+
+    .live-timer-display {
+        grid-column: 2 / 3;
+        grid-row: 3;
+        justify-self: end;
+        width: auto;
+        transform: none;
+        /* Reset */
+    }
+
+    .rank-stat {
+        grid-column: 1 / 2;
+        grid-row: 4;
+        align-items: flex-start;
+        text-align: left;
+        margin-top: 0.5rem;
+    }
+
+    .rank-stat-pallets {
+        grid-column: 2 / 3;
+        grid-row: 4;
+        align-items: flex-end;
+        margin-top: 0.5rem;
+    }
+}
