@@ -1,15 +1,17 @@
-// js/script.js
+// js/script.js (COMPLETO Y CORREGIDO)
+
+console.log("Script.js: >>> SCRIPT EXECUTION STARTED <<<");
 
 // Select DOM elements once for better performance
 const menusItemsDropDown = document.querySelectorAll(".menu-item-dropdown");
 const sidebar = document.getElementById("sidebar");
-const menuBtnDesktop = document.getElementById("menu-btn"); // Button to minimize/expand on desktop
-const sidebarBtnMobile = document.getElementById("sidebar-btn"); // Button to show/hide on mobile
+const menuBtnDesktop = document.getElementById("menu-btn");
+const sidebarBtnMobile = document.getElementById("sidebar-btn");
 const darkModeBtn = document.getElementById("dark-mode-btn");
 const mainContent = document.querySelector("main");
 const allMenuLinks = document.querySelectorAll(
   ".sidebar .menu-link, .sidebar .sub-menu-link"
-); // All clickable menu links
+);
 const allDropdownParents = document.querySelectorAll(".menu-item-dropdown");
 
 // Authentication and user profile elements
@@ -20,16 +22,19 @@ const userAvatarElement = document.getElementById("user-avatar");
 const authButton = document.getElementById("auth-button");
 const authRequiredMessage = document.getElementById("auth-required-message");
 const mainAppContent = document.getElementById("main-app-content");
+const userContainer = document.querySelector(".user");
 
 // --- Supabase Configuration ---
 const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
 
-let supabase = null;
 try {
   if (window.supabase && typeof window.supabase.createClient === "function") {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabase = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
     console.log("Supabase client initialized in script.js.");
   } else {
     throw new Error(
@@ -40,9 +45,16 @@ try {
   console.error("Error initializing Supabase in script.js:", error);
 }
 
-// --- Centralized Access and Visibility Configuration ---
+// --- Inactivity Logout Configuration ---
+let inactivityTimer;
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
-// --- Role 1: Managers (Total Access) ---
+// --- Global User State Tracking ---
+let currentGlobalUserId = null;
+let currentGlobalProfile = null;
+let currentGlobalUser = null;
+
+// --- Role Configuration ---
 const MANAGER_USERS = [
   "fulfillment@gmxecommerce.com",
   "tgarcia@goldmexintl.com",
@@ -55,16 +67,13 @@ const MANAGER_USERS = [
   "aesquivez@goldmexintl.com"
 ];
 
-// --- Role 2: Employees (Standard Access) ---
 const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
 const EMPLOYEE_EXCEPTIONS = [
   "kikecanfir@gmail.com",
   "enriqueflores.10@hotmail.com",
-  "",    // <-- CORREO AGREGADO
-  "jatejix@gmail.com",      // <-- CORREO AGREGADO
+  "jatejix@gmail.com"
 ];
 
-// --- Role 3: Clients / Restricted (Limited Access) ---
 const RESTRICTED_VIEW_DOMAINS = [
   "estafeta.com",
   "gelalogs.com",
@@ -77,27 +86,13 @@ const RESTRICTED_VIEW_USERS = [
   "quanganhpn2002@gmail.com",
 ];
 
-// --- Module Definitions ---
 const CLIENT_VIEW_MODULES = ["brokerage-cqp", "import-portal"];
 
-// --- Inactivity Logout Configuration ---
-let inactivityTimer;
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
-
-// --- Global User State Tracking ---
-let currentGlobalUserId = null; // Stores the ID of the currently authenticated user
-
-/**
- * Checks if the user's email is allowed to log in to the system.
- * @param {string} email
- * @returns {boolean}
- */
 function isUserAllowed(email) {
   if (!email) return false;
   const lowerEmail = email.toLowerCase();
   const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
 
-  // Check if user exists in any of the defined roles
   if (
     MANAGER_USERS.includes(lowerEmail) ||
     EMPLOYEE_DOMAINS.includes(domain) ||
@@ -107,37 +102,44 @@ function isUserAllowed(email) {
   ) {
     return true;
   }
-
-  console.warn(
-    `Email ${lowerEmail} is not allowed to access the system (checked in script.js).`
-  );
   return false;
 }
 
-// --- Supabase Authentication Functions ---
+// --- CORRECCIÓN CRÍTICA EN SIGNOUT ---
 async function signOut(isDueToInactivity = false) {
-  if (!supabase) {
-    console.error("Supabase client is not available for signOut.");
-    return;
-  }
+  if (!window.supabase) return;
+  
   try {
     stopInactivityTimer();
-    const { error } = await supabase.auth.signOut();
+    
+    // Intentamos cerrar sesión en el servidor
+    const { error } = await window.supabase.auth.signOut();
+    
     if (error) {
-      console.error("Error signing out:", error.message);
-      showCustomNotificationST(`Error signing out: ${error.message}`, "error");
+      // Si hay error (ej. 403 session missing), solo lo registramos como warning
+      // pero NO detenemos el proceso de limpieza local.
+      console.warn("Supabase signOut warning (forcing local logout):", error.message);
     } else {
-      console.log("Signed out successfully.");
-      if (isDueToInactivity) {
-        console.log("User logged out due to inactivity.");
-      }
+      console.log("Signed out successfully from server.");
     }
+
   } catch (error) {
     console.error("Exception during sign out:", error);
-    showCustomNotificationST(
-      "An unexpected error occurred while signing out.",
-      "error"
-    );
+  } finally {
+    // *** LIMPIEZA FORZADA ***
+    // Esto se ejecuta SIEMPRE, haya error o no.
+    
+    console.log("Performing local session cleanup...");
+    currentGlobalUserId = null;
+    currentGlobalUser = null;
+    currentGlobalProfile = null;
+
+    // Limpiar localStorage específico de Supabase para evitar el bucle de sesión fantasma
+    const projectKey = 'sb-ogatafslnevidfopuvbp-auth-token'; 
+    localStorage.removeItem(projectKey);
+
+    updateUserUI(null);
+    window.location.href = "login.html";
   }
 }
 
@@ -154,15 +156,27 @@ function logoutDueToInactivity() {
 
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
+  
+  // Check: If Ranking/TV mode is active, disable logout timer.
+  const currentModule = mainContent ? mainContent.dataset.currentModule : '';
+  if (currentModule === 'wst-ranking') {
+      return; 
+  }
+
   inactivityTimer = setTimeout(logoutDueToInactivity, INACTIVITY_TIMEOUT_MS);
 }
 
 function startInactivityTimer() {
   stopInactivityTimer();
-  console.log(
-    `script.js: Starting inactivity timer for ${INACTIVITY_TIMEOUT_MS / 60000
-    } minutes.`
-  );
+
+  // Initial Check for TV mode
+  const currentModule = mainContent ? mainContent.dataset.currentModule : '';
+  if (currentModule === 'wst-ranking') {
+      console.log("TV Mode detected on start: Inactivity timer skipped.");
+      return;
+  }
+
+  console.log(`script.js: Starting inactivity timer.`);
   resetInactivityTimer();
   window.addEventListener("mousemove", resetInactivityTimer, { passive: true });
   window.addEventListener("keydown", resetInactivityTimer, { passive: true });
@@ -174,7 +188,6 @@ function startInactivityTimer() {
 
 function stopInactivityTimer() {
   clearTimeout(inactivityTimer);
-  console.log("script.js: Inactivity timer stopped.");
   window.removeEventListener("mousemove", resetInactivityTimer);
   window.removeEventListener("keydown", resetInactivityTimer);
   window.removeEventListener("scroll", resetInactivityTimer);
@@ -184,29 +197,26 @@ function stopInactivityTimer() {
 }
 
 function handleVisibilityChange() {
-  if (document.hidden) {
-  } else {
+  if (!document.hidden) {
     resetInactivityTimer();
   }
 }
 
-// --- UI Update based on Authentication State ---
-function updateUserUI(user) {
-  console.log(
-    "script.js: updateUserUI called with user:",
-    user ? user.id : "null"
-  );
-
+function updateUserUI(user, profile = null) {
   const allMenuItems = document.querySelectorAll(".sidebar .menu > .menu-item");
 
   if (user) {
-    if (userNameElement)
-      userNameElement.textContent =
-        user.user_metadata?.full_name || user.email.split("@")[0];
+    const displayName = profile
+      ? profile.full_name
+      : user.user_metadata?.full_name || user.email.split("@")[0];
+    const displayAvatar = profile
+      ? profile.avatar_url
+      : user.user_metadata?.avatar_url || "assets/user-placeholder.jpg";
+
+    if (userNameElement) userNameElement.textContent = displayName;
     if (userEmailElement) userEmailElement.textContent = user.email;
-    if (userAvatarElement)
-      userAvatarElement.src =
-        user.user_metadata?.avatar_url || "assets/favicon.png";
+    if (userAvatarElement) userAvatarElement.src = displayAvatar;
+
     if (authButton) {
       authButton.innerHTML = "<i class='bx bx-log-out'></i>";
       authButton.title = "Sign Out";
@@ -214,41 +224,32 @@ function updateUserUI(user) {
     if (authRequiredMessage) authRequiredMessage.style.display = "none";
     if (mainAppContent) mainAppContent.style.display = "block";
 
-    // --- Tiered Menu Visibility Logic ---
+    if (!profile && userContainer) {
+      userContainer.classList.add("loading-profile");
+    }
+    
+    // Determine Role & Visibility
     const userEmail = user.email.toLowerCase();
     const userDomain = userEmail.substring(userEmail.lastIndexOf("@"));
-
-    // 1. Determine User Role
-    let userRole = "Employee"; // Default role
-    if (MANAGER_USERS.includes(userEmail)) {
-      userRole = "Manager";
-    } else if (
+    let userRole = "Employee";
+    
+    if (MANAGER_USERS.includes(userEmail)) userRole = "Manager";
+    else if (
       RESTRICTED_VIEW_DOMAINS.includes(userDomain) ||
       RESTRICTED_VIEW_USERS.includes(userEmail)
-    ) {
-      userRole = "Client";
-    }
+    ) userRole = "Client";
 
-    console.log(`User ${userEmail} identified with role: ${userRole}`);
-
-    // 2. Apply visibility based on role
     switch (userRole) {
       case "Manager":
-        // Managers see everything
         allMenuItems.forEach((item) => {
           item.style.display = "list-item";
-          item
-            .querySelectorAll(".sub-menu > li")
-            .forEach((sub) => (sub.style.display = "list-item"));
+          item.querySelectorAll(".sub-menu > li").forEach((sub) => (sub.style.display = "list-item"));
         });
         break;
-
       case "Client":
-        // Clients see only modules from CLIENT_VIEW_MODULES
         allMenuItems.forEach((menuItem) => {
           const link = menuItem.querySelector(".menu-link");
           if (!link) return;
-
           const moduleName = link.dataset.module;
           const isDropdown = menuItem.classList.contains("menu-item-dropdown");
 
@@ -264,27 +265,20 @@ function updateUserUI(user) {
             });
             menuItem.style.display = hasVisibleSubMenu ? "list-item" : "none";
           } else if (moduleName) {
-            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName)
-              ? "list-item"
-              : "none";
+            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName) ? "list-item" : "none";
           }
         });
         break;
-
-      case "Employee":
       default:
-        // Employees see everything EXCEPT modules from CLIENT_VIEW_MODULES
         allMenuItems.forEach((menuItem) => {
           const link = menuItem.querySelector(".menu-link");
           if (!link) return;
-
           const moduleName = link.dataset.module;
           const isDropdown = menuItem.classList.contains("menu-item-dropdown");
 
           if (isDropdown) {
             let hasVisibleSubMenu = false;
             menuItem.querySelectorAll(".sub-menu-link").forEach((subLink) => {
-              // Hide sub-items that are client-only
               if (CLIENT_VIEW_MODULES.includes(subLink.dataset.module)) {
                 subLink.parentElement.style.display = "none";
               } else {
@@ -294,10 +288,7 @@ function updateUserUI(user) {
             });
             menuItem.style.display = hasVisibleSubMenu ? "list-item" : "none";
           } else if (moduleName) {
-            // Hide top-level items that are client-only
-            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName)
-              ? "none"
-              : "list-item";
+            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName) ? "none" : "list-item";
           }
         });
         break;
@@ -310,35 +301,73 @@ function updateUserUI(user) {
       homeLink &&
       mainContent &&
       (!mainContent.dataset.currentModule ||
-        ["auth-required", "access-denied", ""].includes(
-          mainContent.dataset.currentModule
-        ) ||
-        mainContent.querySelector("#auth-required-message"))
+        ["auth-required", "access-denied", ""].includes(mainContent.dataset.currentModule))
     ) {
-      if (mainContent) {
-        mainContent.innerHTML =
-          "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
-        mainContent.dataset.currentModule = "home";
-      }
-      setActiveMenuItem(homeLink);
+        if (mainContent) {
+             mainContent.innerHTML = "<h1>GMX Content Area</h1><p>Welcome.</p>";
+             mainContent.dataset.currentModule = "home";
+        }
+        setActiveMenuItem(homeLink);
     }
+
   } else {
     if (userNameElement) userNameElement.textContent = "Guest";
     if (userEmailElement) userEmailElement.textContent = "Please sign in";
-    if (userAvatarElement)
-      userAvatarElement.src = "assets/user-placeholder.jpg";
+    if (userAvatarElement) userAvatarElement.src = "assets/user-placeholder.jpg";
+    
     if (authButton) {
       authButton.innerHTML = "<i class='bx bx-log-in'></i>";
       authButton.title = "Sign In";
     }
     if (mainAppContent) mainAppContent.style.display = "none";
     if (authRequiredMessage) authRequiredMessage.style.display = "block";
+    
+    document.body.classList.remove("sidebar-loaded");
+    if (userContainer) userContainer.classList.remove("loading-profile");
+
     setActiveMenuItem(null);
     stopInactivityTimer();
   }
 }
 
-// --- Main Event Handlers ---
+async function fetchProfileAndUpdateUI(user) {
+  let profileData = null;
+  try {
+    const { data: profile, error } = await window.supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw error;
+
+    if (profile) {
+      profileData = profile;
+      currentGlobalProfile = profile;
+      updateUserUI(user, profile);
+    } else {
+      updateUserUI(user);
+    }
+
+    document.dispatchEvent(
+        new CustomEvent("supabaseAuthStateChange", { detail: { user: user, profile: profileData } })
+    );
+
+  } catch (error) {
+    console.error("Error fetching profile:", error.message);
+    updateUserUI(user);
+    currentGlobalProfile = null;
+    document.dispatchEvent(
+        new CustomEvent("supabaseAuthStateChange", { detail: { user: user, profile: null } })
+    );
+  } finally {
+    if (userContainer) userContainer.classList.remove("loading-profile");
+    setTimeout(() => {
+        document.body.classList.add("sidebar-loaded");
+    }, 50);
+  }
+}
+
 if (darkModeBtn) {
   darkModeBtn.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
@@ -387,6 +416,7 @@ menusItemsDropDown.forEach((menuItem) => {
       if (sidebar?.classList.contains("minimize")) return;
       const subMenu = menuItem.querySelector(".sub-menu");
       const isActive = menuItem.classList.toggle("sub-menu-toggle");
+      
       menusItemsDropDown.forEach((item) => {
         if (item !== menuItem && item.classList.contains("sub-menu-toggle")) {
           item.classList.remove("sub-menu-toggle");
@@ -397,6 +427,7 @@ menusItemsDropDown.forEach((menuItem) => {
           }
         }
       });
+      
       if (subMenu) {
         subMenu.style.height = isActive ? `${subMenu.scrollHeight + 6}px` : "0";
         subMenu.style.padding = isActive ? "0.2rem 0" : "0";
@@ -407,16 +438,13 @@ menusItemsDropDown.forEach((menuItem) => {
 
 if (authButton) {
   authButton.addEventListener("click", async () => {
-    if (!supabase) return;
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    if (!window.supabase) return;
+    const { data: { session } } = await window.supabase.auth.getSession();
     if (session?.user) await signOut();
     else window.location.href = "login.html";
   });
 }
 
-// --- Logic for Loading Modules and Active Menu State ---
 function setActiveMenuItem(clickedLinkElement) {
   allMenuLinks.forEach((link) => link.classList.remove("link-active"));
   allDropdownParents.forEach((item) => item.classList.remove("parent-active"));
@@ -442,52 +470,79 @@ function setActiveMenuItem(clickedLinkElement) {
 }
 
 async function loadModule(moduleName, clickedLink) {
-  if (!mainContent || !supabase) {
-    console.error(
-      "Main content area or Supabase client not found for loadModule."
-    );
-    return;
-  }
-
+  if (!mainContent || !window.supabase) return;
+  
   document.dispatchEvent(new CustomEvent("moduleWillUnload"));
-
   if (authRequiredMessage) authRequiredMessage.style.display = "none";
   if (mainAppContent) mainAppContent.style.display = "block";
+  
   mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
   mainContent.dataset.currentModule = `loading-${moduleName}`;
+  
+  // ** INACTIVITY CHECK: Stop timer if loading Rank/TV module **
+  if (moduleName === 'wst-ranking') {
+      stopInactivityTimer();
+  } else {
+      if (currentGlobalUser) startInactivityTimer();
+  }
 
   try {
     const response = await fetch(`${moduleName}.html`);
-    if (!response.ok)
-      throw new Error(
-        `Could not load ${moduleName}.html. Status: ${response.status}`
-      );
+    if (!response.ok) throw new Error(`Could not load ${moduleName}.html`);
     const htmlContent = await response.text();
     mainContent.innerHTML = htmlContent;
+
+    const moduleContainer = mainContent.children[0];
+    if (moduleContainer) {
+      moduleContainer.classList.add("module-enter-animation");
+    }
+
     mainContent.dataset.currentModule = moduleName;
     setActiveMenuItem(clickedLink);
+    
     document.dispatchEvent(
       new CustomEvent("moduleContentLoaded", { detail: { moduleName } })
     );
+    
     Array.from(mainContent.querySelectorAll("script")).forEach((oldScript) => {
       const newScript = document.createElement("script");
       Array.from(oldScript.attributes).forEach((attr) =>
         newScript.setAttribute(attr.name, attr.value)
       );
       if (oldScript.textContent) newScript.textContent = oldScript.textContent;
+      
       if (oldScript.parentNode)
         oldScript.parentNode.replaceChild(newScript, oldScript);
       else document.body.appendChild(newScript).remove();
-      console.log(
-        `script.js: Script ${newScript.src || "inline"
-        } from module ${moduleName} processed.`
-      );
     });
+
+    const onModuleReady = (event) => {
+        if (event.detail?.moduleName === moduleName) {
+            if (currentGlobalUser) {
+                document.dispatchEvent(
+                    new CustomEvent("supabaseAuthStateChange", {
+                        detail: {
+                            user: currentGlobalUser,
+                            profile: currentGlobalProfile
+                        }
+                    })
+                );
+            } else {
+                document.dispatchEvent(
+                    new CustomEvent("supabaseAuthStateChange", {
+                        detail: { user: null, profile: null }
+                    })
+                );
+            }
+            document.removeEventListener("moduleReadyForAuth", onModuleReady);
+        }
+    };
+    document.addEventListener("moduleReadyForAuth", onModuleReady);
+
   } catch (error) {
-    console.error("Error loading module:", error);
     mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module: ${moduleName}</h2><p style="color: var(--goldmex-accent-color);">${error.message}</p></div>`;
     mainContent.dataset.currentModule = "error";
-    setActiveMenuItem(null);
+    setActiveMenuItem(clickedLink);
   }
 }
 
@@ -496,86 +551,70 @@ allMenuLinks.forEach((link) => {
   if (moduleName) {
     link.addEventListener("click", async function (event) {
       event.preventDefault();
-      if (moduleName === "home") {
-        if (mainContent) {
-          mainContent.innerHTML =
-            "<h1>GMX Content Area</h1><p>Welcome to the main dashboard. Please select an option from the menu.</p>";
-          mainContent.dataset.currentModule = "home";
-        }
-        setActiveMenuItem(this);
-      } else {
-        loadModule(moduleName, this);
-      }
-      
-      // --- MOBILE AUTO-CLOSE LOGIC ---
-      // Checks if mobile view (<768px) AND if sidebar is currently visible
-      // (The class 'sidebar-hidden' in your CSS actually makes it VISIBLE on mobile)
+      loadModule(moduleName, this);
+
       if (
         window.innerWidth <= 768 &&
-        sidebar &&
         document.body.classList.contains("sidebar-hidden")
       ) {
-        // Toggle the button to hide the sidebar
-        if (sidebarBtnMobile) sidebarBtnMobile.click();
+        sidebarBtnMobile.click();
       }
     });
   }
 });
 
-// --- Utility Functions and Initial Load ---
 function handleResize() {
   if (window.innerWidth > 768 && document.body) {
     document.body.classList.remove("sidebar-hidden");
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   handleResize();
-  if (!supabase) {
-    console.error(
-      "script.js: Supabase client not available on DOMContentLoaded."
-    );
-    if (!window.location.pathname.includes("/login.html"))
+
+  if (!window.supabase) {
+    if (!window.location.pathname.includes("/login.html")) {
       window.location.href = "login.html";
+    }
     return;
   }
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log(`script.js: Auth state change event received: ${event}`);
+  window.supabase.auth.onAuthStateChange(async (event, session) => {
+    const newUser = session ? session.user : null;
+    stopInactivityTimer();
 
-    const user = session?.user ?? null;
+    if (newUser) {
+      currentGlobalUser = newUser;
 
-    // First, check if the user exists and is allowed.
-    if (user && !isUserAllowed(user.email)) {
-      console.warn(`User ${user.email} is not allowed. Forcing sign out.`);
-      await signOut(false); // Use our custom signOut function
-      updateUserUI(null); // Explicitly update UI to guest state
-      return; // Stop further processing for this disallowed user
+      if (currentGlobalUserId !== newUser.id) {
+        currentGlobalUserId = newUser.id;
+        updateUserUI(newUser);
+        fetchProfileAndUpdateUI(newUser);
+
+        const homeLink = document.querySelector('.sidebar .menu-link[data-module="home"]');
+        if (homeLink) loadModule("home", homeLink);
+
+      } else {
+         startInactivityTimer();
+         document.dispatchEvent(
+            new CustomEvent("supabaseAuthStateChange", { detail: { user: newUser, profile: currentGlobalProfile } })
+         );
+      }
+    } else {
+      currentGlobalUserId = null;
+      currentGlobalUser = null;
+      currentGlobalProfile = null;
+      updateUserUI(null);
+      document.dispatchEvent(
+        new CustomEvent("supabaseAuthStateChange", { detail: { user: null, profile: null } })
+      );
     }
 
-    // Update UI for the valid user or guest.
-    updateUserUI(user);
-    currentGlobalUserId = user ? user.id : null;
-
-    // Dispatch the custom event for other modules to listen to.
-    document.dispatchEvent(
-      new CustomEvent("supabaseAuthStateChange", {
-        detail: { user, event, source: "script.js" },
-      })
-    );
-
-    // Handle redirects based on the final user state.
-    const isOAuthCallback = window.location.hash.includes("access_token");
-    if (
-      !user &&
-      !window.location.pathname.includes("/login.html") &&
-      !isOAuthCallback
-    ) {
-      // Only redirect if there's no user AND this is not an OAuth callback in progress.
-      console.log(
-        "No valid session found and not an OAuth callback, redirecting to login page."
-      );
+    const isLoginPage = window.location.pathname.includes("/login.html");
+    if (!newUser && !isLoginPage) {
       window.location.href = "login.html";
+    } else if (newUser && isLoginPage) {
+      window.location.href = "index.html";
     }
   });
 });
@@ -624,7 +663,6 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     notification.style.backgroundColor = "#ffc107";
     notification.style.color = "#212529";
   } else {
-    // info
     notification.style.backgroundColor = "#17a2b8";
   }
 
