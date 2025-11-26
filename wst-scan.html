@@ -1,73 +1,78 @@
-<!-- Warehouse Scanner Module (Final Checkpoint) -->
+<!-- Warehouse Scanner Module (Inbound Checkpoint) -->
 <div class="wst-scan-container">
 
     <!-- HEADER -->
     <div class="wst-scan-header">
         <h2><i class='bx bx-barcode-reader'></i> Inbound Scanner</h2>
-        <p>Scan pallet label to register warehouse entry.</p>
+        <p>Scan pallet label to verify reception.</p>
     </div>
 
-    <!-- MAIN SCANNER AREA -->
+    <!-- MAIN ACTION BOX -->
     <div class="wst-scan-box">
         
-        <!-- Input Area (Always Focused) -->
-        <div class="wst-input-wrapper">
-            <i class='bx bx-qr-scan'></i>
-            <input type="text" id="wst-scan-input" placeholder="Scan QR or type ID..." autocomplete="off" autofocus>
-            <button id="wst-manual-search-btn" class="btn-icon"><i class='bx bx-search'></i></button>
+        <!-- CAMERA REGION (Hidden by default) -->
+        <div id="wst-camera-wrapper" class="wst-camera-wrapper hidden">
+            <div id="wst-reader"></div>
+            <button id="wst-close-camera-btn" class="btn-goldmex-danger btn-block">
+                Close Camera
+            </button>
         </div>
-        <small class="hint-text">Press ENTER if typing manually.</small>
 
-        <!-- RESULT CARD (Hidden by default) -->
-        <div id="wst-scan-result" class="wst-result-card hidden">
+        <!-- MANUAL INPUT (Default) -->
+        <div id="wst-input-section">
+            <div class="wst-input-group">
+                <i class='bx bx-qr-scan'></i>
+                <input type="text" id="wst-scan-input" placeholder="Click here & scan..." autocomplete="off" autofocus>
+            </div>
             
-            <!-- Success State -->
-            <div id="wst-result-success" class="result-content hidden">
-                <div class="result-icon success"><i class='bx bxs-check-shield'></i></div>
-                <h3>Pallet Registered!</h3>
-                
-                <div class="pallet-details">
-                    <div class="detail-row">
-                        <span>Product:</span>
-                        <strong id="scan-prod-name">--</strong>
+            <div class="wst-divider">
+                <span>OR</span>
+            </div>
+
+            <button id="wst-open-camera-btn" class="btn-goldmex-primary btn-block">
+                <i class='bx bx-camera'></i> Use Camera
+            </button>
+        </div>
+
+        <!-- FEEDBACK CARD (Result) -->
+        <div id="wst-result-card" class="wst-result-card hidden">
+            
+            <!-- SUCCESS STATE -->
+            <div id="wst-res-success" class="result-state hidden">
+                <div class="icon-circle success"><i class='bx bx-check'></i></div>
+                <h3>Pallet Accepted</h3>
+                <div class="pallet-info">
+                    <div class="info-row">
+                        <span class="label">Product</span>
+                        <strong class="value" id="res-product">--</strong>
                     </div>
-                    <div class="detail-row">
-                        <span>Line:</span>
-                        <strong id="scan-line-name">--</strong>
+                    <div class="info-row">
+                        <span class="label">Line / Op</span>
+                        <strong class="value" id="res-line-op">--</strong>
                     </div>
-                    <div class="detail-row">
-                        <span>Operator:</span>
-                        <strong id="scan-operator">--</strong>
-                    </div>
-                    <hr>
-                    <div class="detail-row highlight">
-                        <span>Total Time:</span>
-                        <strong id="scan-total-time">0h 0m</strong>
-                    </div>
-                    <div class="detail-row">
-                        <span>Rating:</span>
-                        <strong id="scan-rating-badge">--</strong>
+                    <div class="info-row highlight">
+                        <span class="label">Final Time</span>
+                        <strong class="value" id="res-time">--</strong>
                     </div>
                 </div>
-
-                <button id="wst-scan-reset-btn" class="btn-goldmex-primary btn-block">
+                <button id="wst-next-scan-btn" class="btn-goldmex-success btn-block">
                     Scan Next (Enter)
                 </button>
             </div>
 
-            <!-- Error State -->
-            <div id="wst-result-error" class="result-content hidden">
-                <div class="result-icon error"><i class='bx bxs-error-circle'></i></div>
-                <h3>Scan Error</h3>
-                <p id="wst-error-msg">Invalid code or not found.</p>
-                <button id="wst-error-reset-btn" class="btn-goldmex-secondary btn-block">
+            <!-- ERROR STATE -->
+            <div id="wst-res-error" class="result-state hidden">
+                <div class="icon-circle error"><i class='bx bx-x'></i></div>
+                <h3>Scan Failed</h3>
+                <p id="wst-error-message">Invalid Code</p>
+                <button id="wst-retry-btn" class="btn-goldmex-secondary btn-block">
                     Try Again
                 </button>
             </div>
 
-            <!-- Loading State -->
-            <div id="wst-result-loading" class="result-content hidden">
-                <div class="wst-spinner-scan"><i class='bx bx-loader-alt bx-spin'></i></div>
+            <!-- LOADING STATE -->
+            <div id="wst-res-loading" class="result-state hidden">
+                <div class="wst-spinner"><i class='bx bx-loader-alt bx-spin'></i></div>
                 <p>Processing...</p>
             </div>
 
@@ -75,30 +80,19 @@
 
     </div>
 
-    <!-- RECENT HISTORY (Bottom) -->
+    <!-- HISTORY LIST -->
     <div class="wst-scan-history">
-        <h4><i class='bx bx-history'></i> Recent Scans (Today)</h4>
-        <div class="wst-history-scroll">
-            <table class="wst-scan-table">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Product</th>
-                        <th>Pallet ID</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="wst-scan-history-body">
-                    <!-- Injected by JS -->
-                </tbody>
-            </table>
+        <div class="history-header">
+            <h4><i class='bx bx-history'></i> Recent Scans (Today)</h4>
+            <button id="wst-refresh-history" class="icon-btn"><i class='bx bx-refresh'></i></button>
+        </div>
+        <div class="history-list-container" id="wst-history-container">
+            <!-- Injected items -->
         </div>
     </div>
 
 </div>
 
-<!-- Audio Elements for Feedback -->
-<audio id="audio-success" src="assets/success.mp3" preload="auto"></audio>
-<audio id="audio-error" src="assets/error.mp3" preload="auto"></audio>
-
+<!-- Dependencies -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="js/wst-scan.js"></script>
