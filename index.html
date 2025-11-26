@@ -16,13 +16,14 @@
     <link rel="stylesheet" href="css/invoice-tracking.css">
     <link rel="stylesheet" href="css/list-of-entries.css">
     <link rel="stylesheet" href="css/quoting-module.css">
-
     <link rel="stylesheet" href="css/brokerage-cqp.css">
     <link rel="stylesheet" href="css/classification-quoting.css">
-    
     <link rel="stylesheet" href="css/import-operations.css">
     <link rel="stylesheet" href="css/import-portal.css">
-
+    <link rel="stylesheet" href="css/wst-data.css">
+    <link rel="stylesheet" href="css/wst-workstation.css">
+    <link rel="stylesheet" href="css/wst-scan.css">
+   
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -31,7 +32,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
-<body>
+<body style="zoom: 0.85;">
     <div class="menu-btn sidebar-btn" id="sidebar-btn">
         <i class='bx bx-menu'></i>
         <i class='bx bx-x'></i>
@@ -59,19 +60,6 @@
                 <input type="search" placeholder="Search...">
             </div>
             <ul class="menu">
-                <li class="menu-item menu-item-static">
-                    <a href="#" class="menu-link" data-module="home">
-                        <i class='bx bx-home-alt-2'></i>
-                        <span>Home</span>
-                    </a>
-                </li>
-
-                <li class="menu-item menu-item-static">
-                    <a href="#" class="menu-link" data-module="dashboard">
-                        <i class='bx bx-bar-chart-alt-2'></i>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
                 
                 <li class="menu-item menu-item-static" id="client-portal-link">
                     <a href="#" class="menu-link" data-module="brokerage-cqp">
@@ -97,6 +85,7 @@
                         <li><a href="#" class="sub-menu-link" data-module="client-management">Client Management</a></li>
                     </ul>
                 </li>
+
                 <li class="menu-item menu-item-dropdown" id="sales-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-calculator'></i>
@@ -107,6 +96,7 @@
                         <li><a href="#" class="sub-menu-link" data-module="quoting-module">Quoting Tool</a></li>
                     </ul>
                 </li>
+
                 <li class="menu-item menu-item-dropdown" id="warehouse-menu">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-package'></i>
@@ -114,10 +104,13 @@
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
-                        <li><a href="#" class="sub-menu-link" data-module="s3">S3</a></li>
-                        <li><a href="#" class="sub-menu-link" data-module="package-management">Package Management</a>
-                        </li>
-                        <li><a href="#" class="sub-menu-link" data-module="quotations">Quotations</a></li>
+                        <li><a href="#" class="sub-menu-link" data-module="wst-workstation">Workstation</a></li>
+                        
+                        <li><a href="#" class="sub-menu-link" data-module="wst-scan">Scanner Final</a></li>
+                        
+                        <li><a href="#" class="sub-menu-link" data-module="wst-ranking">Ranking TV</a></li>
+                        
+                        <li><a href="#" class="sub-menu-link" data-module="wst-data">Data Manager</a></li>
                     </ul>
                 </li>
 
@@ -182,6 +175,6 @@
 
     <script src="js/dataTables.min.js"></script>
     <script src="js/script.js"></script>
-    </body>
+</body>
 
 </html>
