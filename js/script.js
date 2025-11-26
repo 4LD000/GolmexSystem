@@ -506,11 +506,16 @@ allMenuLinks.forEach((link) => {
       } else {
         loadModule(moduleName, this);
       }
+      
+      // --- MOBILE AUTO-CLOSE LOGIC ---
+      // Checks if mobile view (<768px) AND if sidebar is currently visible
+      // (The class 'sidebar-hidden' in your CSS actually makes it VISIBLE on mobile)
       if (
         window.innerWidth <= 768 &&
         sidebar &&
-        !document.body.classList.contains("sidebar-hidden")
+        document.body.classList.contains("sidebar-hidden")
       ) {
+        // Toggle the button to hide the sidebar
         if (sidebarBtnMobile) sidebarBtnMobile.click();
       }
     });
@@ -647,6 +652,3 @@ function showCustomNotificationST(message, type = "info", duration = 3800) {
     setTimeout(removeNotification, duration);
   }
 }
-
-
-
