@@ -1,4 +1,4 @@
-<!-- Warehouse Scanner Module (Inbound Checkpoint) -->
+<!-- Warehouse Scanner Module (Table View Fixed) -->
 <div class="wst-scan-container">
 
     <!-- HEADER -->
@@ -7,37 +7,36 @@
         <p>Scan pallet label to verify reception.</p>
     </div>
 
-    <!-- MAIN ACTION BOX -->
+    <!-- MAIN SCANNER AREA -->
     <div class="wst-scan-box">
         
-        <!-- CAMERA REGION (Hidden by default) -->
+        <!-- CAMERA FEED -->
         <div id="wst-camera-wrapper" class="wst-camera-wrapper hidden">
             <div id="wst-reader"></div>
-            <button id="wst-close-camera-btn" class="btn-goldmex-danger btn-block">
+            <button id="wst-close-camera-btn" class="btn-goldmex-danger btn-block" style="margin-top:1rem;">
                 Close Camera
             </button>
         </div>
 
-        <!-- MANUAL INPUT (Default) -->
+        <!-- MANUAL INPUT -->
         <div id="wst-input-section">
-            <div class="wst-input-group">
+            <div class="wst-input-wrapper">
                 <i class='bx bx-qr-scan'></i>
                 <input type="text" id="wst-scan-input" placeholder="Click here & scan..." autocomplete="off" autofocus>
+                <button id="wst-manual-search-btn" class="btn-icon"><i class='bx bx-search'></i></button>
             </div>
             
-            <div class="wst-divider">
-                <span>OR</span>
-            </div>
+            <div class="wst-divider"><span>OR</span></div>
 
             <button id="wst-open-camera-btn" class="btn-goldmex-primary btn-block">
-                <i class='bx bx-camera'></i> Use Camera
+                <i class='bx bx-camera'></i> Open Camera
             </button>
         </div>
 
-        <!-- FEEDBACK CARD (Result) -->
-        <div id="wst-result-card" class="wst-result-card hidden">
+        <!-- RESULT CARD -->
+        <div id="wst-scan-result" class="wst-result-card hidden">
             
-            <!-- SUCCESS STATE -->
+            <!-- SUCCESS -->
             <div id="wst-res-success" class="result-state hidden">
                 <div class="icon-circle success"><i class='bx bx-check'></i></div>
                 <h3>Pallet Accepted</h3>
@@ -60,7 +59,7 @@
                 </button>
             </div>
 
-            <!-- ERROR STATE -->
+            <!-- ERROR -->
             <div id="wst-res-error" class="result-state hidden">
                 <div class="icon-circle error"><i class='bx bx-x'></i></div>
                 <h3>Scan Failed</h3>
@@ -70,29 +69,37 @@
                 </button>
             </div>
 
-            <!-- LOADING STATE -->
+            <!-- LOADING -->
             <div id="wst-res-loading" class="result-state hidden">
                 <div class="wst-spinner"><i class='bx bx-loader-alt bx-spin'></i></div>
                 <p>Processing...</p>
             </div>
-
         </div>
-
     </div>
 
-    <!-- HISTORY LIST -->
+    <!-- HISTORY TABLE -->
     <div class="wst-scan-history">
         <div class="history-header">
-            <h4><i class='bx bx-history'></i> Recent Scans (Today)</h4>
-            <button id="wst-refresh-history" class="icon-btn"><i class='bx bx-refresh'></i></button>
+            <h4><i class='bx bx-history'></i> Scans Today</h4>
+            <button id="wst-refresh-history" class="icon-btn-refresh"><i class='bx bx-refresh'></i></button>
         </div>
-        <div class="history-list-container" id="wst-history-container">
-            <!-- Injected items -->
+        <div class="history-list-container">
+            <table class="wst-scan-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Product</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="wst-scan-history-body">
+                    <!-- Rows injected by JS -->
+                </tbody>
+            </table>
         </div>
     </div>
 
 </div>
 
-<!-- Dependencies -->
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="js/wst-scan.js"></script>
