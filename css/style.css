@@ -66,6 +66,7 @@ body {
     background-color: var(--color-bg);
     transition: color 0.5s ease, background-color 0.3s ease, left 0.5s ease;
     overflow: hidden;
+    zoom: 0.90;
 }
 
 /* Sidebar */
