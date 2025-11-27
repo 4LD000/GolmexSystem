@@ -26,7 +26,7 @@
     
     // Success Data Fields
     const resProduct = document.getElementById('res-product');
-    const resQrIdDisplay = document.getElementById('res-qr-id-display'); // New Field
+    const resQrIdDisplay = document.getElementById('res-qr-id-display');
     const resLine = document.getElementById('res-line-op');
     const resTime = document.getElementById('res-time');
     
@@ -42,7 +42,7 @@
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("Scanner Module Initialized (Mobile Optimized)");
+        console.log("Scanner Module Initialized (Adjusted Efficiency Mode)");
         loadHistory();
         
         // Auto-focus logic for USB scanners
@@ -132,14 +132,15 @@
         }
     }
 
-    // --- CORE SCAN LOGIC ---
+    // --- CORE SCAN LOGIC (ADJUSTED EFFICIENCY) ---
     async function handleScan(qrCode) {
         showState('loading');
         scanInput.value = '';
-        scanInput.blur(); // Hide mobile keyboard
+        scanInput.blur(); 
 
         try {
             // 1. Search Pallet in DB
+            // We fetch worker_count to calculate the REAL target
             const { data: pallet, error } = await supabase
                 .from('production_log')
                 .select(`
@@ -158,20 +159,26 @@
                 throw new Error(`Pallet ALREADY scanned at ${scannedAt}.`);
             }
 
-            // 3. Performance Calculation
+            // 3. Performance Calculation (ADJUSTED)
             const now = new Date();
             const start = new Date(pallet.start_time);
             
-            // Calculate duration in seconds
+            // A. Duration in seconds (Real Time)
             const realSecs = Math.floor((now - start) / 1000);
             
-            // Standard time expected
-            const stdSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
+            // B. Base Standard (Total Man-Hours needed)
+            const baseStdSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
             
-            // Rating Logic
+            // C. Adjusted Target (Divided by Team Size)
+            const workerCount = pallet.worker_count || 1;
+            const targetSecs = Math.ceil(baseStdSecs / workerCount);
+            
+            console.log(`Scan Eval: Base=${baseStdSecs}s, Workers=${workerCount}, Target=${targetSecs}s, Real=${realSecs}s`);
+
+            // D. Rating Logic vs ADJUSTED Target
             let rating = 'success';
-            if(realSecs > stdSecs * 1.25) rating = 'danger'; // > 25% over standard
-            else if(realSecs > stdSecs) rating = 'warning';  // Just over standard
+            if(realSecs > targetSecs * 1.25) rating = 'danger'; // > 25% delayed vs Adjusted Target
+            else if(realSecs > targetSecs) rating = 'warning';  // Delayed vs Adjusted Target
 
             // 4. Update Database
             const { error: updateError } = await supabase
@@ -179,7 +186,7 @@
                 .update({
                     warehouse_scan_time: now.toISOString(),
                     final_time_seconds: realSecs,
-                    standard_time_seconds: stdSecs,
+                    standard_time_seconds: baseStdSecs, // We preserve the Base Standard for historical reference
                     performance_rating: rating,
                     status: 'completed'
                 })
@@ -188,7 +195,7 @@
             if(updateError) throw new Error("Database update failed. Check connection.");
 
             // 5. Update UI
-            displaySuccess(pallet, realSecs);
+            displaySuccess(pallet, realSecs, targetSecs);
             loadHistory();
 
         } catch (err) {
@@ -208,21 +215,31 @@
         if(state === 'error') resError.classList.remove('hidden');
     }
 
-    function displaySuccess(pallet, seconds) {
+    function displaySuccess(pallet, realSeconds, targetSeconds) {
         showState('success');
         
         // Fill Data
         resProduct.textContent = pallet.production_products?.name || 'Unknown Product';
-        resQrIdDisplay.textContent = pallet.pallet_qr_id || 'N/A'; // New Field
+        resQrIdDisplay.textContent = pallet.pallet_qr_id || 'N/A';
         
         const lineName = pallet.warehouse_lines?.line_name || 'Unknown Line';
-        const opName = pallet.operator_name || 'Unknown Op';
-        resLine.textContent = `${lineName} (${opName})`;
         
-        // Format Time (HHh MMm)
-        const h = Math.floor(seconds/3600);
-        const m = Math.floor((seconds%3600)/60);
-        resTime.textContent = `${h}h ${m}m`;
+        // Display Team Info
+        const workers = pallet.worker_count || 1;
+        const opDisplay = workers > 1 ? `Team of ${workers}` : (pallet.operator_name || 'Operator');
+        
+        resLine.textContent = `${lineName} (${opDisplay})`;
+        
+        // Format Time
+        const h = Math.floor(realSeconds/3600);
+        const m = Math.floor((realSeconds%3600)/60);
+        
+        // Calculate Efficiency (Time Saved vs Adjusted Target)
+        const diff = targetSeconds - realSeconds;
+        const diffM = Math.floor(Math.abs(diff) / 60);
+        const statusText = diff >= 0 ? `Saved ${diffM} min` : `Late ${diffM} min`;
+        
+        resTime.innerHTML = `${h}h ${m}m <br><small style="font-size:0.8rem; color:var(--scan-light)">${statusText}</small>`;
     }
 
     function showError(msg) {
@@ -251,7 +268,7 @@
             .not('warehouse_scan_time', 'is', null)
             .gte('warehouse_scan_time', `${today} 00:00:00`)
             .order('warehouse_scan_time', { ascending: false })
-            .limit(10); // Show last 10
+            .limit(10); 
 
         historyBody.innerHTML = '';
 
@@ -263,17 +280,13 @@
         data.forEach(log => {
             const tr = document.createElement('tr');
             
-            // Format Time
             const timeObj = new Date(log.warehouse_scan_time);
             const timeStr = timeObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             
-            // Status Icon Color
             let iconColor = 'var(--scan-success)';
             if(log.performance_rating === 'warning') iconColor = '#f59e0b';
             if(log.performance_rating === 'danger') iconColor = 'var(--scan-error)';
 
-            // Clean QR Display (Remove PLT- prefix if needed, or keep full)
-            // User requested "the qr or number", let's show full ID but small
             const qrDisplay = log.pallet_qr_id; 
 
             tr.innerHTML = `
