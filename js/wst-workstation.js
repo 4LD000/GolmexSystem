@@ -19,8 +19,9 @@
         timerInterval: null
     };
 
-    // Realtime Subscription Variable
-    let lineSubscription = null;
+    // Realtime Subscriptions
+    let lineSubscription = null;      // Radar Individual (Dashboard)
+    let selectionSubscription = null; // Radar Global (Selección)
 
     // Temporary state for the Login Modal
     let currentTeamList = [];
@@ -205,7 +206,6 @@
             return;
         }
 
-        // Logic check: If line status in DB is NOT busy, our local session is stale (Zombie session)
         if (lineData.status !== 'busy') {
             console.warn("Line is no longer busy in DB. Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
@@ -263,11 +263,30 @@
     }
 
     // =========================================================================
-    // 2. VIEW MANAGEMENT & REALTIME SYNC (NEW)
+    // 2. VIEW MANAGEMENT & REALTIME SYNC
     // =========================================================================
 
+    // --- RADAR 1: GLOBAL SELECTION VIEW ---
+    function setupSelectionRealtime() {
+        // Ensure we don't have duplicates
+        if (selectionSubscription) return;
+
+        console.log("Activating Global Grid Realtime...");
+        
+        selectionSubscription = supabase.channel('grid-view-global')
+            .on(
+                'postgres_changes', 
+                { event: 'UPDATE', schema: 'public', table: 'warehouse_lines' }, 
+                (payload) => {
+                    console.log("Global Update detected, refreshing grid...");
+                    loadLinesGrid();
+                }
+            )
+            .subscribe();
+    }
+
+    // --- RADAR 2: INDIVIDUAL LINE DASHBOARD ---
     function setupLineRealtime(lineId) {
-        // Remove previous subscription if exists
         if (lineSubscription) {
             supabase.removeChannel(lineSubscription);
         }
@@ -280,18 +299,12 @@
                 { event: 'UPDATE', schema: 'public', table: 'warehouse_lines', filter: `id=eq.${lineId}` }, 
                 (payload) => {
                     const newData = payload.new;
-                    // Detect if status changed to 'available' (Shift Ended Remotely)
                     if (newData.status === 'available') {
                         console.log("Remote End Shift detected!");
                         showToast("Session ended from another device.", "info");
                         
-                        // Cleanup local state immediately
                         localStorage.removeItem(SESSION_KEY);
-                        
-                        // Force UI reset after short delay to let user read toast
-                        setTimeout(() => {
-                            location.reload(); 
-                        }, 2000);
+                        setTimeout(() => { location.reload(); }, 2000);
                     }
                 }
             )
@@ -300,19 +313,37 @@
 
     function showSelectionView() {
         loadingOverlay.style.display = 'none';
+        
+        // Switch Views
         viewDashboard.classList.remove('active');
         viewDashboard.classList.add('hidden');
         viewSelection.classList.remove('hidden');
         viewSelection.classList.add('active');
+        
+        // Clean Dashboard Radar, Enable Global Radar
+        if (lineSubscription) {
+            supabase.removeChannel(lineSubscription);
+            lineSubscription = null;
+        }
+        
         loadLinesGrid();
+        setupSelectionRealtime();
     }
 
     function enterDashboardUI() {
         loadingOverlay.style.display = 'none';
+        
+        // Switch Views
         viewSelection.classList.remove('active');
         viewSelection.classList.add('hidden');
         viewDashboard.classList.remove('hidden');
         viewDashboard.classList.add('active');
+
+        // Clean Global Radar
+        if (selectionSubscription) {
+            supabase.removeChannel(selectionSubscription);
+            selectionSubscription = null;
+        }
 
         dashTitle.textContent = state.line.name;
 
@@ -323,7 +354,7 @@
             dashOp.textContent = state.line.team[0] || "Unknown";
         }
 
-        // --- ACTIVATE REALTIME LISTENER ---
+        // Enable Dashboard Radar
         if (state.line && state.line.id) {
             setupLineRealtime(state.line.id);
         }
@@ -469,6 +500,21 @@
             showToast("Add at least one worker.", 'error');
             return;
         }
+        
+        // PRE-CHECK: Is line still available? (Conflict prevention)
+        const { data: check } = await supabase
+            .from('warehouse_lines')
+            .select('status')
+            .eq('id', pendingLineSelection.id)
+            .single();
+            
+        if(check && check.status === 'busy') {
+            showToast("Too late! Someone else just took this line.", 'error');
+            loginOverlay.classList.add('hidden');
+            loadLinesGrid(); // Refresh view
+            return;
+        }
+
         loadingOverlay.style.display = 'flex';
 
         const mainOp = currentTeamList[0];
@@ -743,7 +789,6 @@
             .eq('id', state.line.id);
 
         localStorage.removeItem(SESSION_KEY);
-        // We reload to clear all states cleanly
         location.reload();
     }
 
