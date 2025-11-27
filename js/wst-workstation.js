@@ -579,7 +579,7 @@
 
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.qr}`;
 
-        // --- PRINT WINDOW LOGIC (FIX FOR MOBILE) ---
+        // --- PRINT WINDOW LOGIC (DESKTOP & MOBILE FIX) ---
         const win = window.open('', '_blank', 'width=400,height=550');
 
         win.document.write(`
@@ -587,7 +587,7 @@
             <head>
                 <style>
                     body { font-family: sans-serif; text-align: center; padding: 20px; }
-                    /* Style for mobile buttons */
+                    /* Style for buttons */
                     .action-btn { 
                         background: #0e2c4c; color: white; border: none; 
                         padding: 14px 24px; font-size: 16px; border-radius: 8px; 
@@ -618,7 +618,6 @@
                 </div>
 
                 <script>
-                    // Attempt auto-print after load, but don't close automatically so buttons are usable
                     window.onload = function() { 
                         setTimeout(() => window.print(), 500); 
                     }
@@ -626,6 +625,10 @@
             </body>
             </html>
         `);
+
+        // --- CRITICAL FIX FOR DESKTOP ---
+        win.document.close();
+        win.focus();
 
         loadHistoryTimeline();
         resetDashboardState();
