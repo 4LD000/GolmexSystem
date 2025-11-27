@@ -51,7 +51,7 @@
                         <i class='bx bx-refresh'></i>
                     </button>
                     <button class="btn-goldmex-primary" id="wst-export-csv-btn">
-                        <i class='bx bxs-download'></i> Export CSV
+                        <i class='bx bxs-download'></i> Export Detailed CSV
                     </button>
                 </div>
             </div>
@@ -62,13 +62,11 @@
                         <tr>
                             <th>Date</th>
                             <th>Line</th>
-                            <th>Operator</th>
                             <th>Product</th>
-                            <th>Start Time</th>
+                            <th title="Number of workers assigned">Crew</th> <th>Start Time</th>
                             <th>End Time</th>
-                            <th>Real Time</th>
-                            <th>Std Time</th>
-                            <th>Status</th>
+                            <th title="Time actually taken">Real Time</th>
+                            <th title="Target time adjusted by crew size">Adj. Target</th> <th title="Positive = Saved Time, Negative = Delay">Diff (+/-)</th> <th>Status</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
