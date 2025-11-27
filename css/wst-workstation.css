@@ -45,11 +45,19 @@ body.dark-mode {
 
 /* --- MAIN CONTAINER --- */
 .wst-workstation-container {
-    height: calc(100vh - 80px);
+    /* ELIMINA O CAMBIA ESTO: height: calc(100vh - 80px); */
+    
+    /* USA ESTO PARA LLENAR EL CONTENEDOR PADRE <MAIN>: */
+    height: 100%; 
+    
     display: flex;
     flex-direction: column;
     background-color: var(--wst-bg);
-    overflow: hidden;
+    
+    /* ELIMINA ESTO si quieres que scrollee la página completa, 
+       O MANTENLO si quieres que solo scrollee el panel interno */
+    overflow: hidden; 
+    
     position: relative;
     color: var(--wst-text-main);
 }
@@ -269,17 +277,31 @@ body.dark-mode .wst-dashboard-header {
 /* --- LAYOUT --- */
 .wst-main-layout {
     display: flex;
-    height: calc(100% - var(--wst-header-height));
+    /* CAMBIA ESTO: height: calc(100% - var(--wst-header-height)); */
+    height: 100%; /* Deja que use el espacio disponible */
+    overflow: hidden;
+}
+
+.wst-main-layout {
+    display: flex;
+    /* CAMBIA ESTO: height: calc(100% - var(--wst-header-height)); */
+    height: 100%; /* Deja que use el espacio disponible */
     overflow: hidden;
 }
 
 .wst-control-panel {
     flex: 1;
     padding: 1.5rem 2rem;
-    overflow-y: auto;
+    
+    /* ASEGURA QUE ESTO ESTÉ PRESENTE PARA EL SCROLL INTERNO */
+    overflow-y: auto; 
+    
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    
+    /* AGREGA ESTO para asegurar que el contenido al final no se corte */
+    padding-bottom: 100px; 
 }
 
 /* TOP AREA */
