@@ -43,7 +43,7 @@
 
     // --- 2. Inicialización ---
     async function init() {
-        console.log("Initializing WST Data Manager (Enhanced Time Formats)...");
+        console.log("Initializing WST Data Manager (Manager Report Mode)...");
         
         initTabs();
         initDataTables();
@@ -74,7 +74,7 @@
                 const targetId = btn.getAttribute('data-tab');
                 document.getElementById(targetId).classList.add('active');
 
-                // AJUSTE CRÍTICO: Recalcular columnas de DataTables al hacer visible la pestaña
+                // Recalcular columnas de DataTables al hacer visible la pestaña
                 if (targetId === 'wst-tab-logs' && logsTable) {
                     logsTable.columns.adjust().responsive.recalc();
                 }
@@ -87,37 +87,42 @@
 
     // --- 4. Configuración de DataTables ---
     function initDataTables() {
-        // A. Tabla de Logs (Historial)
+        // A. Tabla de Logs (Reporte Gerencial)
         if ($.fn.DataTable.isDataTable('#wstLogsTable')) {
             $('#wstLogsTable').DataTable().destroy();
         }
         logsTable = $('#wstLogsTable').DataTable({
             responsive: true,
-            order: [[4, "desc"]], // Ordenar por Hora Inicio Descendente
+            scrollY: '50vh',        // Altura fija (50% de la ventana)
+            scrollCollapse: true,   // Permite que la tabla sea más chica si hay pocos datos
+            order: [[4, "desc"]],   // Ordenar por Hora Inicio Descendente
             pageLength: 25,
             lengthMenu: [10, 25, 50, 100],
             columns: [
                 { data: 'date' },
                 { data: 'line_name' },
-                { data: 'operator_name' },
                 { data: 'product_name' },
+                { data: 'crew', className: "dt-center" },    // Nueva Columna: Crew Size
                 { data: 'start_time' },
                 { data: 'end_time' },
-                { data: 'real_time' },
-                { data: 'std_time' },
-                { data: 'status' }
+                { data: 'real_time', className: "dt-right" }, // Nueva Columna: Real Time
+                { data: 'adj_target', className: "dt-right" },// Nueva Columna: Target Ajustado
+                { data: 'diff', className: "dt-center" },     // Nueva Columna: Diferencia
+                { data: 'status', className: "dt-center" }
             ],
             language: {
                 emptyTable: "No production records found for this criteria."
             }
         });
 
-        // B. Tabla de Productos (Base de Datos) - NUEVAS COLUMNAS
+        // B. Tabla de Productos
         if ($.fn.DataTable.isDataTable('#wstProductsTable')) {
             $('#wstProductsTable').DataTable().destroy();
         }
         productsTable = $('#wstProductsTable').DataTable({
             responsive: true,
+            scrollY: '50vh',        // Altura fija (50% de la ventana)
+            scrollCollapse: true,   // Permite que la tabla sea más chica si hay pocos datos
             order: [[0, "asc"]], 
             pageLength: 15,
             lengthMenu: [15, 50, 100, 200],
@@ -125,9 +130,9 @@
                 { data: 'name', width: "25%" },
                 { data: 'cases', className: "dt-center" },
                 { data: 'units', className: "dt-center" },
-                { data: 'std_time_min', className: "dt-center" }, // Minutos
-                { data: 'std_time_sec', className: "dt-center" }, // Segundos
-                { data: 'total_time_hrs', className: "dt-center" }, // Horas y Minutos
+                { data: 'std_time_min', className: "dt-center" },
+                { data: 'std_time_sec', className: "dt-center" },
+                { data: 'total_time_hrs', className: "dt-center" },
                 { data: 'actions', orderable: false, className: "dt-center" }
             ]
         });
@@ -151,15 +156,20 @@
         }
     }
 
-    // Cargar Logs
+    // Cargar Logs (Incluyendo team_members y worker_count)
     async function loadLogs() {
         const fromDate = dateFromInput.value;
         const toDate = dateToInput.value;
         const lineFilter = lineFilterInput.value;
 
+        // Query extendido para traer datos de equipo
         let query = supabase
             .from('production_log')
-            .select(`*, warehouse_lines(line_name), production_products(name)`)
+            .select(`
+                *, 
+                warehouse_lines(line_name), 
+                production_products(name)
+            `)
             .order('start_time', { ascending: false });
 
         if (fromDate) query = query.gte('start_time', `${fromDate}T00:00:00`);
@@ -184,24 +194,28 @@
         }
     }
 
-    // --- 6. Renderizado de Tablas ---
+    // --- 6. Helpers de Formato ---
+    function formatTime(seconds) {
+        if (!seconds && seconds !== 0) return '-';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        return `${m}m ${s}s`;
+    }
+
+    // --- 7. Renderizado de Tablas ---
 
     function renderProductsTable() {
         const rows = productsCache.map(prod => {
-            // Conversiones de Tiempo
             const secondsPerCase = prod.seconds_per_case;
-            const minutesPerCase = (secondsPerCase / 60).toFixed(2); // Decimal para edición
-
-            // Cálculo Total Pallet: (Cajas * Segundos)
+            const minutesPerCase = (secondsPerCase / 60).toFixed(2);
             const totalSecondsPallet = prod.cases_per_pallet * secondsPerCase;
             
-            // Formato Horas y Minutos (Ignorando segundos sobrantes)
             const totalHours = Math.floor(totalSecondsPallet / 3600);
             const remainingSeconds = totalSecondsPallet % 3600;
             const totalMinutes = Math.floor(remainingSeconds / 60);
-
-            // String formateado: "4h 30m"
-            const totalTimeStr = `<span style="font-weight:bold; color:var(--goldmex-primary-color);">${totalHours}h ${totalMinutes}m</span>`;
 
             return {
                 name: `<span style="font-weight:600; color:var(--goldmex-header-bg);">${prod.name}</span>`,
@@ -209,7 +223,7 @@
                 units: prod.units_per_case,
                 std_time_min: `<span style="color:#0275d8; font-weight:bold;">${minutesPerCase} min</span>`,
                 std_time_sec: `<span style="color:#666;">${secondsPerCase} s</span>`,
-                total_time_hrs: totalTimeStr,
+                total_time_hrs: `<span style="font-weight:bold;">${totalHours}h ${totalMinutes}m</span>`,
                 actions: `
                     <div style="display:flex; justify-content:center; gap:5px;">
                         <button class="btn-icon-action" onclick="window.wstEditProduct(${prod.id})" title="Edit">
@@ -237,52 +251,78 @@
                 timeEnd = new Date(log.warehouse_scan_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             }
 
-            // Tiempo Real (Formato Min:Seg)
-            let realTime = '-';
+            // --- CÁLCULO DE EFICIENCIA REAL ---
+            
+            // 1. Crew Size
+            const crewSize = log.worker_count || 1;
+            
+            // 2. Tiempos en Segundos
+            const baseStdSecs = log.standard_time_seconds || 0;
+            const adjustedTargetSecs = Math.ceil(baseStdSecs / crewSize);
+            const realSecs = log.final_time_seconds || 0;
+            
+            // 3. Diferencia (Saved Time = Target - Real)
+            // Positive = Saved (Green), Negative = Delay (Red)
+            const diffSecs = log.final_time_seconds ? (adjustedTargetSecs - realSecs) : 0;
+
+            // --- FORMATO VISUAL ---
+            
+            // Crew Column (Tooltip con nombres)
+            let crewMembersList = "Unknown";
+            if (Array.isArray(log.team_members) && log.team_members.length > 0) {
+                crewMembersList = log.team_members.join(", ");
+            } else if (log.operator_name) {
+                crewMembersList = log.operator_name;
+            }
+            
+            const crewHtml = `<span title="${crewMembersList}" style="cursor:help; border-bottom:1px dotted #999;">
+                                <i class='bx bxs-group'></i> ${crewSize}
+                              </span>`;
+
+            // Diff Column
+            let diffHtml = '-';
             if (log.final_time_seconds) {
-                const min = Math.floor(log.final_time_seconds / 60);
-                const sec = log.final_time_seconds % 60;
-                realTime = `${min}m ${sec}s`;
+                const diffMin = Math.floor(Math.abs(diffSecs) / 60);
+                if (diffSecs >= 0) {
+                    diffHtml = `<span style="color:var(--scan-success); font-weight:bold;">+${diffMin}m</span>`;
+                } else {
+                    diffHtml = `<span style="color:var(--scan-error); font-weight:bold;">-${diffMin}m</span>`;
+                }
             }
 
-            // Estado (Badge)
+            // Badge Status
             let badgeClass = 'status-neutral';
             let label = log.status;
-            
             if (log.performance_rating === 'success') { badgeClass = 'status-success'; label = 'Excellent'; }
             else if (log.performance_rating === 'warning') { badgeClass = 'status-warning'; label = 'Regular'; }
-            else if (log.performance_rating === 'danger') { badgeClass = 'status-danger'; label = 'Slow'; }
-            else if (log.status === 'in_progress') { badgeClass = 'status-neutral'; label = 'In Progress'; }
+            else if (log.performance_rating === 'danger') { badgeClass = 'status-danger'; label = 'Late'; }
+            else if (log.status === 'in_progress') { badgeClass = 'status-neutral'; label = 'Running'; }
 
             return {
                 date: dateStr,
                 line_name: log.warehouse_lines?.line_name || 'N/A',
-                operator_name: log.operator_name || '-',
                 product_name: log.production_products?.name || '-',
+                crew: crewHtml,
                 start_time: timeStart,
                 end_time: timeEnd,
-                real_time: realTime,
-                std_time: log.standard_time_seconds ? (log.standard_time_seconds / 60).toFixed(1) + ' min' : '-',
+                real_time: log.final_time_seconds ? formatTime(realSecs) : '-',
+                adj_target: log.standard_time_seconds ? formatTime(adjustedTargetSecs) : '-',
+                diff: diffHtml,
                 status: `<span class="badge-status ${badgeClass}">${label}</span>`
             };
         });
         logsTable.clear().rows.add(rows).draw();
     }
 
-    // --- 7. Modal y Calculadora ---
-
-    // Calculadora en Tiempo Real (Dentro del Modal)
+    // --- 8. Modal y Calculadora ---
     function setupTimeCalculator() {
         function updatePreview() {
             const mins = parseFloat(inputMinutes.value) || 0;
             const cases = parseInt(inputCases.value) || 0;
 
             if (mins > 0) {
-                // Conversión inversa para mostrar al usuario lo que se guardará
                 const secsPerCase = Math.round(mins * 60);
                 const totalSecs = secsPerCase * cases;
-                
-                // Conversión a Horas y Minutos para preview
                 const hrs = Math.floor(totalSecs / 3600);
                 const remSecs = totalSecs % 3600;
                 const remMins = Math.floor(remSecs / 60);
@@ -290,7 +330,7 @@
                 calcPreview.innerHTML = `
                     <i class='bx bx-calculator'></i> 
                     <b>${mins} min</b> = ${secsPerCase} seconds/case. <br>
-                    Total Pallet: <b>${hrs}h ${remMins}m</b> (${totalSecs} total seconds).
+                    Total Pallet (1 Pers): <b>${hrs}h ${remMins}m</b> (${totalSecs}s).
                 `;
                 calcPreview.style.color = 'var(--goldmex-primary-color)';
             } else {
@@ -315,7 +355,6 @@
         calcPreview.innerHTML = "Preview...";
     }
 
-    // Funciones Globales (para onclick en HTML)
     window.wstEditProduct = function(id) {
         const prod = productsCache.find(p => p.id === id);
         if (!prod) return;
@@ -325,14 +364,11 @@
         document.getElementById('wst-prod-cases').value = prod.cases_per_pallet;
         document.getElementById('wst-prod-units').value = prod.units_per_case;
         
-        // Convertir Segundos (DB) -> Minutos (Input)
         const minutes = parseFloat((prod.seconds_per_case / 60).toFixed(2));
         document.getElementById('wst-prod-minutes').value = minutes;
 
-        // Disparar actualización de preview
         const event = new Event('input');
         inputMinutes.dispatchEvent(event);
-
         openModal(true);
     };
 
@@ -348,20 +384,17 @@
         }
     };
 
-    // --- 8. Event Listeners ---
+    // --- 9. Event Listeners ---
     function setupEventListeners() {
         if(addProductBtn) addProductBtn.onclick = () => openModal(false);
         if(modalCloseX) modalCloseX.onclick = closeModal;
         if(modalCancelBtn) modalCancelBtn.onclick = closeModal;
 
-        // Guardar Producto
         if(productForm) {
             productForm.onsubmit = async (e) => {
                 e.preventDefault();
-                
-                // Preparar datos
                 const minutesInput = parseFloat(document.getElementById('wst-prod-minutes').value);
-                const secondsPerCase = Math.round(minutesInput * 60); // Guardar siempre en segundos
+                const secondsPerCase = Math.round(minutesInput * 60);
 
                 const productData = {
                     name: document.getElementById('wst-prod-name').value,
@@ -389,39 +422,76 @@
             };
         }
 
-        // Filtros y Refresco
         if(applyFiltersBtn) applyFiltersBtn.onclick = loadLogs;
         if(refreshBtn) refreshBtn.onclick = () => { loadLogs(); loadProducts(); };
         
-        // Exportar CSV
+        // --- 10. EXPORTACIÓN CSV DETALLADA ---
         if(exportCsvBtn) exportCsvBtn.onclick = () => {
             if(!logsCache.length) return alert("No data to export");
-            const headers = ['Date','Line','Operator','Product','Start','End','RealTime(s)','StdTime(s)','Status'];
+            
+            // Header detallado para análisis en Excel
+            const headers = [
+                'Log ID',
+                'Date',
+                'Time Start',
+                'Time End',
+                'Line Name',
+                'Product Name',
+                'Status',
+                'Rating',
+                'Crew Size',
+                'Team Members',
+                'Base Std Seconds (1p)',
+                'Adjusted Target Seconds',
+                'Real Seconds',
+                'Difference Seconds (+Saved/-Lost)',
+                'Difference Minutes'
+            ];
+            
             const rows = [headers.join(',')];
             
             logsCache.forEach(l => {
+                // Preparar datos crudos
+                const crew = l.worker_count || 1;
+                const members = Array.isArray(l.team_members) ? l.team_members.join(" | ") : (l.operator_name || '');
+                const baseStd = l.standard_time_seconds || 0;
+                const adjTarget = Math.ceil(baseStd / crew);
+                const real = l.final_time_seconds || 0;
+                const diff = real > 0 ? (adjTarget - real) : 0;
+                const diffMin = (diff / 60).toFixed(2);
+
+                // Escapar comas en nombres de productos o equipos para no romper el CSV
+                const safeProd = `"${(l.production_products?.name || '').replace(/"/g, '""')}"`;
+                const safeMembers = `"${members.replace(/"/g, '""')}"`;
+
                 rows.push([
+                    l.id,
                     new Date(l.start_time).toLocaleDateString(),
-                    l.warehouse_lines?.line_name || '',
-                    l.operator_name || '',
-                    l.production_products?.name || '',
                     new Date(l.start_time).toLocaleTimeString(),
                     l.warehouse_scan_time ? new Date(l.warehouse_scan_time).toLocaleTimeString() : '',
-                    l.final_time_seconds || 0,
-                    l.standard_time_seconds || 0,
-                    l.status
+                    l.warehouse_lines?.line_name || '',
+                    safeProd,
+                    l.status,
+                    l.performance_rating || '',
+                    crew,
+                    safeMembers,
+                    baseStd,
+                    adjTarget,
+                    real,
+                    diff,
+                    diffMin
                 ].join(','));
             });
 
+            // Generar descarga
             const link = document.createElement("a");
             link.href = "data:text/csv;charset=utf-8," + encodeURI(rows.join("\n"));
-            link.download = "production_logs.csv";
+            link.download = `production_report_${new Date().toISOString().split('T')[0]}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         };
     }
 
-    // Iniciar Módulo
     init();
 })();
