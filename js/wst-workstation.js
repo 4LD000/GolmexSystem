@@ -21,7 +21,7 @@
 
     // Temporary state for the Login Modal
     let currentTeamList = [];
-    let currentUserEmail = null; // Store logged user email
+    let currentUserEmail = null;
 
     // --- DOM ELEMENTS ---
     const loadingOverlay = document.getElementById('wst-loading-state');
@@ -93,13 +93,16 @@
     async function init() {
         console.log("WST V4: Initializing...");
 
-        // 1. Get Current User Email immediately
+        // 1. CRITICAL: Setup listeners FIRST so buttons work immediately
+        setupEventListeners();
+
+        // 2. Get Current User Email
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             currentUserEmail = user.email;
         }
 
-        // 2. Try Local Storage first (Fastest)
+        // 3. Try Local Storage first (Fastest)
         const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
             try {
@@ -112,7 +115,7 @@
             }
         }
 
-        // 3. Try Cloud Auto-Recovery (Secure Match)
+        // 4. Try Cloud Auto-Recovery (Secure Match)
         await checkCloudForActiveSession();
     }
 
@@ -150,16 +153,11 @@
             .single();
 
         if (error || !lineData) {
-            console.warn("Line not found or error.");
+            console.warn("Line not found or error (Database mismatch). Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
             showSelectionView();
             return;
         }
-
-        // Security Check: If restoring from local, but DB says owner is different?
-        // We trust local storage for UX speed, but if lineData.owner_email exists
-        // and doesn't match, we might want to kick them out. 
-        // For now, we assume local storage is trusted if it exists.
 
         // Restore State Object with Team Data
         let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
@@ -388,7 +386,7 @@
         const mainOp = currentTeamList[0];
         const count = currentTeamList.length;
 
-        // --- CRITICAL UPDATE: SAVE OWNER EMAIL ---
+        // Save session with EMAIL OWNER
         const { error } = await supabase
             .from('warehouse_lines')
             .update({
@@ -396,13 +394,13 @@
                 current_operator: mainOp,
                 current_team: currentTeamList,
                 worker_count: count,
-                owner_email: currentUserEmail // Save email to DB for recovery matching
+                owner_email: currentUserEmail
             })
             .eq('id', pendingLineSelection.id);
 
         if (error) {
             console.error("Login Error:", error);
-            alert("Error assigning line. Ensure the 'owner_email' column exists in your database table.");
+            alert("Error assigning line.");
             loadingOverlay.style.display = 'none';
             return;
         }
@@ -620,7 +618,7 @@
                 current_operator: null,
                 current_team: [],
                 worker_count: 1,
-                owner_email: null // Clear the email lock
+                owner_email: null // Release the email lock
             })
             .eq('id', state.line.id);
 
