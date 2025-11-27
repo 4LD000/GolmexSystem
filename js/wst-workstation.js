@@ -87,13 +87,70 @@
     const sessionCount = document.getElementById('wst-session-count');
 
     // =========================================================================
+    // 0. TOAST NOTIFICATION SYSTEM (Replacement for alert())
+    // =========================================================================
+    
+    function showToast(message, type = 'info') {
+        // Remove existing toasts to prevent stacking overload
+        const existing = document.querySelectorAll('.wst-toast-notification');
+        existing.forEach(e => e.remove());
+
+        const toast = document.createElement('div');
+        toast.className = 'wst-toast-notification';
+        
+        // Inline styles for self-containment
+        Object.assign(toast.style, {
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: '9999',
+            backgroundColor: type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#3b82f6'),
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            animation: 'slideInToast 0.3s ease-out',
+            maxWidth: '90%'
+        });
+
+        const icon = type === 'error' ? "<i class='bx bx-x-circle'></i>" : 
+                     (type === 'success' ? "<i class='bx bx-check-circle'></i>" : "<i class='bx bx-info-circle'></i>");
+
+        toast.innerHTML = `${icon} <span>${message}</span>`;
+        document.body.appendChild(toast);
+
+        // Auto remove
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            toast.style.transition = 'all 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Add CSS Animation for Toast
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `
+        @keyframes slideInToast {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    `;
+    document.head.appendChild(styleSheet);
+
+    // =========================================================================
     // 1. INITIALIZATION & STATE RESTORATION
     // =========================================================================
 
     async function init() {
         console.log("WST V4: Initializing...");
-
-        // 1. CRITICAL: Setup listeners FIRST
+        
+        // 1. Setup listeners FIRST
         setupEventListeners();
 
         // 2. Get Current User Email
@@ -108,7 +165,7 @@
             try {
                 const sessionData = JSON.parse(savedSession);
                 await attemptRestoreSession(sessionData);
-                return;
+                return; 
             } catch (e) {
                 console.error("Session restore failed", e);
                 localStorage.removeItem(SESSION_KEY);
@@ -151,7 +208,7 @@
             .single();
 
         if (error || !lineData) {
-            console.warn("Line not found or error (Database mismatch). Clearing local session.");
+            console.warn("Line not found or error. Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
             showSelectionView();
             return;
@@ -230,7 +287,7 @@
 
         if (state.line.worker_count > 1) {
             dashOp.innerHTML = `${state.line.worker_count} Workers <i class='bx bx-info-circle' style="font-size:0.8rem"></i>`;
-            dashOp.title = state.line.team.join(", ");
+            dashOp.title = state.line.team.join(", "); 
         } else {
             dashOp.textContent = state.line.team[0] || "Unknown";
         }
@@ -245,7 +302,7 @@
         if (!name) return;
 
         if (currentTeamList.some(w => w.toLowerCase() === name.toLowerCase())) {
-            alert("Worker already in list.");
+            showToast("Worker already in list.", 'error');
             return;
         }
 
@@ -319,7 +376,6 @@
 
         lines.forEach(line => {
             const isBusy = line.status === 'busy';
-            // Check if THIS busy line belongs to the current user
             const isMyLine = isBusy && (line.owner_email === currentUserEmail);
 
             const card = document.createElement('div');
@@ -330,7 +386,7 @@
 
             if (isMyLine) {
                 statusLabel = 'YOUR SESSION (CLICK TO RESUME)';
-                card.style.borderColor = 'var(--wst-primary)'; // Visual cue
+                card.style.borderColor = 'var(--wst-primary)'; 
             }
 
             let opInfo = '';
@@ -348,17 +404,15 @@
             `;
 
             if (!isBusy) {
-                // Free line -> Start new session
                 card.onclick = () => promptLogin(line);
             } else if (isMyLine) {
-                // My line -> Auto recover click
                 card.style.cursor = "pointer";
                 card.onclick = () => recoverSessionFromCloud(line);
             } else {
-                // Occupied by someone else -> Blocked
                 card.style.opacity = "0.5";
                 card.style.cursor = "not-allowed";
-                card.onclick = () => alert(`Access Denied. This line is locked by ${line.owner_email || 'another user'}.`);
+                // REPLACED ALERT WITH TOAST
+                card.onclick = () => showToast(`Access Denied. Locked by: ${line.owner_email || 'Another User'}`, 'error');
             }
 
             linesGrid.appendChild(card);
@@ -376,13 +430,15 @@
     }
 
     async function confirmTeamLogin() {
-        if (currentTeamList.length === 0) return;
+        if (currentTeamList.length === 0) {
+            showToast("Add at least one worker.", 'error');
+            return;
+        }
         loadingOverlay.style.display = 'flex';
 
         const mainOp = currentTeamList[0];
         const count = currentTeamList.length;
 
-        // Save session with EMAIL OWNER
         const { error } = await supabase
             .from('warehouse_lines')
             .update({
@@ -390,13 +446,13 @@
                 current_operator: mainOp,
                 current_team: currentTeamList,
                 worker_count: count,
-                owner_email: currentUserEmail
+                owner_email: currentUserEmail 
             })
             .eq('id', pendingLineSelection.id);
 
         if (error) {
             console.error("Login Error:", error);
-            alert("Error assigning line.");
+            showToast("Error assigning line.", 'error');
             loadingOverlay.style.display = 'none';
             return;
         }
@@ -409,11 +465,12 @@
         localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
 
         loginOverlay.classList.add('hidden');
-        init();
+        init(); 
     }
 
     async function recoverSessionFromCloud(line) {
         loadingOverlay.style.display = 'flex';
+        showToast("Recovering session...", 'success');
         console.log("Recovering session from cloud data...");
 
         const sessionData = {
@@ -517,7 +574,7 @@
             .single();
 
         if (error) {
-            alert("Error starting process.");
+            showToast("Error starting process.", 'error');
             selectBtn.disabled = false;
             startBtn.disabled = false;
             return;
@@ -555,13 +612,13 @@
             .eq('id', state.pallet.id);
 
         if (error) {
-            alert("Error saving finish time.");
+            showToast("Error saving finish time.", 'error');
             finishBtn.disabled = false;
             return;
         }
         statusMsg.innerHTML = "Pallet Complete. Printing Label...";
         printBtn.disabled = false;
-        handlePrint(); // Auto print immediately after finish
+        handlePrint(); 
     }
 
     function handlePrint() {
@@ -578,24 +635,20 @@
         };
 
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.qr}`;
-
-        // --- PRINT WINDOW LOGIC (DESKTOP & MOBILE FIX) ---
+        
         const win = window.open('', '_blank', 'width=400,height=550');
-
+        
         win.document.write(`
             <html>
             <head>
                 <style>
                     body { font-family: sans-serif; text-align: center; padding: 20px; }
-                    /* Style for buttons */
                     .action-btn { 
                         background: #0e2c4c; color: white; border: none; 
                         padding: 14px 24px; font-size: 16px; border-radius: 8px; 
                         cursor: pointer; margin: 10px; width: 80%;
                     }
                     .close-btn { background: #e5e7eb; color: #333; }
-                    
-                    /* HIDE BUTTONS ON ACTUAL PRINT */
                     @media print { 
                         .no-print { display: none !important; } 
                         body { padding: 0; margin: 0; }
@@ -625,9 +678,8 @@
             </body>
             </html>
         `);
-
-        // --- CRITICAL FIX FOR DESKTOP ---
-        win.document.close();
+        
+        win.document.close(); 
         win.focus();
 
         loadHistoryTimeline();
@@ -636,7 +688,7 @@
 
     function handleEndShiftRequest() {
         if (state.pallet && state.pallet.id) {
-            alert("Cannot end shift active pallet. Finish it first.");
+            showToast("Cannot end shift active pallet. Finish it first.", 'error');
             return;
         }
         endShiftModal.classList.remove('hidden');
@@ -652,7 +704,7 @@
                 current_operator: null,
                 current_team: [],
                 worker_count: 1,
-                owner_email: null // Release the email lock
+                owner_email: null 
             })
             .eq('id', state.line.id);
 
@@ -662,12 +714,15 @@
 
     async function handleCreateLine() {
         const name = createLineInput.value.trim();
-        if (!name) return alert("Please enter a line name.");
+        if (!name) return showToast("Please enter a line name.", 'error');
+        
         createLineModal.classList.add('hidden');
         loadingOverlay.style.display = 'flex';
         const { error } = await supabase.from('warehouse_lines').insert([{ line_name: name }]);
-        if (error) alert("Error creating line.");
+        
+        if (error) showToast("Error creating line.", 'error');
         else await loadLinesGrid();
+        
         loadingOverlay.style.display = 'none';
         createLineInput.value = '';
     }
@@ -725,7 +780,7 @@
             if (log.status === 'in_progress') card.style.borderLeftColor = 'var(--wst-warning)';
             else if (log.status === 'waiting_for_scan') card.style.borderLeftColor = 'var(--wst-success)';
             else card.style.borderLeftColor = 'var(--wst-border)';
-
+            
             card.innerHTML = `
                 <div class="hist-header">
                     <span class="hist-id">${log.pallet_qr_id.split('-').pop()}</span>
@@ -738,7 +793,7 @@
                     </div>
                     ${log.status !== 'in_progress' ? `<button class="btn-reprint-sm" title="Reprint"><i class='bx bxs-printer'></i></button>` : ''}
                 </div>`;
-
+            
             const reprintBtn = card.querySelector('.btn-reprint-sm');
             if (reprintBtn) {
                 reprintBtn.onclick = () => {
