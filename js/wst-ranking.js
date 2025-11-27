@@ -1,5 +1,3 @@
-// js/wst-ranking.js
-
 (function () {
     // --- DEPENDENCY CHECK ---
     if (!window.supabase) {
@@ -25,7 +23,7 @@
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("GMX Performance Board Initialized (Live Mode)");
+        console.log("GMX Performance Board Initialized (Adjusted Efficiency Mode)");
         loadRankingData();
         setupRealtimeSubscription();
         startAutoScroll();
@@ -36,11 +34,12 @@
     async function loadRankingData() {
         const today = new Date().toISOString().split('T')[0];
 
+        // Fetch logs including the new worker_count column
         const { data: logs, error } = await window.supabase
             .from('production_log')
             .select(`
                 *,
-                warehouse_lines (id, line_name, current_operator),
+                warehouse_lines (id, line_name, current_operator, current_team),
                 production_products (name)
             `)
             .gte('start_time', `${today}T00:00:00`)
@@ -66,15 +65,23 @@
 
             const lineId = log.warehouse_lines.id;
             const lineName = log.warehouse_lines.line_name;
-            const opName = log.operator_name || log.warehouse_lines.current_operator || 'Unknown';
+            
+            // Determine Operator Label (Single name or "Team of N")
+            let opLabel = 'Unknown';
+            if (log.worker_count > 1) {
+                opLabel = `Team of ${log.worker_count}`;
+            } else {
+                // Fallback priority: Log name > Line current op > Unknown
+                opLabel = log.operator_name || log.warehouse_lines.current_operator || 'Unknown';
+            }
 
             if (!linesMap[lineId]) {
                 linesMap[lineId] = {
                     id: lineId,
                     name: lineName,
-                    operator: opName,
+                    operator: opLabel,
                     pallets: 0,
-                    totalStdSeconds: 0,
+                    totalTargetSeconds: 0, // Adjusted Target
                     totalRealSeconds: 0,
                     currentStatus: 'idle',
                     currentStartTime: null,
@@ -82,22 +89,39 @@
                 };
             }
 
+            // Only count COMPLETED pallets for the score
             if (log.final_time_seconds !== null) {
                 linesMap[lineId].pallets += 1;
-                linesMap[lineId].totalStdSeconds += (log.standard_time_seconds || 0);
-                linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0);
                 grandTotalPallets += 1;
+
+                // --- CRITICAL CALCULATION ---
+                // 1. Get Base Standard (Total Man-Hours)
+                const baseStd = log.standard_time_seconds || 0;
+                
+                // 2. Get Team Size used for THAT pallet
+                const workers = log.worker_count || 1;
+                
+                // 3. Calculate Adjusted Target for this specific pallet
+                const adjustedTarget = baseStd / workers;
+
+                // 4. Accumulate
+                linesMap[lineId].totalTargetSeconds += adjustedTarget;
+                linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0);
             }
             else {
+                // Active Pallet Logic
                 linesMap[lineId].currentStatus = 'active';
                 linesMap[lineId].currentStartTime = new Date(log.start_time).getTime();
                 linesMap[lineId].currentProduct = log.production_products?.name || 'Unknown Item';
-                linesMap[lineId].operator = opName;
+                // Update operator display to current team if active
+                linesMap[lineId].operator = opLabel;
             }
         });
 
+        // Calculate Deviation (Saved Time)
+        // Deviation = Target - Real. Positive means Saved Time (Good). Negative means Delay (Bad).
         const rankingArray = Object.values(linesMap).map(line => {
-            const deviationSeconds = line.totalStdSeconds - line.totalRealSeconds;
+            const deviationSeconds = line.totalTargetSeconds - line.totalRealSeconds;
             grandTotalDeviation += deviationSeconds;
 
             return {
@@ -106,6 +130,7 @@
             };
         });
 
+        // Sort by Time Saved (Highest first)
         rankingArray.sort((a, b) => b.deviationSeconds - a.deviationSeconds);
         activeLinesData = rankingArray;
 
@@ -152,7 +177,6 @@
                 timerHtml = `<div class="live-timer-display" style="opacity:0;">--:--</div>`;
             }
 
-            // MODIFICADO: Labels van ARRIBA de los valores para que los números alineen con el timer
             card.innerHTML = `
                 <div class="rank-pos">#${rankPosition}</div>
                 
@@ -168,7 +192,7 @@
                 ${timerHtml}
 
                 <div class="rank-stat">
-                    <span class="stat-label">Saved Time</span>
+                    <span class="stat-label">Efficiency</span>
                     <div class="time-diff ${formattedTime.class}">${formattedTime.text}</div>
                 </div>
 
@@ -211,7 +235,8 @@
                     }
 
                     timerEl.textContent = timeString;
-                    if (elapsedSecs > 1800) timerEl.style.color = 'var(--rank-red)';
+                    // Visual cue if running very long (optional, just for visual feedback)
+                    if (elapsedSecs > 3600) timerEl.style.color = 'var(--rank-red)';
                     else timerEl.style.removeProperty('color');
                 }
             }
@@ -231,9 +256,14 @@
     }
 
     function formatTimeDiff(seconds) {
+        // Positive seconds = Time Saved (Good)
+        // Negative seconds = Time Lost/Delayed (Bad)
+        
         const isNegative = seconds < 0;
         const absSeconds = Math.abs(seconds);
         const m = Math.floor(absSeconds / 60);
+        
+        // Formatting: If saved time, show "+" and green. If delayed, "-" and red.
         const sign = isNegative ? '-' : '+';
         const text = `${sign} ${m} min`;
 
@@ -242,11 +272,11 @@
 
         if (!isNegative && m > 0) {
             cssClass = 'diff-positive';
-            colorStyle = 'color: var(--rank-green)';
+            colorStyle = 'color: var(--rank-green)'; // Green for saved time
         }
         else if (isNegative) {
             cssClass = 'diff-negative';
-            colorStyle = 'color: var(--rank-red)';
+            colorStyle = 'color: var(--rank-red)';   // Red for delay
         }
 
         return {
@@ -257,9 +287,10 @@
     }
 
     function getStatusConfig(seconds) {
+        // Status border based on accumulated efficiency
         if (seconds >= 0) {
             return { type: 'good', borderClass: 'status-good' };
-        } else if (seconds > -900) {
+        } else if (seconds > -900) { // Less than 15 min delay
             return { type: 'warn', borderClass: 'status-warn' };
         } else {
             return { type: 'bad', borderClass: 'status-bad' };
