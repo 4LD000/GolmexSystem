@@ -19,6 +19,9 @@
         timerInterval: null
     };
 
+    // Realtime Subscription Variable
+    let lineSubscription = null;
+
     // Temporary state for the Login Modal
     let currentTeamList = [];
     let currentUserEmail = null;
@@ -87,18 +90,16 @@
     const sessionCount = document.getElementById('wst-session-count');
 
     // =========================================================================
-    // 0. TOAST NOTIFICATION SYSTEM (Replacement for alert())
+    // 0. TOAST NOTIFICATION SYSTEM
     // =========================================================================
     
     function showToast(message, type = 'info') {
-        // Remove existing toasts to prevent stacking overload
         const existing = document.querySelectorAll('.wst-toast-notification');
         existing.forEach(e => e.remove());
 
         const toast = document.createElement('div');
         toast.className = 'wst-toast-notification';
         
-        // Inline styles for self-containment
         Object.assign(toast.style, {
             position: 'fixed',
             top: '20px',
@@ -124,7 +125,6 @@
         toast.innerHTML = `${icon} <span>${message}</span>`;
         document.body.appendChild(toast);
 
-        // Auto remove
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(-10px)';
@@ -133,7 +133,6 @@
         }, 4000);
     }
 
-    // Add CSS Animation for Toast
     const styleSheet = document.createElement("style");
     styleSheet.innerText = `
         @keyframes slideInToast {
@@ -150,16 +149,13 @@
     async function init() {
         console.log("WST V4: Initializing...");
         
-        // 1. Setup listeners FIRST
         setupEventListeners();
 
-        // 2. Get Current User Email
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             currentUserEmail = user.email;
         }
 
-        // 3. Try Local Storage first
         const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
             try {
@@ -172,7 +168,6 @@
             }
         }
 
-        // 4. Try Cloud Auto-Recovery
         await checkCloudForActiveSession();
     }
 
@@ -182,8 +177,6 @@
             return;
         }
 
-        console.log("Checking cloud for active session owned by:", currentUserEmail);
-
         const { data: myLines, error } = await supabase
             .from('warehouse_lines')
             .select('*')
@@ -191,11 +184,9 @@
             .eq('owner_email', currentUserEmail);
 
         if (myLines && myLines.length > 0) {
-            console.log("Found active session for user! recovering automatically...");
             const line = myLines[0];
             await recoverSessionFromCloud(line);
         } else {
-            console.log("No active session found for this user.");
             showSelectionView();
         }
     }
@@ -208,7 +199,15 @@
             .single();
 
         if (error || !lineData) {
-            console.warn("Line not found or error. Clearing local session.");
+            console.warn("Line not found or mismatch. Clearing local session.");
+            localStorage.removeItem(SESSION_KEY);
+            showSelectionView();
+            return;
+        }
+
+        // Logic check: If line status in DB is NOT busy, our local session is stale (Zombie session)
+        if (lineData.status !== 'busy') {
+            console.warn("Line is no longer busy in DB. Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
             showSelectionView();
             return;
@@ -264,8 +263,40 @@
     }
 
     // =========================================================================
-    // 2. VIEW MANAGEMENT
+    // 2. VIEW MANAGEMENT & REALTIME SYNC (NEW)
     // =========================================================================
+
+    function setupLineRealtime(lineId) {
+        // Remove previous subscription if exists
+        if (lineSubscription) {
+            supabase.removeChannel(lineSubscription);
+        }
+
+        console.log(`Setting up Realtime Listener for Line ID: ${lineId}`);
+
+        lineSubscription = supabase.channel(`line-sync-${lineId}`)
+            .on(
+                'postgres_changes', 
+                { event: 'UPDATE', schema: 'public', table: 'warehouse_lines', filter: `id=eq.${lineId}` }, 
+                (payload) => {
+                    const newData = payload.new;
+                    // Detect if status changed to 'available' (Shift Ended Remotely)
+                    if (newData.status === 'available') {
+                        console.log("Remote End Shift detected!");
+                        showToast("Session ended from another device.", "info");
+                        
+                        // Cleanup local state immediately
+                        localStorage.removeItem(SESSION_KEY);
+                        
+                        // Force UI reset after short delay to let user read toast
+                        setTimeout(() => {
+                            location.reload(); 
+                        }, 2000);
+                    }
+                }
+            )
+            .subscribe();
+    }
 
     function showSelectionView() {
         loadingOverlay.style.display = 'none';
@@ -290,6 +321,11 @@
             dashOp.title = state.line.team.join(", "); 
         } else {
             dashOp.textContent = state.line.team[0] || "Unknown";
+        }
+
+        // --- ACTIVATE REALTIME LISTENER ---
+        if (state.line && state.line.id) {
+            setupLineRealtime(state.line.id);
         }
     }
 
@@ -356,7 +392,7 @@
     }
 
     // =========================================================================
-    // 4. LINE SELECTION & LOGIN (WITH EMAIL BINDING)
+    // 4. LINE SELECTION & LOGIN
     // =========================================================================
 
     async function loadLinesGrid() {
@@ -411,7 +447,6 @@
             } else {
                 card.style.opacity = "0.5";
                 card.style.cursor = "not-allowed";
-                // REPLACED ALERT WITH TOAST
                 card.onclick = () => showToast(`Access Denied. Locked by: ${line.owner_email || 'Another User'}`, 'error');
             }
 
@@ -471,7 +506,6 @@
     async function recoverSessionFromCloud(line) {
         loadingOverlay.style.display = 'flex';
         showToast("Recovering session...", 'success');
-        console.log("Recovering session from cloud data...");
 
         const sessionData = {
             lineId: line.id,
@@ -709,6 +743,7 @@
             .eq('id', state.line.id);
 
         localStorage.removeItem(SESSION_KEY);
+        // We reload to clear all states cleanly
         location.reload();
     }
 
