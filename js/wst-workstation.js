@@ -21,6 +21,7 @@
 
     // Temporary state for the Login Modal
     let currentTeamList = [];
+    let currentUserEmail = null; // Store logged user email
 
     // --- DOM ELEMENTS ---
     const loadingOverlay = document.getElementById('wst-loading-state');
@@ -90,24 +91,54 @@
     // =========================================================================
 
     async function init() {
-        console.log("WST V4: Cloud State Initializing (Multi-Worker Mode)...");
+        console.log("WST V4: Initializing...");
 
+        // 1. Get Current User Email immediately
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            currentUserEmail = user.email;
+        }
+
+        // 2. Try Local Storage first (Fastest)
         const savedSession = localStorage.getItem(SESSION_KEY);
-
         if (savedSession) {
             try {
                 const sessionData = JSON.parse(savedSession);
                 await attemptRestoreSession(sessionData);
+                return; // Local restore success
             } catch (e) {
                 console.error("Session restore failed", e);
                 localStorage.removeItem(SESSION_KEY);
-                showSelectionView();
             }
-        } else {
-            showSelectionView();
         }
 
-        setupEventListeners();
+        // 3. Try Cloud Auto-Recovery (Secure Match)
+        await checkCloudForActiveSession();
+    }
+
+    async function checkCloudForActiveSession() {
+        if (!currentUserEmail) {
+            showSelectionView();
+            return;
+        }
+
+        console.log("Checking cloud for active session owned by:", currentUserEmail);
+
+        // Find a busy line where 'owner_email' matches current user
+        const { data: myLines, error } = await supabase
+            .from('warehouse_lines')
+            .select('*')
+            .eq('status', 'busy')
+            .eq('owner_email', currentUserEmail);
+
+        if (myLines && myLines.length > 0) {
+            console.log("Found active session for user! recovering automatically...");
+            const line = myLines[0];
+            await recoverSessionFromCloud(line);
+        } else {
+            console.log("No active session found for this user.");
+            showSelectionView();
+        }
     }
 
     async function attemptRestoreSession(sessionData) {
@@ -125,8 +156,12 @@
             return;
         }
 
+        // Security Check: If restoring from local, but DB says owner is different?
+        // We trust local storage for UX speed, but if lineData.owner_email exists
+        // and doesn't match, we might want to kick them out. 
+        // For now, we assume local storage is trusted if it exists.
+
         // Restore State Object with Team Data
-        // Fallback for legacy sessions: if no array, use single operator string as array
         let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
         let wCount = sessionData.count || 1;
 
@@ -148,7 +183,6 @@
         enterDashboardUI();
 
         if (activeLog) {
-            console.log("Found active pallet in Cloud:", activeLog);
             restoreActivePallet(activeLog);
         } else {
             resetDashboardState();
@@ -165,12 +199,7 @@
         };
 
         state.product = logEntry.production_products;
-
-        // Ensure UI uses the worker count from the LOG if available (historical accuracy), 
-        // otherwise use current line state.
         const logWorkerCount = logEntry.worker_count || state.line.worker_count;
-
-        // Update UI with calculated time
         updateScorecards(state.product, logWorkerCount);
 
         selectBtn.disabled = true;
@@ -205,24 +234,22 @@
 
         dashTitle.textContent = state.line.name;
 
-        // Format Operator/Team Display
         if (state.line.worker_count > 1) {
             dashOp.innerHTML = `${state.line.worker_count} Workers <i class='bx bx-info-circle' style="font-size:0.8rem"></i>`;
-            dashOp.title = state.line.team.join(", "); // Tooltip
+            dashOp.title = state.line.team.join(", ");
         } else {
             dashOp.textContent = state.line.team[0] || "Unknown";
         }
     }
 
     // =========================================================================
-    // 3. TEAM MANAGEMENT LOGIC (NEW)
+    // 3. TEAM MANAGEMENT LOGIC
     // =========================================================================
 
     function addWorkerToTeam() {
         const name = workerInput.value.trim();
         if (!name) return;
 
-        // Prevent duplicates (optional, strictly by string match)
         if (currentTeamList.some(w => w.toLowerCase() === name.toLowerCase())) {
             alert("Worker already in list.");
             return;
@@ -238,14 +265,10 @@
         currentTeamList.splice(index, 1);
         renderTeamList();
     }
-
-    // Make remove function globally accessible for the onclick event in HTML
     window.wstRemoveWorker = removeWorker;
 
     function renderTeamList() {
         workerCountDisplay.textContent = currentTeamList.length;
-
-        // Enable Start button only if at least 1 worker
         confirmLoginBtn.disabled = currentTeamList.length === 0;
 
         workerListContainer.innerHTML = '';
@@ -282,7 +305,7 @@
     }
 
     // =========================================================================
-    // 4. LINE SELECTION & LOGIN
+    // 4. LINE SELECTION & LOGIN (WITH EMAIL BINDING)
     // =========================================================================
 
     async function loadLinesGrid() {
@@ -302,13 +325,20 @@
 
         lines.forEach(line => {
             const isBusy = line.status === 'busy';
+            // Check if THIS busy line belongs to the current user
+            const isMyLine = isBusy && (line.owner_email === currentUserEmail);
+
             const card = document.createElement('div');
             card.className = `wst-line-card ${isBusy ? 'busy' : 'available'}`;
 
             let iconClass = isBusy ? 'bx-error-circle' : 'bx-check-circle';
             let statusLabel = isBusy ? 'OCCUPIED' : 'AVAILABLE';
 
-            // Show operator info if busy
+            if (isMyLine) {
+                statusLabel = 'YOUR SESSION (CLICK TO RESUME)';
+                card.style.borderColor = 'var(--wst-primary)'; // Visual cue
+            }
+
             let opInfo = '';
             if (isBusy) {
                 const count = line.worker_count || 1;
@@ -324,8 +354,19 @@
             `;
 
             if (!isBusy) {
+                // Free line -> Start new session
                 card.onclick = () => promptLogin(line);
+            } else if (isMyLine) {
+                // My line -> Auto recover click
+                card.style.cursor = "pointer";
+                card.onclick = () => recoverSessionFromCloud(line);
+            } else {
+                // Occupied by someone else -> Blocked
+                card.style.opacity = "0.5";
+                card.style.cursor = "not-allowed";
+                card.onclick = () => alert(`Access Denied. This line is locked by ${line.owner_email || 'another user'}.`);
             }
+
             linesGrid.appendChild(card);
         });
     }
@@ -333,42 +374,39 @@
     function promptLogin(line) {
         pendingLineSelection = line;
         document.getElementById('wst-selected-line-display').textContent = line.line_name;
-
-        // Reset Team State
         currentTeamList = [];
         workerInput.value = '';
         renderTeamList();
-
         loginOverlay.classList.remove('hidden');
         workerInput.focus();
     }
 
     async function confirmTeamLogin() {
         if (currentTeamList.length === 0) return;
-
         loadingOverlay.style.display = 'flex';
 
-        const mainOp = currentTeamList[0]; // For legacy columns
+        const mainOp = currentTeamList[0];
         const count = currentTeamList.length;
 
-        // Update DB with Team Data
+        // --- CRITICAL UPDATE: SAVE OWNER EMAIL ---
         const { error } = await supabase
             .from('warehouse_lines')
             .update({
                 status: 'busy',
-                current_operator: mainOp, // Legacy support
+                current_operator: mainOp,
                 current_team: currentTeamList,
-                worker_count: count
+                worker_count: count,
+                owner_email: currentUserEmail // Save email to DB for recovery matching
             })
             .eq('id', pendingLineSelection.id);
 
         if (error) {
-            alert("Error assigning line. Try again.");
+            console.error("Login Error:", error);
+            alert("Error assigning line. Ensure the 'owner_email' column exists in your database table.");
             loadingOverlay.style.display = 'none';
             return;
         }
 
-        // Set Local Session
         const sessionData = {
             lineId: pendingLineSelection.id,
             team: currentTeamList,
@@ -377,27 +415,38 @@
         localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
 
         loginOverlay.classList.add('hidden');
-        init(); // Reload to set state
+        init();
+    }
+
+    async function recoverSessionFromCloud(line) {
+        loadingOverlay.style.display = 'flex';
+        console.log("Recovering session from cloud data...");
+
+        const sessionData = {
+            lineId: line.id,
+            team: line.current_team || (line.current_operator ? [line.current_operator] : []),
+            count: line.worker_count || 1
+        };
+
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+        await attemptRestoreSession(sessionData);
     }
 
     // =========================================================================
-    // 5. DASHBOARD LOGIC (Calculations & Workflow)
+    // 5. DASHBOARD LOGIC 
     // =========================================================================
 
     function resetDashboardState() {
         stopTimer();
         state.product = null;
         state.pallet = null;
-
         cardName.textContent = "--";
         cardConfig.textContent = "0 Units / 0 Cases";
         cardStdTime.textContent = "0h 0m";
         cardRealTime.textContent = "00:00:00";
         cardRealTime.parentElement.classList.remove('active-pulse');
-
         statusMsg.innerHTML = "Idle - Select Product";
         statusMsg.style.color = "var(--wst-text-light)";
-
         selectBtn.disabled = false;
         startBtn.disabled = true;
         finishBtn.disabled = true;
@@ -428,35 +477,22 @@
 
     function selectProduct(product) {
         state.product = product;
-        // Use current line count for new calculation
         updateScorecards(product, state.line.worker_count);
-
         modal.classList.add('hidden');
         startBtn.disabled = false;
         statusMsg.innerHTML = `<span style="color:var(--wst-primary)">Ready:</span> Click Start to begin.`;
     }
 
-    // --- CRITICAL: ADJUSTED EFFICIENCY CALCULATION ---
     function updateScorecards(p, workerCount) {
         cardName.textContent = p.name;
         cardName.title = p.name;
         cardConfig.textContent = `${p.units_per_case} U / ${p.cases_per_pallet} Cases`;
-
-        // 1. Calculate Base Total Seconds (for 1 person)
         const totalBaseSeconds = p.cases_per_pallet * p.seconds_per_case;
-
-        // 2. Adjust by Worker Count (N)
-        // Ensure we don't divide by zero
         const safeCount = workerCount > 0 ? workerCount : 1;
         const adjustedSeconds = Math.ceil(totalBaseSeconds / safeCount);
-
-        // 3. Format for Display
         const h = Math.floor(adjustedSeconds / 3600);
         const m = Math.floor((adjustedSeconds % 3600) / 60);
-
-        // Visual indicator of split
         const timeText = `${h}h ${m}m`;
-
         cardStdTime.innerHTML = timeText;
         if (safeCount > 1) {
             cardStdTime.innerHTML += `<div style="font-size:0.65rem; opacity:0.8; font-weight:normal;">(Split by ${safeCount} workers)</div>`;
@@ -465,27 +501,21 @@
 
     async function handleStart() {
         if (!state.product) return;
-
         selectBtn.disabled = true;
         startBtn.disabled = true;
-
         const qrId = `PLT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const now = new Date();
-
         statusMsg.innerHTML = "Starting process...";
 
-        // Insert Log with Team Data
         const { data, error } = await supabase
             .from('production_log')
             .insert([{
                 pallet_qr_id: qrId,
                 line_id: state.line.id,
                 product_id: state.product.id,
-
-                operator_name: state.line.team[0] || "Unknown", // Legacy
-                team_members: state.line.team,                  // New: Full Team
-                worker_count: state.line.worker_count,          // New: Count for calculations
-
+                operator_name: state.line.team[0] || "Unknown",
+                team_members: state.line.team,
+                worker_count: state.line.worker_count,
                 start_time: now.toISOString(),
                 status: 'in_progress'
             }])
@@ -504,14 +534,11 @@
             qr_id: qrId,
             start_time: now
         };
-
         statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Pallet in progress...`;
         finishBtn.disabled = false;
-
         startRealTimeTimer(now);
     }
 
-    // --- Finish & Print ---
     function handleFinishRequest() {
         if (!state.pallet) return;
         confirmModal.classList.remove('hidden');
@@ -521,7 +548,6 @@
         confirmModal.classList.add('hidden');
         finishBtn.disabled = true;
         stopTimer();
-
         const now = new Date();
         const durationSec = Math.floor((now - state.pallet.start_time) / 1000);
 
@@ -539,15 +565,12 @@
             finishBtn.disabled = false;
             return;
         }
-
         statusMsg.innerHTML = "Pallet Complete. Printing Label...";
         printBtn.disabled = false;
     }
 
     function handlePrint() {
         if (!state.pallet || !state.product) return;
-
-        // Display "Team (5)" or single name
         const opDisplay = state.line.worker_count > 1
             ? `Team of ${state.line.worker_count}`
             : state.line.team[0];
@@ -560,7 +583,6 @@
         };
 
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.qr}`;
-
         const win = window.open('', '_blank', 'width=400,height=550');
         win.document.write(`
             <html>
@@ -572,18 +594,14 @@
                 <div style="margin:20px 0;"><img src="${qrUrl}" style="width:140px;"></div>
                 <p style="font-family:monospace; font-size:18px; font-weight:bold;">${data.qr}</p>
                 <p style="font-size:12px;">${data.date}</p>
-                <script>
-                    window.onload = function() { window.print(); window.close(); }
-                </script>
+                <script>window.onload = function() { window.print(); window.close(); }</script>
             </body>
             </html>
         `);
-
         loadHistoryTimeline();
         resetDashboardState();
     }
 
-    // --- End Shift ---
     function handleEndShiftRequest() {
         if (state.pallet && state.pallet.id) {
             alert("Cannot end shift active pallet. Finish it first.");
@@ -601,7 +619,8 @@
                 status: 'available',
                 current_operator: null,
                 current_team: [],
-                worker_count: 1
+                worker_count: 1,
+                owner_email: null // Clear the email lock
             })
             .eq('id', state.line.id);
 
@@ -609,41 +628,28 @@
         location.reload();
     }
 
-    // --- Create Line ---
     async function handleCreateLine() {
         const name = createLineInput.value.trim();
         if (!name) return alert("Please enter a line name.");
-
         createLineModal.classList.add('hidden');
         loadingOverlay.style.display = 'flex';
-
-        const { error } = await supabase
-            .from('warehouse_lines')
-            .insert([{ line_name: name }]);
-
-        if (error) {
-            alert("Error creating line.");
-        } else {
-            await loadLinesGrid();
-        }
+        const { error } = await supabase.from('warehouse_lines').insert([{ line_name: name }]);
+        if (error) alert("Error creating line.");
+        else await loadLinesGrid();
         loadingOverlay.style.display = 'none';
         createLineInput.value = '';
     }
 
-    // --- Timer Logic ---
     function startRealTimeTimer(startTimeObj) {
         stopTimer();
         cardRealTime.parentElement.classList.add('highlight-card');
-
         state.timerInterval = setInterval(() => {
             const now = new Date();
             const diff = now - startTimeObj;
-
             const totalSecs = Math.floor(diff / 1000);
             const hrs = Math.floor(totalSecs / 3600);
             const mins = Math.floor((totalSecs % 3600) / 60);
             const secs = totalSecs % 60;
-
             const pad = (n) => n.toString().padStart(2, '0');
             cardRealTime.textContent = `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
         }, 1000);
@@ -655,24 +661,20 @@
         cardRealTime.parentElement.classList.remove('highlight-card');
     }
 
-    // --- History Timeline ---
     async function loadHistoryTimeline() {
         const today = new Date().toISOString().split('T')[0];
-
         const { data: logs } = await supabase
             .from('production_log')
             .select(`*, production_products(name)`)
             .eq('line_id', state.line.id)
             .gte('start_time', `${today}T00:00:00`)
             .order('start_time', { ascending: false });
-
         renderTimeline(logs || []);
     }
 
     function renderTimeline(logs) {
         sessionCount.textContent = logs.length;
         historyList.innerHTML = '';
-
         if (logs.length === 0) {
             historyList.innerHTML = `
                 <div id="wst-empty-history" class="empty-message">
@@ -681,16 +683,13 @@
                 </div>`;
             return;
         }
-
         logs.forEach(log => {
             const start = new Date(log.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const end = log.line_finish_time
                 ? new Date(log.line_finish_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : '...';
-
             const card = document.createElement('div');
             card.className = 'wst-history-card';
-
             if (log.status === 'in_progress') card.style.borderLeftColor = 'var(--wst-warning)';
             else if (log.status === 'waiting_for_scan') card.style.borderLeftColor = 'var(--wst-success)';
             else card.style.borderLeftColor = 'var(--wst-border)';
@@ -700,20 +699,13 @@
                     <span class="hist-id">${log.pallet_qr_id.split('-').pop()}</span>
                     <span>${log.status === 'in_progress' ? 'Running' : 'Done'}</span>
                 </div>
-                <div class="hist-body">
-                    ${log.production_products?.name || 'Unknown Product'}
-                </div>
+                <div class="hist-body">${log.production_products?.name || 'Unknown Product'}</div>
                 <div class="hist-footer">
                     <div class="hist-times">
-                        <span class="time-range">
-                            <i class='bx bx-time'></i> ${start} - ${end}
-                        </span>
+                        <span class="time-range"><i class='bx bx-time'></i> ${start} - ${end}</span>
                     </div>
-                    ${log.status !== 'in_progress' ?
-                    `<button class="btn-reprint-sm" title="Reprint"><i class='bx bxs-printer'></i></button>`
-                    : ''}
-                </div>
-            `;
+                    ${log.status !== 'in_progress' ? `<button class="btn-reprint-sm" title="Reprint"><i class='bx bxs-printer'></i></button>` : ''}
+                </div>`;
 
             const reprintBtn = card.querySelector('.btn-reprint-sm');
             if (reprintBtn) {
@@ -723,14 +715,11 @@
                     handlePrint();
                 };
             }
-
             historyList.appendChild(card);
         });
     }
 
-    // --- EVENT BINDING ---
     function setupEventListeners() {
-        // Create Line
         if (addLineBtn) addLineBtn.onclick = () => {
             createLineModal.classList.remove('hidden');
             createLineInput.focus();
@@ -738,19 +727,14 @@
         createLineCancelBtn.onclick = () => createLineModal.classList.add('hidden');
         createLineConfirmBtn.onclick = handleCreateLine;
 
-        // Login / Team Modal Events
         cancelLoginBtn.onclick = () => loginOverlay.classList.add('hidden');
         confirmLoginBtn.onclick = confirmTeamLogin;
 
         addWorkerBtn.onclick = addWorkerToTeam;
-        workerInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') addWorkerToTeam();
-        });
+        workerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addWorkerToTeam(); });
 
-        // Dashboard Header
         releaseBtn.onclick = handleEndShiftRequest;
 
-        // Product Modal
         selectBtn.onclick = () => {
             modal.classList.remove('hidden');
             searchInput.value = '';
@@ -760,12 +744,10 @@
         closeModalBtn.onclick = () => modal.classList.add('hidden');
         searchInput.oninput = (e) => loadProducts(e.target.value);
 
-        // Actions
         startBtn.onclick = handleStart;
         finishBtn.onclick = handleFinishRequest;
         printBtn.onclick = handlePrint;
 
-        // Confirm Modals
         confirmYesBtn.onclick = executeFinishProcess;
         confirmNoBtn.onclick = () => confirmModal.classList.add('hidden');
 
@@ -773,7 +755,5 @@
         endShiftNoBtn.onclick = () => endShiftModal.classList.add('hidden');
     }
 
-    // START
     init();
-
 })();
