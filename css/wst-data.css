@@ -11,11 +11,12 @@
     --wst-text-light: #6b7280;
     --wst-border: #e5e7eb;
     --wst-border-focus: #ffd700;
-    
+
     /* HEADER COLORS - FIXED TO BLUE */
-    --wst-header-bg: #0e2c4c;     /* Corporate Blue */
+    --wst-header-bg: #0e2c4c;
+    /* Corporate Blue */
     --wst-header-text: #ffffff;
-    
+
     --wst-tab-active-bg: #f3f4f6;
     --wst-tab-inactive-text: #64748b;
 }
@@ -25,10 +26,10 @@ body.dark-mode {
     --wst-text-main: #f3f4f6;
     --wst-text-light: #9ca3af;
     --wst-border: #374151;
-    
+
     /* Dark Mode Header - Slightly darker blue, not black */
-    --wst-header-bg: #0a1f35;     
-    
+    --wst-header-bg: #0a1f35;
+
     --wst-tab-active-bg: #374151;
     --wst-tab-inactive-text: #9ca3af;
 }
@@ -43,8 +44,15 @@ body.dark-mode {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* --- 1. Header Section (Corporate Blue Style) --- */
@@ -72,12 +80,13 @@ body.dark-mode {
 
 /* Gold Icon Box */
 .wst-title-area h2 i {
-    color: #ffd700; /* Gold */
+    color: #ffd700;
+    /* Gold */
     font-size: 1.6rem;
     background: rgba(255, 255, 255, 0.15);
     padding: 8px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* --- Tabs Styling --- */
@@ -110,7 +119,8 @@ body.dark-mode {
 }
 
 .wst-tab-button.active {
-    color: #ffd700; /* Gold text for active tab */
+    color: #ffd700;
+    /* Gold text for active tab */
     border-bottom-color: #ffd700;
     background: linear-gradient(to top, rgba(255, 215, 0, 0.15), transparent);
     font-weight: 700;
@@ -145,7 +155,7 @@ body.dark-mode {
     gap: 1.5rem;
     align-items: flex-end;
     margin-bottom: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .wst-filter-group {
@@ -245,7 +255,8 @@ table.dataTable tbody td {
 
 .btn-icon-action:hover {
     background-color: rgba(0, 0, 0, 0.05);
-    color: var(--goldmex-primary-color); /* Gold hover */
+    color: var(--goldmex-primary-color);
+    /* Gold hover */
     border-color: var(--wst-border);
 }
 
@@ -259,5 +270,37 @@ table.dataTable tbody td {
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
-.ml-auto { margin-left: auto; }
-.max-w-600 { max-width: 600px; }
+.ml-auto {
+    margin-left: auto;
+}
+
+.max-w-600 {
+    max-width: 600px;
+}
+
+/* --- DataTables Fixed Header & Scrolling Fixes --- */
+.dataTables_scrollBody {
+    border-bottom: 1px solid var(--wst-border);
+    /* Personalizar barra de scroll */
+    scrollbar-width: thin;
+    scrollbar-color: var(--goldmex-primary-color) var(--wst-bg-color);
+}
+
+/* Scrollbar estilo Webkit (Chrome/Edge/Safari) */
+.dataTables_scrollBody::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.dataTables_scrollBody::-webkit-scrollbar-track {
+    background: var(--wst-bg-color);
+}
+
+.dataTables_scrollBody::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
+body.dark-mode .dataTables_scrollBody::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+}
