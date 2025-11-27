@@ -93,7 +93,7 @@
     async function init() {
         console.log("WST V4: Initializing...");
 
-        // 1. CRITICAL: Setup listeners FIRST so buttons work immediately
+        // 1. CRITICAL: Setup listeners FIRST
         setupEventListeners();
 
         // 2. Get Current User Email
@@ -102,20 +102,20 @@
             currentUserEmail = user.email;
         }
 
-        // 3. Try Local Storage first (Fastest)
+        // 3. Try Local Storage first
         const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
             try {
                 const sessionData = JSON.parse(savedSession);
                 await attemptRestoreSession(sessionData);
-                return; // Local restore success
+                return;
             } catch (e) {
                 console.error("Session restore failed", e);
                 localStorage.removeItem(SESSION_KEY);
             }
         }
 
-        // 4. Try Cloud Auto-Recovery (Secure Match)
+        // 4. Try Cloud Auto-Recovery
         await checkCloudForActiveSession();
     }
 
@@ -127,7 +127,6 @@
 
         console.log("Checking cloud for active session owned by:", currentUserEmail);
 
-        // Find a busy line where 'owner_email' matches current user
         const { data: myLines, error } = await supabase
             .from('warehouse_lines')
             .select('*')
@@ -145,7 +144,6 @@
     }
 
     async function attemptRestoreSession(sessionData) {
-        // Validate Line Status in DB
         const { data: lineData, error } = await supabase
             .from('warehouse_lines')
             .select('*')
@@ -159,7 +157,6 @@
             return;
         }
 
-        // Restore State Object with Team Data
         let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
         let wCount = sessionData.count || 1;
 
@@ -170,7 +167,6 @@
             worker_count: wCount
         };
 
-        // Check for active pallet
         const { data: activeLog } = await supabase
             .from('production_log')
             .select('*, production_products(*)')
@@ -565,6 +561,7 @@
         }
         statusMsg.innerHTML = "Pallet Complete. Printing Label...";
         printBtn.disabled = false;
+        handlePrint(); // Auto print immediately after finish
     }
 
     function handlePrint() {
@@ -581,10 +578,31 @@
         };
 
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.qr}`;
+
+        // --- PRINT WINDOW LOGIC (FIX FOR MOBILE) ---
         const win = window.open('', '_blank', 'width=400,height=550');
+
         win.document.write(`
             <html>
-            <body style="font-family:sans-serif; text-align:center; padding:20px; border:2px solid black;">
+            <head>
+                <style>
+                    body { font-family: sans-serif; text-align: center; padding: 20px; }
+                    /* Style for mobile buttons */
+                    .action-btn { 
+                        background: #0e2c4c; color: white; border: none; 
+                        padding: 14px 24px; font-size: 16px; border-radius: 8px; 
+                        cursor: pointer; margin: 10px; width: 80%;
+                    }
+                    .close-btn { background: #e5e7eb; color: #333; }
+                    
+                    /* HIDE BUTTONS ON ACTUAL PRINT */
+                    @media print { 
+                        .no-print { display: none !important; } 
+                        body { padding: 0; margin: 0; }
+                    }
+                </style>
+            </head>
+            <body>
                 <h3 style="margin-bottom:5px;">GOLMEX WAREHOUSE</h3>
                 <p style="font-size:12px; margin-top:0;">${state.line.name} | ${data.op}</p>
                 <hr style="margin:15px 0;">
@@ -592,10 +610,23 @@
                 <div style="margin:20px 0;"><img src="${qrUrl}" style="width:140px;"></div>
                 <p style="font-family:monospace; font-size:18px; font-weight:bold;">${data.qr}</p>
                 <p style="font-size:12px;">${data.date}</p>
-                <script>window.onload = function() { window.print(); window.close(); }</script>
+                
+                <div class="no-print" style="margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px;">
+                    <button class="action-btn" onclick="window.print()">🖨️ Print Label</button>
+                    <br>
+                    <button class="action-btn close-btn" onclick="window.close()">Close Window</button>
+                </div>
+
+                <script>
+                    // Attempt auto-print after load, but don't close automatically so buttons are usable
+                    window.onload = function() { 
+                        setTimeout(() => window.print(), 500); 
+                    }
+                </script>
             </body>
             </html>
         `);
+
         loadHistoryTimeline();
         resetDashboardState();
     }
