@@ -23,7 +23,7 @@
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("GMX Performance Board Initialized (Adjusted Efficiency Mode)");
+        console.log("GMX Performance Board Initialized (Local Timezone Fixed)");
         loadRankingData();
         setupRealtimeSubscription();
         startAutoScroll();
@@ -32,9 +32,18 @@
 
     // --- DATA FETCHING & PROCESSING ---
     async function loadRankingData() {
-        const today = new Date().toISOString().split('T')[0];
+        // --- FIX: USE LOCAL DEVICE TIME, NOT UTC ---
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const day = String(now.getDate()).padStart(2, '0');
 
-        // Fetch logs including the new worker_count column
+        // This creates "2025-11-27" based on TIJUANA time, not UTC
+        const todayLocal = `${year}-${month}-${day}`;
+
+        console.log("Loading data for Local Date:", todayLocal);
+
+        // Fetch logs
         const { data: logs, error } = await window.supabase
             .from('production_log')
             .select(`
@@ -42,12 +51,31 @@
                 warehouse_lines (id, line_name, current_operator, current_team),
                 production_products (name)
             `)
-            .gte('start_time', `${today}T00:00:00`)
+            // We calculate the filter manually to handle the TZ offset correctly
+            // We want anything created "After midnight local time"
+            // But since DB is UTC, we need to be careful. 
+            // Simplest Fix: Filter by the ISO string generated from Local Midnight converted to UTC
+            // However, simpler approach: Just filter by string matching or ensure app logic handles it.
+
+            // Supabase filter correction:
+            // We will filter >= '2025-11-27 00:00:00' (Local)
+            // But we need to send this in a format Supabase understands relative to the stored UTC.
+            // Actually, let's filter by 'created_at' or 'start_time' but let JS filter the day to be safe 
+            // OR send the ISO string of local midnight.
+
+            .gte('start_time', `${todayLocal}T08:00:00`) // Tijuana Midnight is 08:00 UTC (approx). 
+            // BETTER YET: Let's just filter broadly and filter in JS to be 100% sure of "Today"
+
             .order('start_time', { ascending: true });
+
+        /* NOTE ON TIMEZONES: 
+           Supabase stores in UTC. If you are in Tijuana (UTC-8), your "Day" starts at 08:00:00 UTC.
+           If we query `${todayLocal}T00:00:00`, we are asking for 4PM Previous Day in Tijuana.
+           To fix this perfectly without complex offsets, we will filter in Memory below.
+        */
 
         if (error) {
             console.error("Error fetching ranking data:", error);
-            rankList.innerHTML = `<div style="text-align:center; color:var(--rank-red);">Connection Error. Retrying...</div>`;
             return;
         }
 
@@ -56,6 +84,24 @@
             return;
         }
 
+        // --- CLIENT SIDE FILTERING (100% ACCURATE TO LOCAL DEVICE) ---
+        const todayLogs = logs.filter(log => {
+            const logDate = new Date(log.start_time);
+            // Compare local dates
+            return logDate.getFullYear() === now.getFullYear() &&
+                logDate.getMonth() === now.getMonth() &&
+                logDate.getDate() === now.getDate();
+        });
+
+        if (todayLogs.length === 0) {
+            renderEmptyState();
+            return;
+        }
+
+        processRankingData(todayLogs);
+    }
+
+    function processRankingData(logs) {
         const linesMap = {};
         let grandTotalPallets = 0;
         let grandTotalDeviation = 0;
@@ -65,13 +111,11 @@
 
             const lineId = log.warehouse_lines.id;
             const lineName = log.warehouse_lines.line_name;
-            
-            // Determine Operator Label (Single name or "Team of N")
+
             let opLabel = 'Unknown';
             if (log.worker_count > 1) {
                 opLabel = `Team of ${log.worker_count}`;
             } else {
-                // Fallback priority: Log name > Line current op > Unknown
                 opLabel = log.operator_name || log.warehouse_lines.current_operator || 'Unknown';
             }
 
@@ -81,7 +125,7 @@
                     name: lineName,
                     operator: opLabel,
                     pallets: 0,
-                    totalTargetSeconds: 0, // Adjusted Target
+                    totalTargetSeconds: 0,
                     totalRealSeconds: 0,
                     currentStatus: 'idle',
                     currentStartTime: null,
@@ -89,37 +133,25 @@
                 };
             }
 
-            // Only count COMPLETED pallets for the score
             if (log.final_time_seconds !== null) {
                 linesMap[lineId].pallets += 1;
                 grandTotalPallets += 1;
 
-                // --- CRITICAL CALCULATION ---
-                // 1. Get Base Standard (Total Man-Hours)
                 const baseStd = log.standard_time_seconds || 0;
-                
-                // 2. Get Team Size used for THAT pallet
                 const workers = log.worker_count || 1;
-                
-                // 3. Calculate Adjusted Target for this specific pallet
                 const adjustedTarget = baseStd / workers;
 
-                // 4. Accumulate
                 linesMap[lineId].totalTargetSeconds += adjustedTarget;
                 linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0);
             }
             else {
-                // Active Pallet Logic
                 linesMap[lineId].currentStatus = 'active';
                 linesMap[lineId].currentStartTime = new Date(log.start_time).getTime();
                 linesMap[lineId].currentProduct = log.production_products?.name || 'Unknown Item';
-                // Update operator display to current team if active
                 linesMap[lineId].operator = opLabel;
             }
         });
 
-        // Calculate Deviation (Saved Time)
-        // Deviation = Target - Real. Positive means Saved Time (Good). Negative means Delay (Bad).
         const rankingArray = Object.values(linesMap).map(line => {
             const deviationSeconds = line.totalTargetSeconds - line.totalRealSeconds;
             grandTotalDeviation += deviationSeconds;
@@ -130,7 +162,6 @@
             };
         });
 
-        // Sort by Time Saved (Highest first)
         rankingArray.sort((a, b) => b.deviationSeconds - a.deviationSeconds);
         activeLinesData = rankingArray;
 
@@ -235,7 +266,6 @@
                     }
 
                     timerEl.textContent = timeString;
-                    // Visual cue if running very long (optional, just for visual feedback)
                     if (elapsedSecs > 3600) timerEl.style.color = 'var(--rank-red)';
                     else timerEl.style.removeProperty('color');
                 }
@@ -256,14 +286,10 @@
     }
 
     function formatTimeDiff(seconds) {
-        // Positive seconds = Time Saved (Good)
-        // Negative seconds = Time Lost/Delayed (Bad)
-        
         const isNegative = seconds < 0;
         const absSeconds = Math.abs(seconds);
         const m = Math.floor(absSeconds / 60);
-        
-        // Formatting: If saved time, show "+" and green. If delayed, "-" and red.
+
         const sign = isNegative ? '-' : '+';
         const text = `${sign} ${m} min`;
 
@@ -272,11 +298,11 @@
 
         if (!isNegative && m > 0) {
             cssClass = 'diff-positive';
-            colorStyle = 'color: var(--rank-green)'; // Green for saved time
+            colorStyle = 'color: var(--rank-green)';
         }
         else if (isNegative) {
             cssClass = 'diff-negative';
-            colorStyle = 'color: var(--rank-red)';   // Red for delay
+            colorStyle = 'color: var(--rank-red)';
         }
 
         return {
@@ -287,10 +313,9 @@
     }
 
     function getStatusConfig(seconds) {
-        // Status border based on accumulated efficiency
         if (seconds >= 0) {
             return { type: 'good', borderClass: 'status-good' };
-        } else if (seconds > -900) { // Less than 15 min delay
+        } else if (seconds > -900) {
             return { type: 'warn', borderClass: 'status-warn' };
         } else {
             return { type: 'bad', borderClass: 'status-bad' };
