@@ -5,7 +5,7 @@
     }
     document.body.dataset.quotingModuleInitialized = "true";
     console.log(
-        "Sales & Quoting Module Initialized (v17 - Final with All Validations)"
+        "Sales & Quoting Module Initialized (v18 - Fixed Tables Scroll)"
     );
 
     // SECTION 1: SUPABASE & CONFIGURATION
@@ -25,9 +25,9 @@
     let currentQuoteMode = "start";
     let activeMultiItemId = null;
 
-    // --- Truck Capacity Limits (REQUERIMIENTO #1 y #3) ---
+    // --- Truck Capacity Limits ---
     const TRUCK_PALLET_LIMIT = 22;
-    const TRUCK_WEIGHT_LIMIT_LBS = 43000; // MODIFICADO: Límite de peso actualizado a 43,000
+    const TRUCK_WEIGHT_LIMIT_LBS = 43000;
 
     let currentQuote = {
         exchangeRate: 17.5,
@@ -1253,6 +1253,9 @@
         currentConfirmCallback = null;
     }
 
+    // =========================================================
+    // MODIFICADO: Agregado scrollY y scrollCollapse
+    // =========================================================
     function initializeHistoryTable(data) {
         if (!$.fn.DataTable) return;
         if ($.fn.DataTable.isDataTable(historyTableElement)) {
@@ -1262,6 +1265,8 @@
         historyDataTable = $(historyTableElement).DataTable({
             data: data,
             responsive: true,
+            scrollY: '50vh',        // <--- NUEVO
+            scrollCollapse: true,   // <--- NUEVO
             columns: [
                 { data: "id", title: "Quote ID" },
                 {
@@ -1312,6 +1317,9 @@
             });
     }
 
+    // =========================================================
+    // MODIFICADO: Agregado scrollY y scrollCollapse
+    // =========================================================
     function initializeProductsTable(data) {
         if (!$.fn.DataTable) return;
         if ($.fn.DataTable.isDataTable(productsTableElement)) {
@@ -1321,6 +1329,8 @@
         productsDataTable = $(productsTableElement).DataTable({
             data: data,
             responsive: true,
+            scrollY: '50vh',        // <--- NUEVO
+            scrollCollapse: true,   // <--- NUEVO
             columns: [
                 { data: "name", title: "Product Name", className: "dt-left" },
                 {
@@ -1624,8 +1634,6 @@
             currentMultiQuote.items.length > 0 && allCompleted
         );
     }
-
-    // ⬇️ COPIA Y REEMPLAZA LA FUNCIÓN COMPLETA EN js/quoting-module.js ⬇️
 
     async function saveMultiQuote(event) {
         event.preventDefault();
