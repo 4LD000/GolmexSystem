@@ -1,5 +1,5 @@
 /* ============================================================
-   GMX Performance Board (TV View) - COLUMNS LAYOUT
+   GMX Performance Board (TV View) - SMART SORT LAYOUT
    File: css/wst-ranking.css
    ============================================================ */
 
@@ -13,9 +13,11 @@
     --rank-green: #059669;
     --rank-yellow: #d97706;
     --rank-red: #dc2626;
-
-    --rank-gold: #d4af37;
     --rank-blue: #0e2c4c;
+    --rank-gold: #d4af37;
+
+    /* Pause Color */
+    --rank-paused: #f59e0b;
 }
 
 body.dark-mode {
@@ -27,16 +29,20 @@ body.dark-mode {
     --rank-green: #10b981;
     --rank-yellow: #f59e0b;
     --rank-red: #ef4444;
+    --rank-paused: #fbbf24;
+
+    /* FIX: Azul claro para que el reloj se vea en modo oscuro */
+    --rank-blue: #60a5fa;
 }
 
 /* --- MAIN CONTAINER --- */
 .wst-ranking-container {
     position: fixed;
-    top: 0;
+    top: 70px;
+    /* Offset para no tapar el Header principal */
     right: 0;
     bottom: 0;
     left: 15rem;
-
     display: flex;
     flex-direction: column;
     background-color: var(--rank-bg);
@@ -44,11 +50,10 @@ body.dark-mode {
     gap: 1.5rem;
     overflow: hidden;
     font-family: 'Poppins', sans-serif;
-    z-index: 50;
+    z-index: 40;
     transition: left 0.5s ease;
 }
 
-/* Ajuste sidebar minimizado */
 body.sidebar-minimize .wst-ranking-container,
 .sidebar.minimize~main .wst-ranking-container {
     left: 4.94rem;
@@ -110,7 +115,7 @@ body.sidebar-minimize .wst-ranking-container,
     }
 }
 
-/* --- SUMMARY CARDS --- */
+/* --- SUMMARY --- */
 .wst-rank-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -158,9 +163,16 @@ body.sidebar-minimize .wst-ranking-container,
     font-weight: 800;
     color: var(--rank-text);
     line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-/* --- LEADERBOARD LIST --- */
+.global-face-icon {
+    font-size: 2.2rem;
+}
+
+/* --- LIST CONTAINER --- */
 .wst-leaderboard {
     display: flex;
     flex-direction: column;
@@ -170,39 +182,36 @@ body.sidebar-minimize .wst-ranking-container,
     flex-grow: 1;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    position: relative;
+    /* Necesario para contexto de apilamiento */
 }
 
 .wst-leaderboard::-webkit-scrollbar {
     display: none;
 }
 
-/* --- CARD GRID LAYOUT --- */
+/* --- CARD --- */
 .rank-card {
     display: grid;
-    /* Ajuste de columnas para dar más espacio */
-    /* 1. Rank: 60px
-       2. Info: 1.5fr
-       3. Producto: 2fr
-       4. Status: 1fr
-       5. Timer: 1fr (Más ancho para separar)
-       6. Saved: 1.2fr (Columna ancha para separar)
-       7. Pallets: 0.6fr
-    */
-    grid-template-columns: 60px 1.5fr 2fr 1fr 1fr 1.2fr 0.6fr;
+    /* 1.Pos | 2.Info | 3.Prod | 4.Status | 5.Timer | 6.Eff | 7.Face | 8.Pallets */
+    grid-template-columns: 60px 1.5fr 2fr 1fr 1fr 1fr 0.5fr 0.6fr;
     align-items: center;
     background: var(--rank-card-bg);
     padding: 1rem 2rem;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    transition: transform 0.3s ease;
+
+    /* TRANSICIONES CLAVE PARA FLIP ANIMATION */
+    transition: transform 0.5s ease-in-out, box-shadow 0.3s ease;
+    will-change: transform;
+    /* Optimización de rendimiento */
+
     border-left: 6px solid transparent;
     position: relative;
-    animation: slideIn 0.5s ease-out;
-
-    /* AUMENTADO: Gap de 3rem para separar mucho más el grupo izquierdo del derecho */
-    gap: 3rem;
+    gap: 2rem;
 }
 
+/* Animación inicial de entrada */
 @keyframes slideIn {
     from {
         opacity: 0;
@@ -218,9 +227,10 @@ body.sidebar-minimize .wst-ranking-container,
 .rank-card:hover {
     transform: scale(1.005);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+    z-index: 10;
 }
 
-/* Position Badge */
+/* Position Styles */
 .rank-pos {
     font-size: 2.2rem;
     font-weight: 900;
@@ -246,7 +256,7 @@ body.sidebar-minimize .wst-ranking-container,
     opacity: 0.8;
 }
 
-/* Line Info */
+/* Internal Card Layout */
 .rank-info {
     display: flex;
     flex-direction: column;
@@ -271,9 +281,6 @@ body.sidebar-minimize .wst-ranking-container,
     text-overflow: ellipsis;
 }
 
-/* --- ELEMENTOS DEL GRID --- */
-
-/* Columna 3: Product Name */
 .current-item-name {
     font-size: 1.1rem;
     font-weight: 700;
@@ -285,7 +292,6 @@ body.sidebar-minimize .wst-ranking-container,
     padding-right: 1rem;
 }
 
-/* Columna 4: Status Badge */
 .rank-status-badge {
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -298,9 +304,6 @@ body.sidebar-minimize .wst-ranking-container,
     gap: 0.5rem;
     width: 100%;
     white-space: nowrap;
-
-    /* TRUCO VISUAL: Baja el elemento 12px para alinearlo con los números 
-       de la derecha (que están más abajo por tener etiqueta arriba) */
     transform: translateY(12px);
 }
 
@@ -311,12 +314,17 @@ body.sidebar-minimize .wst-ranking-container,
     animation: pulseBorder 2s infinite;
 }
 
+.status-paused {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--rank-paused);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
 .status-idle {
     background: rgba(107, 114, 128, 0.1);
     color: var(--rank-text-muted);
 }
 
-/* Columna 5: Timer */
 .live-timer-display {
     font-family: 'Courier New', monospace;
     font-size: 1.4rem;
@@ -327,8 +335,6 @@ body.sidebar-minimize .wst-ranking-container,
     border-radius: 4px;
     width: 100%;
     text-align: center;
-
-    /* TRUCO VISUAL: Mismo ajuste, bajar 12px para nivelar */
     transform: translateY(12px);
 }
 
@@ -337,7 +343,6 @@ body.dark-mode .live-timer-display {
     background: rgba(255, 255, 255, 0.05);
 }
 
-/* Columna 6: Saved Time */
 .rank-stat {
     display: flex;
     flex-direction: column;
@@ -346,7 +351,6 @@ body.dark-mode .live-timer-display {
     text-align: center;
 }
 
-/* Columna 7: Pallets */
 .rank-stat-pallets {
     display: flex;
     flex-direction: column;
@@ -357,7 +361,6 @@ body.dark-mode .live-timer-display {
     padding-right: 0.5rem;
 }
 
-/* ESTILOS PARA LA ETIQUETA ARRIBA Y VALOR ABAJO */
 .stat-val {
     font-size: 1.8rem;
     font-weight: 800;
@@ -371,11 +374,9 @@ body.dark-mode .live-timer-display {
     color: var(--rank-text-muted);
     font-weight: 700;
     margin-bottom: 0.5rem;
-    /* Separación de la etiqueta */
     letter-spacing: 0.5px;
 }
 
-/* Time Diff Styles */
 .time-diff {
     font-family: 'Courier New', monospace;
     font-weight: 900;
@@ -401,7 +402,14 @@ body.dark-mode .live-timer-display {
     background: rgba(239, 68, 68, 0.1);
 }
 
-/* Borders Status */
+.rank-face-icon {
+    font-size: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(10px);
+}
+
 .rank-card.status-good {
     border-left-color: var(--rank-green);
 }
@@ -428,20 +436,20 @@ body.dark-mode .live-timer-display {
     }
 }
 
-/* MOBILE RESPONSIVE */
-@media (max-width: 1024px) {
-    .wst-ranking-container {
-        left: 0;
-        padding: 1rem;
-    }
-
+@media (max-width: 1200px) {
     .rank-card {
         gap: 1rem;
         padding: 1rem;
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+    .wst-ranking-container {
+        left: 0;
+        top: 60px;
+        padding: 1rem;
+    }
+
     .rank-card {
         grid-template-columns: 50px 1fr;
         grid-auto-rows: auto;
@@ -450,33 +458,28 @@ body.dark-mode .live-timer-display {
     }
 
     .rank-pos {
-        grid-row: 1 / 2;
         grid-column: 1 / 2;
+        grid-row: 1;
         font-size: 1.5rem;
     }
 
     .rank-info {
-        grid-row: 1 / 2;
         grid-column: 2 / 3;
+        grid-row: 1;
     }
 
     .current-item-name {
         grid-column: 1 / 3;
         grid-row: 2;
-        font-size: 1rem;
         border-top: 1px solid rgba(0, 0, 0, 0.05);
         padding-top: 0.5rem;
-        padding-right: 0;
     }
 
-    /* Resetear transformaciones en móvil */
     .rank-status-badge {
         grid-column: 1 / 2;
         grid-row: 3;
         width: auto;
-        justify-content: flex-start;
         transform: none;
-        /* Reset */
     }
 
     .live-timer-display {
@@ -485,21 +488,26 @@ body.dark-mode .live-timer-display {
         justify-self: end;
         width: auto;
         transform: none;
-        /* Reset */
     }
 
     .rank-stat {
         grid-column: 1 / 2;
         grid-row: 4;
         align-items: flex-start;
-        text-align: left;
         margin-top: 0.5rem;
+    }
+
+    .rank-face-icon {
+        grid-column: 2 / 3;
+        grid-row: 4;
+        justify-self: center;
+        transform: none;
     }
 
     .rank-stat-pallets {
         grid-column: 2 / 3;
-        grid-row: 4;
-        align-items: flex-end;
-        margin-top: 0.5rem;
+        grid-row: 5;
+        justify-self: end;
+        margin-top: -30px;
     }
 }
