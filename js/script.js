@@ -105,7 +105,7 @@ function isUserAllowed(email) {
   return false;
 }
 
-// --- CORRECCIÓN CRÍTICA EN SIGNOUT ---
+// --- CORRECCIÓN CRÍTICA EN SIGNOUT (Actualizado para limpieza profunda) ---
 async function signOut(isDueToInactivity = false) {
   if (!window.supabase) return;
   
@@ -134,7 +134,10 @@ async function signOut(isDueToInactivity = false) {
     currentGlobalUser = null;
     currentGlobalProfile = null;
 
-    // Limpiar localStorage específico de Supabase para evitar el bucle de sesión fantasma
+    // 1. Limpiar localStorage específico de Workstation (EL FIX PARA CRUCE DE SESIONES)
+    localStorage.removeItem('gmx_wst_session_v4_cloud');
+
+    // 2. Limpiar localStorage específico de Supabase para evitar el bucle de sesión fantasma
     const projectKey = 'sb-ogatafslnevidfopuvbp-auth-token'; 
     localStorage.removeItem(projectKey);
 
