@@ -9,23 +9,28 @@
     if (!moduleContainer) return;
 
     // --- CONSTANTS & STATE ---
-    const SESSION_KEY = 'gmx_wst_session_v4_cloud'; // LocalStorage
+    const SESSION_KEY = 'gmx_wst_session_v5_cloud'; 
 
     // Application State
     let state = {
         line: null,         // { id, name, team: [], worker_count: 1 }
         product: null,      // Active product object
-        pallet: null,       // { id, qr_id, start_time } from DB
+        pallet: null,       // { id, qr_id, start_time, is_paused, total_pause_seconds } 
         timerInterval: null
     };
 
-    // Realtime Subscriptions
-    let lineSubscription = null;      // Radar Individual (Dashboard)
-    let selectionSubscription = null; // Radar Global (Selección)
+    // Prevent double-click / race conditions (Fixes 400 Bad Request on Pauses)
+    let isLoadingAction = false;
 
-    // Temporary state for the Login Modal
-    let currentTeamList = [];
+    // Realtime Subscriptions
+    let lineSubscription = null;
+    let selectionSubscription = null;
+
+    // Temporary state for Modals
+    let currentTeamList = []; // For Login
+    let currentLiveTeamList = []; // For Live Edit
     let currentUserEmail = null;
+    let pendingLineSelection = null;
 
     // --- DOM ELEMENTS ---
     const loadingOverlay = document.getElementById('wst-loading-state');
@@ -37,6 +42,7 @@
     // Dashboard UI
     const dashTitle = document.getElementById('wst-dashboard-line-title');
     const dashOp = document.getElementById('wst-dashboard-operator');
+    const editTeamTrigger = document.getElementById('wst-edit-team-trigger'); // NEW
     const statusMsg = document.getElementById('wst-process-status');
 
     // Metrics Cards
@@ -47,7 +53,7 @@
 
     // Controls
     const selectBtn = document.getElementById('wst-open-selector-btn');
-    const startBtn = document.getElementById('wst-btn-start');
+    const startBtn = document.getElementById('wst-btn-start'); // Chameleon Button (Start/Pause/Resume)
     const finishBtn = document.getElementById('wst-btn-finish');
     const printBtn = document.getElementById('wst-btn-print');
     const releaseBtn = document.getElementById('wst-release-line-btn');
@@ -58,7 +64,7 @@
     const searchInput = document.getElementById('wst-modal-search');
     const productGrid = document.getElementById('wst-product-grid');
 
-    // Login / Team Modal Elements
+    // Login Modal Elements
     const linesGrid = document.getElementById('wst-lines-grid-container');
     const addLineBtn = document.getElementById('wst-add-line-btn');
     const loginOverlay = document.getElementById('wst-login-overlay');
@@ -68,7 +74,14 @@
     const workerCountDisplay = document.getElementById('wst-worker-count-display');
     const confirmLoginBtn = document.getElementById('wst-confirm-login-btn');
     const cancelLoginBtn = document.getElementById('wst-cancel-login-btn');
-    let pendingLineSelection = null;
+
+    // NEW: Live Crew Modal Elements
+    const liveCrewModal = document.getElementById('wst-live-crew-modal');
+    const liveCrewInput = document.getElementById('wst-live-crew-input');
+    const liveCrewAddBtn = document.getElementById('wst-live-crew-add-btn');
+    const liveCrewListContainer = document.getElementById('wst-live-crew-list');
+    const liveCrewSaveBtn = document.getElementById('wst-live-crew-save');
+    const liveCrewCancelBtn = document.getElementById('wst-live-crew-cancel');
 
     // Confirm Modal
     const confirmModal = document.getElementById('wst-confirm-modal');
@@ -106,7 +119,7 @@
             top: '20px',
             right: '20px',
             zIndex: '9999',
-            backgroundColor: type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#3b82f6'),
+            backgroundColor: type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : (type === 'warning' ? '#f59e0b' : '#3b82f6')),
             color: 'white',
             padding: '12px 20px',
             borderRadius: '8px',
@@ -148,7 +161,7 @@
     // =========================================================================
 
     async function init() {
-        console.log("WST V4: Initializing...");
+        console.log("WST V5 Full: Initializing...");
 
         setupEventListeners();
 
@@ -202,40 +215,33 @@
 
         // CASE A: Line not found or error
         if (error || !lineData) {
-            console.warn("Line not found or mismatch. Clearing local session.");
+            console.warn("Line not found. Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
             showSelectionView();
             return;
         }
 
-        // CASE B (SECURITY FIX): Line exists, but OWNER IS NOT ME
-        // If the line has an owner, and that owner is not the current user,
-        // it means this localStorage session belongs to a previous user on this device.
+        // CASE B: Line exists, but OWNER IS NOT ME
         if (currentUserEmail && lineData.owner_email &&
             lineData.owner_email.toLowerCase() !== currentUserEmail.toLowerCase()) {
             
             console.error("SECURITY ALERT: Local session belongs to another user.");
-            console.log(`Local Owner: ${lineData.owner_email} vs Current User: ${currentUserEmail}`);
-            
-            // Clear the zombie session
             localStorage.removeItem(SESSION_KEY);
-            
-            // Fallback: Check if *I* have a real session in the cloud
             await checkCloudForActiveSession();
             return;
         }
 
         // CASE C: Line is no longer busy (ended remotely)
         if (lineData.status !== 'busy') {
-            console.warn("Line is no longer busy in DB. Clearing local session.");
+            console.warn("Line is no longer busy in DB.");
             localStorage.removeItem(SESSION_KEY);
             showSelectionView();
             return;
         }
 
-        // IF WE REACH HERE: Session is valid and belongs to current user
-        let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
-        let wCount = sessionData.count || 1;
+        // Hydrate State
+        let teamArr = lineData.current_team || (lineData.current_operator ? [lineData.current_operator] : []);
+        let wCount = lineData.worker_count || 1;
 
         state.line = {
             id: lineData.id,
@@ -266,53 +272,61 @@
         state.pallet = {
             id: logEntry.id,
             qr_id: logEntry.pallet_qr_id,
-            start_time: new Date(logEntry.start_time)
+            start_time: new Date(logEntry.start_time),
+            is_paused: logEntry.is_paused || false,
+            total_pause_seconds: logEntry.total_pause_seconds || 0
         };
 
         state.product = logEntry.production_products;
-        const logWorkerCount = logEntry.worker_count || state.line.worker_count;
-        updateScorecards(state.product, logWorkerCount);
+        
+        // Use the Dynamic Target if available, else calculate base
+        if(state.product) {
+            if(logEntry.current_target_seconds) {
+                 updateScorecardsWithNewTarget(logEntry.current_target_seconds);
+            } else {
+                 const logWorkerCount = logEntry.worker_count || state.line.worker_count;
+                 updateScorecardsBase(state.product, logWorkerCount);
+            }
+        }
 
         selectBtn.disabled = true;
-        startBtn.disabled = true;
+        startBtn.disabled = false; // Enabled because it acts as Pause/Resume
         finishBtn.disabled = false;
         printBtn.disabled = true;
 
-        statusMsg.innerHTML = `<span style="color:var(--wst-warning)">Resumed:</span> Processing ${state.product.name}...`;
-
-        startRealTimeTimer(state.pallet.start_time);
+        if (state.pallet.is_paused) {
+            updateActionButtonsState('paused');
+            statusMsg.innerHTML = `<span style="color:var(--wst-warning)"><i class='bx bx-pause'></i> PAUSED</span> - Resume to continue.`;
+            cardRealTime.textContent = "PAUSED";
+        } else {
+            updateActionButtonsState('running');
+            statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Processing ${state.product.name}...`;
+            startRealTimeTimer(state.pallet.start_time, state.pallet.total_pause_seconds);
+        }
     }
 
     // =========================================================================
     // 2. VIEW MANAGEMENT & REALTIME SYNC
     // =========================================================================
 
-    // --- RADAR 1: GLOBAL SELECTION VIEW ---
     function setupSelectionRealtime() {
-        // Ensure we don't have duplicates
         if (selectionSubscription) return;
-
-        console.log("Activating Global Grid Realtime...");
 
         selectionSubscription = supabase.channel('grid-view-global')
             .on(
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'warehouse_lines' },
                 (payload) => {
-                    console.log("Global Update detected, refreshing grid...");
                     loadLinesGrid();
                 }
             )
             .subscribe();
     }
 
-    // --- RADAR 2: INDIVIDUAL LINE DASHBOARD ---
     function setupLineRealtime(lineId) {
         if (lineSubscription) {
             supabase.removeChannel(lineSubscription);
         }
-
-        console.log(`Setting up Realtime Listener for Line ID: ${lineId}`);
 
         lineSubscription = supabase.channel(`line-sync-${lineId}`)
             .on(
@@ -321,9 +335,7 @@
                 (payload) => {
                     const newData = payload.new;
                     if (newData.status === 'available') {
-                        console.log("Remote End Shift detected!");
                         showToast("Session ended from another device.", "info");
-
                         localStorage.removeItem(SESSION_KEY);
                         setTimeout(() => { location.reload(); }, 2000);
                     }
@@ -335,13 +347,11 @@
     function showSelectionView() {
         loadingOverlay.style.display = 'none';
 
-        // Switch Views
         viewDashboard.classList.remove('active');
         viewDashboard.classList.add('hidden');
         viewSelection.classList.remove('hidden');
         viewSelection.classList.add('active');
 
-        // Clean Dashboard Radar, Enable Global Radar
         if (lineSubscription) {
             supabase.removeChannel(lineSubscription);
             lineSubscription = null;
@@ -354,18 +364,24 @@
     function enterDashboardUI() {
         loadingOverlay.style.display = 'none';
 
-        // Switch Views
         viewSelection.classList.remove('active');
         viewSelection.classList.add('hidden');
         viewDashboard.classList.remove('hidden');
         viewDashboard.classList.add('active');
 
-        // Clean Global Radar
         if (selectionSubscription) {
             supabase.removeChannel(selectionSubscription);
             selectionSubscription = null;
         }
 
+        updateHeaderUI();
+
+        if (state.line && state.line.id) {
+            setupLineRealtime(state.line.id);
+        }
+    }
+
+    function updateHeaderUI() {
         dashTitle.textContent = state.line.name;
 
         if (state.line.worker_count > 1) {
@@ -374,17 +390,13 @@
         } else {
             dashOp.textContent = state.line.team[0] || "Unknown";
         }
-
-        // Enable Dashboard Radar
-        if (state.line && state.line.id) {
-            setupLineRealtime(state.line.id);
-        }
     }
 
     // =========================================================================
-    // 3. TEAM MANAGEMENT LOGIC
+    // 3. TEAM MANAGEMENT LOGIC (Login & Live)
     // =========================================================================
 
+    // --- LOGIN MODAL LOGIC ---
     function addWorkerToTeam() {
         const name = workerInput.value.trim();
         if (!name) return;
@@ -400,11 +412,10 @@
         renderTeamList();
     }
 
-    function removeWorker(index) {
+    window.wstRemoveWorker = function(index) {
         currentTeamList.splice(index, 1);
         renderTeamList();
     }
-    window.wstRemoveWorker = removeWorker;
 
     function renderTeamList() {
         workerCountDisplay.textContent = currentTeamList.length;
@@ -443,8 +454,93 @@
         workerListContainer.appendChild(ul);
     }
 
+    // --- LIVE CREW MODAL LOGIC (New Feature) ---
+    function openLiveCrewModal() {
+        if(!state.pallet) {
+            showToast("Start a process first to edit crew.", "info");
+            return;
+        }
+        // Deep copy current team to temp list
+        currentLiveTeamList = [...state.line.team];
+        liveCrewModal.classList.remove('hidden');
+        liveCrewInput.value = '';
+        renderLiveTeamList();
+    }
+
+    function addLiveWorker() {
+        const name = liveCrewInput.value.trim();
+        if (!name) return;
+        if (currentLiveTeamList.some(w => w.toLowerCase() === name.toLowerCase())) {
+            showToast("Worker already in list.", 'error');
+            return;
+        }
+        currentLiveTeamList.push(name);
+        liveCrewInput.value = '';
+        liveCrewInput.focus();
+        renderLiveTeamList();
+    }
+
+    window.wstRemoveLiveWorker = function(index) {
+        currentLiveTeamList.splice(index, 1);
+        renderLiveTeamList();
+    }
+
+    function renderLiveTeamList() {
+        liveCrewListContainer.innerHTML = '';
+        
+        const ul = document.createElement('ul');
+        ul.style.listStyle = 'none';
+        ul.style.padding = '0';
+        
+        currentLiveTeamList.forEach((worker, index) => {
+            const li = document.createElement('li');
+            li.style.padding = '10px 15px';
+            li.style.borderBottom = '1px solid var(--wst-border)';
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.alignItems = 'center';
+            
+            li.innerHTML = `
+                <span>${worker}</span>
+                <i class='bx bx-trash' style="cursor:pointer; color:var(--wst-danger);" onclick="wstRemoveLiveWorker(${index})"></i>
+            `;
+            ul.appendChild(li);
+        });
+        liveCrewListContainer.appendChild(ul);
+    }
+
+    async function saveCrewModification() {
+        const newCount = currentLiveTeamList.length;
+        if (newCount === 0) return showToast("Crew cannot be empty", "error");
+
+        loadingOverlay.style.display = 'flex';
+        liveCrewModal.classList.add('hidden');
+
+        // Call RPC
+        const { data, error } = await supabase.rpc('update_crew_size', {
+            p_log_id: state.pallet.id,
+            p_new_crew_size: newCount,
+            p_new_team_members: currentLiveTeamList
+        });
+
+        loadingOverlay.style.display = 'none';
+
+        if (error) {
+            showToast(error.message, 'error');
+            return;
+        }
+
+        // Success: Update Local State & UI
+        showToast("Crew updated & Target Recalculated!", "success");
+        state.line.team = [...currentLiveTeamList];
+        state.line.worker_count = newCount;
+        
+        updateHeaderUI();
+        updateScorecardsWithNewTarget(data.new_target); // data.new_target comes from RPC
+    }
+
     // =========================================================================
-    // 4. LINE SELECTION & LOGIN
+    // 4. LINE SELECTION & LOGIN FLOW
     // =========================================================================
 
     async function loadLinesGrid() {
@@ -522,7 +618,7 @@
             return;
         }
 
-        // PRE-CHECK: Is line still available? (Conflict prevention)
+        // PRE-CHECK: Is line still available?
         const { data: check } = await supabase
             .from('warehouse_lines')
             .select('status')
@@ -585,7 +681,7 @@
     }
 
     // =========================================================================
-    // 5. DASHBOARD LOGIC 
+    // 5. DASHBOARD LOGIC (Start, Pause, Resume, Finish)
     // =========================================================================
 
     function resetDashboardState() {
@@ -599,10 +695,45 @@
         cardRealTime.parentElement.classList.remove('active-pulse');
         statusMsg.innerHTML = "Idle - Select Product";
         statusMsg.style.color = "var(--wst-text-light)";
+        
+        updateActionButtonsState('idle'); // Enable Start
         selectBtn.disabled = false;
-        startBtn.disabled = true;
-        finishBtn.disabled = true;
         printBtn.disabled = true;
+    }
+
+    // --- BUTTON STATE MANAGEMENT ---
+    function updateActionButtonsState(status) {
+        // status: 'idle', 'running', 'paused'
+        
+        const btn = startBtn;
+        
+        // Reset classes
+        btn.className = 'wst-action-btn'; 
+        
+        if (status === 'idle') {
+            btn.innerHTML = `<i class='bx bx-play-circle'></i> Start Process`;
+            btn.classList.add('btn-start'); 
+            btn.disabled = false;
+            btn.onclick = handleStart;
+            finishBtn.disabled = true;
+            document.body.classList.remove('is-paused-mode');
+        } 
+        else if (status === 'running') {
+            btn.innerHTML = `<i class='bx bx-pause-circle'></i> Pause`;
+            btn.classList.add('btn-warning'); // CSS class defined in wst-workstation.css
+            btn.disabled = false;
+            btn.onclick = () => handlePauseToggle('pause');
+            finishBtn.disabled = false;
+            document.body.classList.remove('is-paused-mode');
+        } 
+        else if (status === 'paused') {
+            btn.innerHTML = `<i class='bx bx-play-circle'></i> Resume`;
+            btn.classList.add('btn-success'); 
+            btn.disabled = false;
+            btn.onclick = () => handlePauseToggle('resume');
+            finishBtn.disabled = true; // Cannot finish while paused
+            document.body.classList.add('is-paused-mode');
+        }
     }
 
     async function loadProducts(filter = '') {
@@ -629,35 +760,55 @@
 
     function selectProduct(product) {
         state.product = product;
-        updateScorecards(product, state.line.worker_count);
+        updateScorecardsBase(product, state.line.worker_count);
         modal.classList.add('hidden');
-        startBtn.disabled = false;
+        
+        updateActionButtonsState('idle'); // Ready to start
         statusMsg.innerHTML = `<span style="color:var(--wst-primary)">Ready:</span> Click Start to begin.`;
     }
 
-    function updateScorecards(p, workerCount) {
+    function updateScorecardsBase(p, workerCount) {
         cardName.textContent = p.name;
         cardName.title = p.name;
         cardConfig.textContent = `${p.units_per_case} U / ${p.cases_per_pallet} Cases`;
         const totalBaseSeconds = p.cases_per_pallet * p.seconds_per_case;
         const safeCount = workerCount > 0 ? workerCount : 1;
         const adjustedSeconds = Math.ceil(totalBaseSeconds / safeCount);
-        const h = Math.floor(adjustedSeconds / 3600);
-        const m = Math.floor((adjustedSeconds % 3600) / 60);
+        renderTimeCard(adjustedSeconds);
+    }
+
+    function updateScorecardsWithNewTarget(newTargetSeconds) {
+        // Force refresh name/config in case they were missing
+        if(state.product) {
+            cardName.textContent = state.product.name;
+            cardConfig.textContent = `${state.product.units_per_case} U / ${state.product.cases_per_pallet} Cases`;
+        }
+        renderTimeCard(newTargetSeconds);
+    }
+
+    function renderTimeCard(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
         const timeText = `${h}h ${m}m`;
         cardStdTime.innerHTML = timeText;
-        if (safeCount > 1) {
-            cardStdTime.innerHTML += `<div style="font-size:0.65rem; opacity:0.8; font-weight:normal;">(Split by ${safeCount} workers)</div>`;
-        }
     }
 
     async function handleStart() {
         if (!state.product) return;
+        if (isLoadingAction) return; // Prevent double click
+
+        isLoadingAction = true;
         selectBtn.disabled = true;
         startBtn.disabled = true;
+        
         const qrId = `PLT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const now = new Date();
         statusMsg.innerHTML = "Starting process...";
+
+        // Initial Target Calculation
+        const baseSeconds = state.product.cases_per_pallet * state.product.seconds_per_case;
+        const initialCrew = state.line.worker_count;
+        const initialTarget = Math.ceil(baseSeconds / initialCrew);
 
         const { data, error } = await supabase
             .from('production_log')
@@ -667,28 +818,84 @@
                 product_id: state.product.id,
                 operator_name: state.line.team[0] || "Unknown",
                 team_members: state.line.team,
-                worker_count: state.line.worker_count,
+                worker_count: initialCrew,
                 start_time: now.toISOString(),
-                status: 'in_progress'
+                status: 'in_progress',
+                // New Fields Initialization
+                accumulated_target_seconds: 0,
+                last_change_time: now.toISOString(),
+                current_target_seconds: initialTarget
             }])
             .select()
             .single();
 
+        isLoadingAction = false;
+        startBtn.disabled = false;
+
         if (error) {
             showToast("Error starting process.", 'error');
             selectBtn.disabled = false;
-            startBtn.disabled = false;
             return;
         }
 
         state.pallet = {
             id: data.id,
             qr_id: qrId,
-            start_time: now
+            start_time: now,
+            is_paused: false,
+            total_pause_seconds: 0
         };
         statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Pallet in progress...`;
-        finishBtn.disabled = false;
-        startRealTimeTimer(now);
+        
+        updateActionButtonsState('running');
+        startRealTimeTimer(now, 0);
+    }
+
+    async function handlePauseToggle(action) { // action = 'pause' or 'resume'
+        if (!state.pallet) return;
+        if (isLoadingAction) return; // Prevent 400 Bad Request spam
+
+        // Lock UI
+        isLoadingAction = true;
+        startBtn.disabled = true;
+        startBtn.style.opacity = "0.7";
+        loadingOverlay.style.display = 'flex';
+
+        const { data, error } = await supabase
+            .rpc('toggle_pause', { 
+                p_log_id: state.pallet.id, 
+                p_action: action 
+            });
+
+        // Unlock UI
+        loadingOverlay.style.display = 'none';
+        isLoadingAction = false;
+        startBtn.disabled = false;
+        startBtn.style.opacity = "1";
+
+        if (error) {
+            console.error(error);
+            showToast(`Error: ${error.message}`, 'error');
+            return;
+        }
+
+        if (action === 'pause') {
+            state.pallet.is_paused = true;
+            stopTimer(); 
+            updateActionButtonsState('paused');
+            statusMsg.innerHTML = `<span style="color:var(--wst-warning)"><i class='bx bx-pause'></i> PAUSED</span> - Resume to continue.`;
+            cardRealTime.textContent = "PAUSED";
+        } else {
+            state.pallet.is_paused = false;
+            // Fetch fresh total_pause_seconds from DB to be accurate
+            const { data: freshLog } = await supabase.from('production_log').select('total_pause_seconds').eq('id', state.pallet.id).single();
+            const pauseTotal = freshLog ? freshLog.total_pause_seconds : 0;
+            state.pallet.total_pause_seconds = pauseTotal;
+            
+            updateActionButtonsState('running');
+            statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Pallet in progress...`;
+            startRealTimeTimer(state.pallet.start_time, pauseTotal); 
+        }
     }
 
     function handleFinishRequest() {
@@ -701,7 +908,9 @@
         finishBtn.disabled = true;
         stopTimer();
         const now = new Date();
-        const durationSec = Math.floor((now - state.pallet.start_time) / 1000);
+        
+        // Calculate Real Duration: (Now - Start) - TotalPauses
+        const durationSec = Math.floor((now - state.pallet.start_time) / 1000) - state.pallet.total_pause_seconds;
 
         const { error } = await supabase
             .from('production_log')
@@ -757,7 +966,7 @@
                 </style>
             </head>
             <body>
-                <h3 style="margin-bottom:5px;">GOLMEX WAREHOUSE</h3>
+                <h3 style="margin-bottom:5px;">GOLDMEX WAREHOUSE</h3>
                 <p style="font-size:12px; margin-top:0;">${state.line.name} | ${data.op}</p>
                 <hr style="margin:15px 0;">
                 <h2 style="margin:10px 0;">${data.prod}</h2>
@@ -828,16 +1037,21 @@
         createLineInput.value = '';
     }
 
-    function startRealTimeTimer(startTimeObj) {
+    function startRealTimeTimer(startTimeObj, totalPauseSeconds = 0) {
         stopTimer();
         cardRealTime.parentElement.classList.add('highlight-card');
+        
         state.timerInterval = setInterval(() => {
             const now = new Date();
+            // Important: Subtract total pauses from elapsed time
             const diff = now - startTimeObj;
-            const totalSecs = Math.floor(diff / 1000);
-            const hrs = Math.floor(totalSecs / 3600);
-            const mins = Math.floor((totalSecs % 3600) / 60);
-            const secs = totalSecs % 60;
+            const totalSecs = Math.floor(diff / 1000) - totalPauseSeconds;
+            
+            const validSecs = totalSecs > 0 ? totalSecs : 0;
+
+            const hrs = Math.floor(validSecs / 3600);
+            const mins = Math.floor((validSecs % 3600) / 60);
+            const secs = validSecs % 60;
             const pad = (n) => n.toString().padStart(2, '0');
             cardRealTime.textContent = `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
         }, 1000);
@@ -932,7 +1146,8 @@
         closeModalBtn.onclick = () => modal.classList.add('hidden');
         searchInput.oninput = (e) => loadProducts(e.target.value);
 
-        startBtn.onclick = handleStart;
+        // Start button onclick is handled dynamically by updateActionButtonsState
+        
         finishBtn.onclick = handleFinishRequest;
         printBtn.onclick = handlePrint;
 
@@ -941,6 +1156,13 @@
 
         endShiftYesBtn.onclick = executeEndShift;
         endShiftNoBtn.onclick = () => endShiftModal.classList.add('hidden');
+
+        // NEW Live Edit
+        if(editTeamTrigger) editTeamTrigger.onclick = openLiveCrewModal;
+        liveCrewAddBtn.onclick = addLiveWorker;
+        liveCrewInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addLiveWorker(); });
+        liveCrewCancelBtn.onclick = () => liveCrewModal.classList.add('hidden');
+        liveCrewSaveBtn.onclick = saveCrewModification;
     }
 
     init();
