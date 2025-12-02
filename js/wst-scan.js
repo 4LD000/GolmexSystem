@@ -42,7 +42,7 @@
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("Scanner Module Initialized (Adjusted Efficiency Mode)");
+        console.log("Scanner Module V5 (Weighted Logic): Initialized");
         loadHistory();
         
         // Auto-focus logic for USB scanners
@@ -50,7 +50,7 @@
             if (scanInput && !isMobileDevice()) scanInput.focus();
         }, 500);
 
-        // Keep focus on input unless clicking buttons (Desktop UX)
+        // Keep focus on input unless interacting with UI
         document.addEventListener('click', (e) => {
             if(cameraWrapper.classList.contains('hidden') 
                && !e.target.closest('button') 
@@ -62,7 +62,6 @@
     }
 
     // --- EVENT LISTENERS ---
-    
     if(scanInput) {
         scanInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -99,12 +98,11 @@
                 { facingMode: "environment" }, 
                 { fps: 10, qrbox: { width: 250, height: 250 } },
                 (decodedText) => {
-                    // Success callback
                     stopCamera();
                     handleScan(decodedText);
                 },
                 (errorMessage) => {
-                    // Scanning... (ignore errors to avoid console spam)
+                    // Scanning...
                 }
             );
         } catch (err) {
@@ -118,21 +116,23 @@
         if(html5QrCode) {
             html5QrCode.stop().then(() => {
                 html5QrCode.clear();
-                cameraWrapper.classList.add('hidden');
-                inputSection.classList.remove('hidden');
-                if(!isMobileDevice()) scanInput.focus();
+                closeCameraUI();
             }).catch(err => {
                 console.error("Failed to stop camera", err);
-                cameraWrapper.classList.add('hidden');
-                inputSection.classList.remove('hidden');
+                closeCameraUI();
             });
         } else {
-            cameraWrapper.classList.add('hidden');
-            inputSection.classList.remove('hidden');
+            closeCameraUI();
         }
     }
 
-    // --- CORE SCAN LOGIC (ADJUSTED EFFICIENCY) ---
+    function closeCameraUI() {
+        cameraWrapper.classList.add('hidden');
+        inputSection.classList.remove('hidden');
+        if(!isMobileDevice()) scanInput.focus();
+    }
+
+    // --- CORE SCAN LOGIC (V5 IMPLEMENTATION) ---
     async function handleScan(qrCode) {
         showState('loading');
         scanInput.value = '';
@@ -140,7 +140,6 @@
 
         try {
             // 1. Search Pallet in DB
-            // We fetch worker_count to calculate the REAL target
             const { data: pallet, error } = await supabase
                 .from('production_log')
                 .select(`
@@ -159,34 +158,49 @@
                 throw new Error(`Pallet ALREADY scanned at ${scannedAt}.`);
             }
 
-            // 3. Performance Calculation (ADJUSTED)
+            // 3. V5 LOGIC: Calculate Real Time & Target
+            
+            // A. Real Time (Net)
             const now = new Date();
             const start = new Date(pallet.start_time);
+            const totalPause = pallet.total_pause_seconds || 0;
             
-            // A. Duration in seconds (Real Time)
-            const realSecs = Math.floor((now - start) / 1000);
+            // Formula: (Clock Time) - (Pauses)
+            const grossDuration = Math.floor((now - start) / 1000);
+            const netRealSecs = grossDuration - totalPause;
             
-            // B. Base Standard (Total Man-Hours needed)
-            const baseStdSecs = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
-            
-            // C. Adjusted Target (Divided by Team Size)
-            const workerCount = pallet.worker_count || 1;
-            const targetSecs = Math.ceil(baseStdSecs / workerCount);
-            
-            console.log(`Scan Eval: Base=${baseStdSecs}s, Workers=${workerCount}, Target=${targetSecs}s, Real=${realSecs}s`);
+            // Safety check: time cannot be negative
+            const validRealSecs = netRealSecs > 0 ? netRealSecs : 0;
 
-            // D. Rating Logic vs ADJUSTED Target
+            // B. Target Time (Weighted)
+            let targetSecs = 0;
+            
+            if (pallet.current_target_seconds && pallet.current_target_seconds > 0) {
+                // Use the precise weighted target calculated by SQL during crew changes
+                targetSecs = pallet.current_target_seconds;
+            } else {
+                // Fallback: If no changes occurred, calculate basic standard
+                const baseStd = pallet.production_products.cases_per_pallet * pallet.production_products.seconds_per_case;
+                const workers = pallet.worker_count || 1;
+                targetSecs = Math.ceil(baseStd / workers);
+            }
+            
+            console.log(`Scan Eval: Target=${targetSecs}s, Real=${validRealSecs}s, Pauses=${totalPause}s`);
+
+            // 4. Rating Logic (Success/Warning/Danger)
             let rating = 'success';
-            if(realSecs > targetSecs * 1.25) rating = 'danger'; // > 25% delayed vs Adjusted Target
-            else if(realSecs > targetSecs) rating = 'warning';  // Delayed vs Adjusted Target
+            
+            // If taking 25% longer than target -> Danger
+            if(validRealSecs > targetSecs * 1.25) rating = 'danger'; 
+            // If taking longer than target -> Warning
+            else if(validRealSecs > targetSecs) rating = 'warning'; 
 
-            // 4. Update Database
+            // 5. Update Database
             const { error: updateError } = await supabase
                 .from('production_log')
                 .update({
                     warehouse_scan_time: now.toISOString(),
-                    final_time_seconds: realSecs,
-                    standard_time_seconds: baseStdSecs, // We preserve the Base Standard for historical reference
+                    final_time_seconds: validRealSecs, // Store the NET time
                     performance_rating: rating,
                     status: 'completed'
                 })
@@ -194,8 +208,8 @@
 
             if(updateError) throw new Error("Database update failed. Check connection.");
 
-            // 5. Update UI
-            displaySuccess(pallet, realSecs, targetSecs);
+            // 6. Update UI
+            displaySuccess(pallet, validRealSecs, targetSecs);
             loadHistory();
 
         } catch (err) {
@@ -223,8 +237,6 @@
         resQrIdDisplay.textContent = pallet.pallet_qr_id || 'N/A';
         
         const lineName = pallet.warehouse_lines?.line_name || 'Unknown Line';
-        
-        // Display Team Info
         const workers = pallet.worker_count || 1;
         const opDisplay = workers > 1 ? `Team of ${workers}` : (pallet.operator_name || 'Operator');
         
@@ -234,12 +246,22 @@
         const h = Math.floor(realSeconds/3600);
         const m = Math.floor((realSeconds%3600)/60);
         
-        // Calculate Efficiency (Time Saved vs Adjusted Target)
+        // Calculate Efficiency Display
         const diff = targetSeconds - realSeconds;
         const diffM = Math.floor(Math.abs(diff) / 60);
-        const statusText = diff >= 0 ? `Saved ${diffM} min` : `Late ${diffM} min`;
         
-        resTime.innerHTML = `${h}h ${m}m <br><small style="font-size:0.8rem; color:var(--scan-light)">${statusText}</small>`;
+        let statusText = '';
+        let statusColor = '';
+
+        if (diff >= 0) {
+            statusText = `Saved ${diffM} min`;
+            statusColor = 'var(--scan-success)';
+        } else {
+            statusText = `Late ${diffM} min`;
+            statusColor = 'var(--scan-error)';
+        }
+        
+        resTime.innerHTML = `${h}h ${m}m <br><small style="font-size:0.9rem; color:${statusColor}; font-weight:bold;">${statusText}</small>`;
     }
 
     function showError(msg) {
@@ -257,11 +279,10 @@
         return window.innerWidth <= 768;
     }
 
-    // --- HISTORY TABLE RENDER ---
+    // --- HISTORY TABLE ---
     async function loadHistory() {
         const today = new Date().toISOString().split('T')[0];
         
-        // Fetch recent scans
         const { data, error } = await supabase
             .from('production_log')
             .select('*, production_products(name)')
@@ -303,7 +324,5 @@
         });
     }
 
-    // Start
     init();
-
 })();
