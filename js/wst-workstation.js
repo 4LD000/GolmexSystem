@@ -9,8 +9,7 @@
     if (!moduleContainer) return;
 
     // --- CONSTANTS & STATE ---
-    const SESSION_KEY = 'gmx_wst_session_v4_cloud'; // LocalStorage
-
+    // ELIMINAMOS LA DEPENDENCIA DE LOCALSTORAGE PARA LA SESIÓN ACTIVA (Permite Multi-dispositivo)
     // Application State
     let state = {
         line: null,         // { id, name, team: [], worker_count: 1 }
@@ -93,14 +92,14 @@
     // =========================================================================
     // 0. TOAST NOTIFICATION SYSTEM
     // =========================================================================
-    
+
     function showToast(message, type = 'info') {
         const existing = document.querySelectorAll('.wst-toast-notification');
         existing.forEach(e => e.remove());
 
         const toast = document.createElement('div');
         toast.className = 'wst-toast-notification';
-        
+
         Object.assign(toast.style, {
             position: 'fixed',
             top: '20px',
@@ -120,8 +119,8 @@
             maxWidth: '90%'
         });
 
-        const icon = type === 'error' ? "<i class='bx bx-x-circle'></i>" : 
-                     (type === 'success' ? "<i class='bx bx-check-circle'></i>" : "<i class='bx bx-info-circle'></i>");
+        const icon = type === 'error' ? "<i class='bx bx-x-circle'></i>" :
+            (type === 'success' ? "<i class='bx bx-check-circle'></i>" : "<i class='bx bx-info-circle'></i>");
 
         toast.innerHTML = `${icon} <span>${message}</span>`;
         document.body.appendChild(toast);
@@ -144,83 +143,64 @@
     document.head.appendChild(styleSheet);
 
     // =========================================================================
-    // 1. INITIALIZATION & STATE RESTORATION
+    // 1. INITIALIZATION & STATE CHECK (MULTI-DEVICE SYNC)
     // =========================================================================
 
     async function init() {
         console.log("WST V4: Initializing...");
-        
+
         setupEventListeners();
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             currentUserEmail = user.email;
+        } else {
+            // No user logged in (Shouldn't happen if script.js works, but safety check)
+            loadingOverlay.style.display = 'none';
+            return;
         }
 
-        const savedSession = localStorage.getItem(SESSION_KEY);
-        if (savedSession) {
-            try {
-                const sessionData = JSON.parse(savedSession);
-                await attemptRestoreSession(sessionData);
-                return; 
-            } catch (e) {
-                console.error("Session restore failed", e);
-                localStorage.removeItem(SESSION_KEY);
-            }
-        }
-
+        // --- NUEVA LÓGICA DE SINCRONIZACIÓN MULTI-DISPOSITIVO ---
         await checkCloudForActiveSession();
     }
 
+    // Función central para buscar una sesión activa en el DB para el usuario actual
     async function checkCloudForActiveSession() {
         if (!currentUserEmail) {
             showSelectionView();
             return;
         }
 
-        const { data: myLines, error } = await supabase
+        const { data: myLine, error } = await supabase
             .from('warehouse_lines')
             .select('*')
             .eq('status', 'busy')
-            .eq('owner_email', currentUserEmail);
+            .eq('owner_email', currentUserEmail) // Verifica que la línea esté ocupada POR ESTE CORREO
+            .single();
 
-        if (myLines && myLines.length > 0) {
-            const line = myLines[0];
-            await recoverSessionFromCloud(line);
+        if (error && error.code !== 'PGRST116') { // PGRST116: No se encontraron filas (Expected if no shift)
+            console.error("Database check error:", error);
+        }
+
+        if (myLine) {
+            // Sesión encontrada en la nube: Restaurar y entrar al dashboard
+            await recoverSessionFromCloud(myLine);
         } else {
+            // Ninguna sesión activa: Mostrar la rejilla de selección
             showSelectionView();
         }
     }
 
-    async function attemptRestoreSession(sessionData) {
-        const { data: lineData, error } = await supabase
-            .from('warehouse_lines')
-            .select('*')
-            .eq('id', sessionData.lineId)
-            .single();
-
-        if (error || !lineData) {
-            console.warn("Line not found or mismatch. Clearing local session.");
-            localStorage.removeItem(SESSION_KEY);
-            showSelectionView();
-            return;
-        }
-
-        if (lineData.status !== 'busy') {
-            console.warn("Line is no longer busy in DB. Clearing local session.");
-            localStorage.removeItem(SESSION_KEY);
-            showSelectionView();
-            return;
-        }
-
-        let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
-        let wCount = sessionData.count || 1;
+    // Adaptación del antiguo recoverSessionFromCloud para cargar datos de la DB
+    async function recoverSessionFromCloud(lineData) {
+        loadingOverlay.style.display = 'flex';
+        showToast(`Turno en ${lineData.line_name} sincronizado desde la nube.`, 'success');
 
         state.line = {
             id: lineData.id,
             name: lineData.line_name,
-            team: teamArr,
-            worker_count: wCount
+            team: lineData.current_team || (lineData.current_operator ? [lineData.current_operator] : []),
+            worker_count: lineData.worker_count || 1
         };
 
         const { data: activeLog } = await supabase
@@ -272,11 +252,11 @@
         if (selectionSubscription) return;
 
         console.log("Activating Global Grid Realtime...");
-        
+
         selectionSubscription = supabase.channel('grid-view-global')
             .on(
-                'postgres_changes', 
-                { event: 'UPDATE', schema: 'public', table: 'warehouse_lines' }, 
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'warehouse_lines' },
                 (payload) => {
                     console.log("Global Update detected, refreshing grid...");
                     loadLinesGrid();
@@ -295,15 +275,16 @@
 
         lineSubscription = supabase.channel(`line-sync-${lineId}`)
             .on(
-                'postgres_changes', 
-                { event: 'UPDATE', schema: 'public', table: 'warehouse_lines', filter: `id=eq.${lineId}` }, 
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'warehouse_lines', filter: `id=eq.${lineId}` },
                 (payload) => {
                     const newData = payload.new;
-                    if (newData.status === 'available') {
+                    // Si el estado cambia a 'available' y no soy yo quien lo hizo, significa logout remoto
+                    if (newData.status === 'available' && newData.owner_email === null) {
                         console.log("Remote End Shift detected!");
-                        showToast("Session ended from another device.", "info");
-                        
-                        localStorage.removeItem(SESSION_KEY);
+                        showToast("Sesión finalizada por otro dispositivo o proceso.", "info");
+
+                        // Forzar el recargo para sincronizar el estado.
                         setTimeout(() => { location.reload(); }, 2000);
                     }
                 }
@@ -313,26 +294,26 @@
 
     function showSelectionView() {
         loadingOverlay.style.display = 'none';
-        
+
         // Switch Views
         viewDashboard.classList.remove('active');
         viewDashboard.classList.add('hidden');
         viewSelection.classList.remove('hidden');
         viewSelection.classList.add('active');
-        
+
         // Clean Dashboard Radar, Enable Global Radar
         if (lineSubscription) {
             supabase.removeChannel(lineSubscription);
             lineSubscription = null;
         }
-        
+
         loadLinesGrid();
         setupSelectionRealtime();
     }
 
     function enterDashboardUI() {
         loadingOverlay.style.display = 'none';
-        
+
         // Switch Views
         viewSelection.classList.remove('active');
         viewSelection.classList.add('hidden');
@@ -349,7 +330,7 @@
 
         if (state.line.worker_count > 1) {
             dashOp.innerHTML = `${state.line.worker_count} Workers <i class='bx bx-info-circle' style="font-size:0.8rem"></i>`;
-            dashOp.title = state.line.team.join(", "); 
+            dashOp.title = state.line.team.join(", ");
         } else {
             dashOp.textContent = state.line.team[0] || "Unknown";
         }
@@ -423,7 +404,7 @@
     }
 
     // =========================================================================
-    // 4. LINE SELECTION & LOGIN
+    // 4. LINE SELECTION & LOGIN (SINCRONIZACIÓN DB)
     // =========================================================================
 
     async function loadLinesGrid() {
@@ -453,7 +434,7 @@
 
             if (isMyLine) {
                 statusLabel = 'YOUR SESSION (CLICK TO RESUME)';
-                card.style.borderColor = 'var(--wst-primary)'; 
+                card.style.borderColor = 'var(--wst-primary)';
             }
 
             let opInfo = '';
@@ -500,15 +481,15 @@
             showToast("Add at least one worker.", 'error');
             return;
         }
-        
+
         // PRE-CHECK: Is line still available? (Conflict prevention)
         const { data: check } = await supabase
             .from('warehouse_lines')
             .select('status')
             .eq('id', pendingLineSelection.id)
             .single();
-            
-        if(check && check.status === 'busy') {
+
+        if (check && check.status === 'busy') {
             showToast("Too late! Someone else just took this line.", 'error');
             loginOverlay.classList.add('hidden');
             loadLinesGrid(); // Refresh view
@@ -520,6 +501,7 @@
         const mainOp = currentTeamList[0];
         const count = currentTeamList.length;
 
+        // --- ESCRITURA CRÍTICA A LA DB (ASIGNACIÓN DEL DUEÑO) ---
         const { error } = await supabase
             .from('warehouse_lines')
             .update({
@@ -527,7 +509,7 @@
                 current_operator: mainOp,
                 current_team: currentTeamList,
                 worker_count: count,
-                owner_email: currentUserEmail 
+                owner_email: currentUserEmail // <--- CAMBIO CLAVE: ASIGNAR EL DUEÑO
             })
             .eq('id', pendingLineSelection.id);
 
@@ -538,29 +520,17 @@
             return;
         }
 
-        const sessionData = {
-            lineId: pendingLineSelection.id,
-            team: currentTeamList,
-            count: count
-        };
-        localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
-
         loginOverlay.classList.add('hidden');
-        init(); 
+        // Usamos location.reload() para forzar la sincronización con la DB
+        location.reload();
     }
 
+    // Esta función ya no es necesaria con la nueva lógica, se usa checkCloudForActiveSession
+    // async function recoverSessionFromCloud(line) { ... } 
+    // Mantenemos solo el cuerpo esencial para que el botón "Resume" funcione
     async function recoverSessionFromCloud(line) {
-        loadingOverlay.style.display = 'flex';
-        showToast("Recovering session...", 'success');
-
-        const sessionData = {
-            lineId: line.id,
-            team: line.current_team || (line.current_operator ? [line.current_operator] : []),
-            count: line.worker_count || 1
-        };
-
-        localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
-        await attemptRestoreSession(sessionData);
+        // Al hacer clic en "Resume", forzamos el chequeo de la nube (que es el mismo proceso de init)
+        location.reload();
     }
 
     // =========================================================================
@@ -698,7 +668,7 @@
         }
         statusMsg.innerHTML = "Pallet Complete. Printing Label...";
         printBtn.disabled = false;
-        handlePrint(); 
+        handlePrint();
     }
 
     function handlePrint() {
@@ -715,9 +685,9 @@
         };
 
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.qr}`;
-        
+
         const win = window.open('', '_blank', 'width=400,height=550');
-        
+
         win.document.write(`
             <html>
             <head>
@@ -758,8 +728,8 @@
             </body>
             </html>
         `);
-        
-        win.document.close(); 
+
+        win.document.close();
         win.focus();
 
         loadHistoryTimeline();
@@ -778,31 +748,32 @@
         endShiftModal.classList.add('hidden');
         loadingOverlay.style.display = 'flex';
 
+        // --- ESCRITURA CRÍTICA A LA DB (LIBERAR LA LÍNEA) ---
         await supabase.from('warehouse_lines')
             .update({
                 status: 'available',
                 current_operator: null,
                 current_team: [],
                 worker_count: 1,
-                owner_email: null 
+                owner_email: null // <--- CAMBIO CLAVE: LIBERAR EL CORREO
             })
             .eq('id', state.line.id);
 
-        localStorage.removeItem(SESSION_KEY);
+        // Ya no borramos localStorage, solo recargamos para forzar el chequeo de la DB
         location.reload();
     }
 
     async function handleCreateLine() {
         const name = createLineInput.value.trim();
         if (!name) return showToast("Please enter a line name.", 'error');
-        
+
         createLineModal.classList.add('hidden');
         loadingOverlay.style.display = 'flex';
         const { error } = await supabase.from('warehouse_lines').insert([{ line_name: name }]);
-        
+
         if (error) showToast("Error creating line.", 'error');
         else await loadLinesGrid();
-        
+
         loadingOverlay.style.display = 'none';
         createLineInput.value = '';
     }
@@ -860,7 +831,7 @@
             if (log.status === 'in_progress') card.style.borderLeftColor = 'var(--wst-warning)';
             else if (log.status === 'waiting_for_scan') card.style.borderLeftColor = 'var(--wst-success)';
             else card.style.borderLeftColor = 'var(--wst-border)';
-            
+
             card.innerHTML = `
                 <div class="hist-header">
                     <span class="hist-id">${log.pallet_qr_id.split('-').pop()}</span>
@@ -873,7 +844,7 @@
                     </div>
                     ${log.status !== 'in_progress' ? `<button class="btn-reprint-sm" title="Reprint"><i class='bx bxs-printer'></i></button>` : ''}
                 </div>`;
-            
+
             const reprintBtn = card.querySelector('.btn-reprint-sm');
             if (reprintBtn) {
                 reprintBtn.onclick = () => {
