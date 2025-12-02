@@ -9,7 +9,8 @@
     if (!moduleContainer) return;
 
     // --- CONSTANTS & STATE ---
-    // ELIMINAMOS LA DEPENDENCIA DE LOCALSTORAGE PARA LA SESIÓN ACTIVA (Permite Multi-dispositivo)
+    const SESSION_KEY = 'gmx_wst_session_v4_cloud'; // LocalStorage
+
     // Application State
     let state = {
         line: null,         // { id, name, team: [], worker_count: 1 }
@@ -143,7 +144,7 @@
     document.head.appendChild(styleSheet);
 
     // =========================================================================
-    // 1. INITIALIZATION & STATE CHECK (MULTI-DEVICE SYNC)
+    // 1. INITIALIZATION & STATE RESTORATION
     // =========================================================================
 
     async function init() {
@@ -154,53 +155,72 @@
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             currentUserEmail = user.email;
-        } else {
-            // No user logged in (Shouldn't happen if script.js works, but safety check)
-            loadingOverlay.style.display = 'none';
-            return;
         }
 
-        // --- NUEVA LÓGICA DE SINCRONIZACIÓN MULTI-DISPOSITIVO ---
+        const savedSession = localStorage.getItem(SESSION_KEY);
+        if (savedSession) {
+            try {
+                const sessionData = JSON.parse(savedSession);
+                await attemptRestoreSession(sessionData);
+                return;
+            } catch (e) {
+                console.error("Session restore failed", e);
+                localStorage.removeItem(SESSION_KEY);
+            }
+        }
+
         await checkCloudForActiveSession();
     }
 
-    // Función central para buscar una sesión activa en el DB para el usuario actual
     async function checkCloudForActiveSession() {
         if (!currentUserEmail) {
             showSelectionView();
             return;
         }
 
-        const { data: myLine, error } = await supabase
+        const { data: myLines, error } = await supabase
             .from('warehouse_lines')
             .select('*')
             .eq('status', 'busy')
-            .eq('owner_email', currentUserEmail) // Verifica que la línea esté ocupada POR ESTE CORREO
-            .single();
+            .eq('owner_email', currentUserEmail);
 
-        if (error && error.code !== 'PGRST116') { // PGRST116: No se encontraron filas (Expected if no shift)
-            console.error("Database check error:", error);
-        }
-
-        if (myLine) {
-            // Sesión encontrada en la nube: Restaurar y entrar al dashboard
-            await recoverSessionFromCloud(myLine);
+        if (myLines && myLines.length > 0) {
+            const line = myLines[0];
+            await recoverSessionFromCloud(line);
         } else {
-            // Ninguna sesión activa: Mostrar la rejilla de selección
             showSelectionView();
         }
     }
 
-    // Adaptación del antiguo recoverSessionFromCloud para cargar datos de la DB
-    async function recoverSessionFromCloud(lineData) {
-        loadingOverlay.style.display = 'flex';
-        showToast(`Turno en ${lineData.line_name} sincronizado desde la nube.`, 'success');
+    async function attemptRestoreSession(sessionData) {
+        const { data: lineData, error } = await supabase
+            .from('warehouse_lines')
+            .select('*')
+            .eq('id', sessionData.lineId)
+            .single();
+
+        if (error || !lineData) {
+            console.warn("Line not found or mismatch. Clearing local session.");
+            localStorage.removeItem(SESSION_KEY);
+            showSelectionView();
+            return;
+        }
+
+        if (lineData.status !== 'busy') {
+            console.warn("Line is no longer busy in DB. Clearing local session.");
+            localStorage.removeItem(SESSION_KEY);
+            showSelectionView();
+            return;
+        }
+
+        let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
+        let wCount = sessionData.count || 1;
 
         state.line = {
             id: lineData.id,
             name: lineData.line_name,
-            team: lineData.current_team || (lineData.current_operator ? [lineData.current_operator] : []),
-            worker_count: lineData.worker_count || 1
+            team: teamArr,
+            worker_count: wCount
         };
 
         const { data: activeLog } = await supabase
@@ -279,12 +299,11 @@
                 { event: 'UPDATE', schema: 'public', table: 'warehouse_lines', filter: `id=eq.${lineId}` },
                 (payload) => {
                     const newData = payload.new;
-                    // Si el estado cambia a 'available' y no soy yo quien lo hizo, significa logout remoto
-                    if (newData.status === 'available' && newData.owner_email === null) {
+                    if (newData.status === 'available') {
                         console.log("Remote End Shift detected!");
-                        showToast("Sesión finalizada por otro dispositivo o proceso.", "info");
+                        showToast("Session ended from another device.", "info");
 
-                        // Forzar el recargo para sincronizar el estado.
+                        localStorage.removeItem(SESSION_KEY);
                         setTimeout(() => { location.reload(); }, 2000);
                     }
                 }
@@ -404,7 +423,7 @@
     }
 
     // =========================================================================
-    // 4. LINE SELECTION & LOGIN (SINCRONIZACIÓN DB)
+    // 4. LINE SELECTION & LOGIN
     // =========================================================================
 
     async function loadLinesGrid() {
@@ -501,7 +520,6 @@
         const mainOp = currentTeamList[0];
         const count = currentTeamList.length;
 
-        // --- ESCRITURA CRÍTICA A LA DB (ASIGNACIÓN DEL DUEÑO) ---
         const { error } = await supabase
             .from('warehouse_lines')
             .update({
@@ -509,7 +527,7 @@
                 current_operator: mainOp,
                 current_team: currentTeamList,
                 worker_count: count,
-                owner_email: currentUserEmail // <--- CAMBIO CLAVE: ASIGNAR EL DUEÑO
+                owner_email: currentUserEmail
             })
             .eq('id', pendingLineSelection.id);
 
@@ -520,17 +538,29 @@
             return;
         }
 
+        const sessionData = {
+            lineId: pendingLineSelection.id,
+            team: currentTeamList,
+            count: count
+        };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+
         loginOverlay.classList.add('hidden');
-        // Usamos location.reload() para forzar la sincronización con la DB
-        location.reload();
+        init();
     }
 
-    // Esta función ya no es necesaria con la nueva lógica, se usa checkCloudForActiveSession
-    // async function recoverSessionFromCloud(line) { ... } 
-    // Mantenemos solo el cuerpo esencial para que el botón "Resume" funcione
     async function recoverSessionFromCloud(line) {
-        // Al hacer clic en "Resume", forzamos el chequeo de la nube (que es el mismo proceso de init)
-        location.reload();
+        loadingOverlay.style.display = 'flex';
+        showToast("Recovering session...", 'success');
+
+        const sessionData = {
+            lineId: line.id,
+            team: line.current_team || (line.current_operator ? [line.current_operator] : []),
+            count: line.worker_count || 1
+        };
+
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+        await attemptRestoreSession(sessionData);
     }
 
     // =========================================================================
@@ -748,18 +778,17 @@
         endShiftModal.classList.add('hidden');
         loadingOverlay.style.display = 'flex';
 
-        // --- ESCRITURA CRÍTICA A LA DB (LIBERAR LA LÍNEA) ---
         await supabase.from('warehouse_lines')
             .update({
                 status: 'available',
                 current_operator: null,
                 current_team: [],
                 worker_count: 1,
-                owner_email: null // <--- CAMBIO CLAVE: LIBERAR EL CORREO
+                owner_email: null
             })
             .eq('id', state.line.id);
 
-        // Ya no borramos localStorage, solo recargamos para forzar el chequeo de la DB
+        localStorage.removeItem(SESSION_KEY);
         location.reload();
     }
 
