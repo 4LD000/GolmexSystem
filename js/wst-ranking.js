@@ -15,35 +15,29 @@
 
     // --- STATE ---
     let realtimeSubscription = null;
-    let scrollInterval = null;
     let localTimerInterval = null;
-    let scrollDirection = 1;
-    let isPaused = false;
     let activeLinesData = [];
+    
+    // Almacena referencias a los elementos del DOM para reutilizarlos
+    let cardElementsMap = new Map();
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("GMX Performance Board Initialized (Local Timezone Fixed)");
+        console.log("GMX Performance Board V6 (Smart Sort): Initialized");
         loadRankingData();
         setupRealtimeSubscription();
-        startAutoScroll();
+        // REMOVED: startAutoScroll(); -> Ya no queremos el elevador
         startLocalTick();
     }
 
     // --- DATA FETCHING & PROCESSING ---
     async function loadRankingData() {
-        // --- FIX: USE LOCAL DEVICE TIME, NOT UTC ---
         const now = new Date();
         const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
-
-        // This creates "2025-11-27" based on TIJUANA time, not UTC
         const todayLocal = `${year}-${month}-${day}`;
 
-        console.log("Loading data for Local Date:", todayLocal);
-
-        // Fetch logs
         const { data: logs, error } = await window.supabase
             .from('production_log')
             .select(`
@@ -51,28 +45,8 @@
                 warehouse_lines (id, line_name, current_operator, current_team),
                 production_products (name)
             `)
-            // We calculate the filter manually to handle the TZ offset correctly
-            // We want anything created "After midnight local time"
-            // But since DB is UTC, we need to be careful. 
-            // Simplest Fix: Filter by the ISO string generated from Local Midnight converted to UTC
-            // However, simpler approach: Just filter by string matching or ensure app logic handles it.
-
-            // Supabase filter correction:
-            // We will filter >= '2025-11-27 00:00:00' (Local)
-            // But we need to send this in a format Supabase understands relative to the stored UTC.
-            // Actually, let's filter by 'created_at' or 'start_time' but let JS filter the day to be safe 
-            // OR send the ISO string of local midnight.
-
-            .gte('start_time', `${todayLocal}T08:00:00`) // Tijuana Midnight is 08:00 UTC (approx). 
-            // BETTER YET: Let's just filter broadly and filter in JS to be 100% sure of "Today"
-
+            .gte('start_time', `${todayLocal}T00:00:00`) 
             .order('start_time', { ascending: true });
-
-        /* NOTE ON TIMEZONES: 
-           Supabase stores in UTC. If you are in Tijuana (UTC-8), your "Day" starts at 08:00:00 UTC.
-           If we query `${todayLocal}T00:00:00`, we are asking for 4PM Previous Day in Tijuana.
-           To fix this perfectly without complex offsets, we will filter in Memory below.
-        */
 
         if (error) {
             console.error("Error fetching ranking data:", error);
@@ -84,10 +58,8 @@
             return;
         }
 
-        // --- CLIENT SIDE FILTERING (100% ACCURATE TO LOCAL DEVICE) ---
         const todayLogs = logs.filter(log => {
             const logDate = new Date(log.start_time);
-            // Compare local dates
             return logDate.getFullYear() === now.getFullYear() &&
                 logDate.getMonth() === now.getMonth() &&
                 logDate.getDate() === now.getDate();
@@ -128,6 +100,8 @@
                     totalTargetSeconds: 0,
                     totalRealSeconds: 0,
                     currentStatus: 'idle',
+                    isPaused: false,
+                    totalPauseSeconds: 0,
                     currentStartTime: null,
                     currentProduct: null
                 };
@@ -137,15 +111,17 @@
                 linesMap[lineId].pallets += 1;
                 grandTotalPallets += 1;
 
-                const baseStd = log.standard_time_seconds || 0;
-                const workers = log.worker_count || 1;
-                const adjustedTarget = baseStd / workers;
+                const finalTarget = log.current_target_seconds 
+                    ? log.current_target_seconds 
+                    : (log.standard_time_seconds / (log.worker_count || 1));
 
-                linesMap[lineId].totalTargetSeconds += adjustedTarget;
+                linesMap[lineId].totalTargetSeconds += finalTarget;
                 linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0);
             }
             else {
                 linesMap[lineId].currentStatus = 'active';
+                linesMap[lineId].isPaused = log.is_paused || false;
+                linesMap[lineId].totalPauseSeconds = log.total_pause_seconds || 0;
                 linesMap[lineId].currentStartTime = new Date(log.start_time).getTime();
                 linesMap[lineId].currentProduct = log.production_products?.name || 'Unknown Item';
                 linesMap[lineId].operator = opLabel;
@@ -155,89 +131,168 @@
         const rankingArray = Object.values(linesMap).map(line => {
             const deviationSeconds = line.totalTargetSeconds - line.totalRealSeconds;
             grandTotalDeviation += deviationSeconds;
-
-            return {
-                ...line,
-                deviationSeconds: deviationSeconds
-            };
+            return { ...line, deviationSeconds };
         });
 
+        // Ordenar por Eficiencia (Mayor ahorro primero)
         rankingArray.sort((a, b) => b.deviationSeconds - a.deviationSeconds);
+        
         activeLinesData = rankingArray;
 
         renderDashboard(rankingArray, grandTotalPallets, grandTotalDeviation);
     }
 
-    // --- RENDERING ---
+    // --- SMART RENDERING (FLIP ANIMATION) ---
     function renderDashboard(rankingData, totalPallets, totalDeviationSecs) {
+        // 1. Actualizar Header Global
         totalPalletsEl.textContent = totalPallets;
+        const globalTimeData = formatTimeDiff(totalDeviationSecs);
+        const globalFace = getFaceIcon(totalDeviationSecs);
+        globalTimeEl.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class='bx ${globalFace.icon} global-face-icon' style="color:${globalFace.color}"></i>
+                ${globalTimeData.html}
+            </div>
+        `;
 
-        const globalTimeStr = formatTimeDiff(totalDeviationSecs);
-        globalTimeEl.innerHTML = globalTimeStr.html;
+        // 2. Preparar animación FLIP (First, Last, Invert, Play)
+        // Capturar posiciones antiguas
+        const prevPositions = new Map();
+        rankingData.forEach(line => {
+            const el = cardElementsMap.get(line.id);
+            if (el && el.isConnected) {
+                prevPositions.set(line.id, el.getBoundingClientRect().top);
+            }
+        });
 
-        rankList.innerHTML = '';
-
+        // 3. Crear/Actualizar elementos en el DOM (Virtualmente primero)
+        const currentElements = [];
+        
         rankingData.forEach((line, index) => {
             const rankPosition = index + 1;
+            let card = cardElementsMap.get(line.id);
+
+            // Si no existe, crearla
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `line-card-${line.id}`;
+                cardElementsMap.set(line.id, card);
+            }
+
+            // Actualizar Clases (Importante para bordes de estado)
+            const statusStyle = getStatusConfig(line.deviationSeconds);
+            card.className = `rank-card pos-${rankPosition} ${statusStyle.borderClass}`;
+
+            // Generar contenido interno HTML
             const formattedTime = formatTimeDiff(line.deviationSeconds);
-            const status = getStatusConfig(line.deviationSeconds);
-
-            const card = document.createElement('div');
-            card.className = `rank-card pos-${rankPosition} ${status.borderClass}`;
-
-            let productHtml = '';
-            let statusBadgeHtml = '';
-            let timerHtml = '';
-            let timerId = '';
+            const faceData = getFaceIcon(line.deviationSeconds);
+            
+            let productHtml, statusBadgeHtml, timerHtml;
+            const timerId = `timer-${line.id}`;
 
             if (line.currentStatus === 'active') {
-                timerId = `timer-${line.id}`;
                 productHtml = `<div class="current-item-name" title="${line.currentProduct}">${line.currentProduct}</div>`;
-                statusBadgeHtml = `
-                    <div class="rank-status-badge status-active">
-                        <i class='bx bx-loader-alt bx-spin'></i> Processing
-                    </div>`;
-                timerHtml = `<div id="${timerId}" class="live-timer-display">00:00</div>`;
-
+                if (line.isPaused) {
+                    statusBadgeHtml = `<div class="rank-status-badge status-paused"><i class='bx bx-pause-circle'></i> PAUSED</div>`;
+                    timerHtml = `<div id="${timerId}" class="live-timer-display" style="color:var(--rank-paused)">PAUSED</div>`;
+                } else {
+                    statusBadgeHtml = `<div class="rank-status-badge status-active"><i class='bx bx-loader-alt bx-spin'></i> Processing</div>`;
+                    timerHtml = `<div id="${timerId}" class="live-timer-display">00:00</div>`;
+                }
             } else {
                 productHtml = `<div class="current-item-name" style="color:var(--rank-text-muted);">--</div>`;
-                statusBadgeHtml = `
-                    <div class="rank-status-badge status-idle">
-                        <i class='bx bx-coffee'></i> Idle
-                    </div>`;
+                statusBadgeHtml = `<div class="rank-status-badge status-idle"><i class='bx bx-coffee'></i> Idle</div>`;
                 timerHtml = `<div class="live-timer-display" style="opacity:0;">--:--</div>`;
             }
 
+            // Actualizar HTML interno
             card.innerHTML = `
                 <div class="rank-pos">#${rankPosition}</div>
-                
                 <div class="rank-info">
                     <div class="line-name">${line.name}</div>
                     <div class="line-op"><i class='bx bxs-user'></i> ${line.operator}</div>
                 </div>
-
                 ${productHtml}
-
                 ${statusBadgeHtml}
-
                 ${timerHtml}
-
                 <div class="rank-stat">
                     <span class="stat-label">Efficiency</span>
                     <div class="time-diff ${formattedTime.class}">${formattedTime.text}</div>
                 </div>
-
+                <div class="rank-face-icon">
+                    <i class='bx ${faceData.icon}' style="color:${faceData.color}"></i>
+                </div>
                 <div class="rank-stat-pallets">
                     <span class="stat-label">Pallets</span>
                     <span class="stat-val">${line.pallets}</span>
                 </div>
             `;
 
-            card.style.animationDelay = `${index * 0.1}s`;
-            rankList.appendChild(card);
+            currentElements.push(card);
         });
 
+        // 4. Reordenar el DOM real
+        // Esto mueve los elementos a sus nuevas posiciones instantáneamente
+        rankList.innerHTML = ''; 
+        currentElements.forEach(el => rankList.appendChild(el));
+
+        // 5. Ejecutar Animación FLIP
+        currentElements.forEach(card => {
+            const lineId = parseInt(card.id.replace('line-card-', ''));
+            const oldTop = prevPositions.get(lineId);
+            
+            if (oldTop !== undefined) {
+                const newTop = card.getBoundingClientRect().top;
+                const delta = oldTop - newTop;
+
+                if (delta !== 0) {
+                    // INVERT: Mover visualmente al lugar antiguo
+                    requestAnimationFrame(() => {
+                        card.style.transition = 'none';
+                        card.style.transform = `translateY(${delta}px)`;
+
+                        // PLAY: Soltarlo hacia el nuevo lugar
+                        requestAnimationFrame(() => {
+                            card.style.transition = 'transform 0.5s ease-in-out';
+                            card.style.transform = '';
+                        });
+                    });
+                }
+            } else {
+                // Elemento nuevo: Animación de entrada simple
+                card.style.animation = 'slideIn 0.5s ease-out';
+            }
+        });
+
+        // Forzar actualización inmediata de los relojes (para que no salgan en 00:00)
         updateLocalTimers();
+    }
+
+    // --- HELPER FUNCTIONS (Sin cambios lógicos) ---
+    function getFaceIcon(seconds) {
+        if (seconds >= 0) return { icon: 'bx-happy-heart-eyes', color: 'var(--rank-green)' };
+        else if (seconds > -600) return { icon: 'bx-meh', color: 'var(--rank-yellow)' };
+        else return { icon: 'bx-sad', color: 'var(--rank-red)' };
+    }
+
+    function formatTimeDiff(seconds) {
+        const isNegative = seconds < 0;
+        const m = Math.floor(Math.abs(seconds) / 60);
+        const sign = isNegative ? '-' : '+';
+        const text = `${sign} ${m} min`;
+        let cssClass = 'diff-neutral';
+        let colorStyle = 'color: var(--rank-yellow)';
+
+        if (!isNegative && m > 0) { cssClass = 'diff-positive'; colorStyle = 'color: var(--rank-green)'; }
+        else if (isNegative) { cssClass = 'diff-negative'; colorStyle = 'color: var(--rank-red)'; }
+
+        return { text, class: cssClass, html: `<span class="time-diff ${cssClass}" style="${colorStyle}">${text}</span>` };
+    }
+
+    function getStatusConfig(seconds) {
+        if (seconds >= 0) return { borderClass: 'status-good' };
+        else if (seconds > -900) return { borderClass: 'status-warn' };
+        else return { borderClass: 'status-bad' };
     }
 
     // --- LOCAL TIMER LOGIC ---
@@ -252,21 +307,19 @@
             if (line.currentStatus === 'active' && line.currentStartTime) {
                 const timerEl = document.getElementById(`timer-${line.id}`);
                 if (timerEl) {
-                    const elapsedSecs = Math.floor((now - line.currentStartTime) / 1000);
-                    const hrs = Math.floor(elapsedSecs / 3600);
-                    const mins = Math.floor((elapsedSecs % 3600) / 60);
-                    const secs = (elapsedSecs % 60);
+                    if(line.isPaused) return; // Texto ya seteado en render
+
+                    const elapsedSecs = Math.floor((now - line.currentStartTime) / 1000) - line.totalPauseSeconds;
+                    const validSecs = elapsedSecs > 0 ? elapsedSecs : 0;
+                    const hrs = Math.floor(validSecs / 3600);
+                    const mins = Math.floor((validSecs % 3600) / 60);
+                    const secs = (validSecs % 60);
                     const pad = (n) => n.toString().padStart(2, '0');
 
-                    let timeString = '';
-                    if (hrs > 0) {
-                        timeString = `${hrs}:${pad(mins)}:${pad(secs)}`;
-                    } else {
-                        timeString = `${pad(mins)}:${pad(secs)}`;
-                    }
-
+                    let timeString = (hrs > 0) ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
                     timerEl.textContent = timeString;
-                    if (elapsedSecs > 3600) timerEl.style.color = 'var(--rank-red)';
+                    
+                    if (validSecs > 7200) timerEl.style.color = 'var(--rank-red)';
                     else timerEl.style.removeProperty('color');
                 }
             }
@@ -285,64 +338,6 @@
         `;
     }
 
-    function formatTimeDiff(seconds) {
-        const isNegative = seconds < 0;
-        const absSeconds = Math.abs(seconds);
-        const m = Math.floor(absSeconds / 60);
-
-        const sign = isNegative ? '-' : '+';
-        const text = `${sign} ${m} min`;
-
-        let cssClass = 'diff-neutral';
-        let colorStyle = 'color: var(--rank-yellow)';
-
-        if (!isNegative && m > 0) {
-            cssClass = 'diff-positive';
-            colorStyle = 'color: var(--rank-green)';
-        }
-        else if (isNegative) {
-            cssClass = 'diff-negative';
-            colorStyle = 'color: var(--rank-red)';
-        }
-
-        return {
-            text: text,
-            class: cssClass,
-            html: `<span style="${colorStyle}">${text}</span>`
-        };
-    }
-
-    function getStatusConfig(seconds) {
-        if (seconds >= 0) {
-            return { type: 'good', borderClass: 'status-good' };
-        } else if (seconds > -900) {
-            return { type: 'warn', borderClass: 'status-warn' };
-        } else {
-            return { type: 'bad', borderClass: 'status-bad' };
-        }
-    }
-
-    // --- AUTO SCROLL ---
-    function startAutoScroll() {
-        if (scrollInterval) clearInterval(scrollInterval);
-        const speed = 50;
-        const step = 1;
-
-        scrollInterval = setInterval(() => {
-            if (isPaused) return;
-            if (rankList.scrollHeight > rankList.clientHeight) {
-                rankList.scrollTop += step * scrollDirection;
-                if (rankList.scrollTop + rankList.clientHeight >= rankList.scrollHeight - 2) {
-                    isPaused = true;
-                    setTimeout(() => {
-                        rankList.scrollTop = 0;
-                        isPaused = false;
-                    }, 4000);
-                }
-            }
-        }, speed);
-    }
-
     // --- REALTIME SUBSCRIPTION ---
     function setupRealtimeSubscription() {
         if (realtimeSubscription) return;
@@ -351,8 +346,8 @@
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'production_log' },
                 (payload) => {
-                    console.log('Realtime update received:', payload);
-                    loadRankingData();
+                    console.log('Realtime update:', payload);
+                    loadRankingData(); // Recarga y activa la animación FLIP
                 }
             )
             .subscribe();
@@ -363,7 +358,6 @@
             window.supabase.removeChannel(realtimeSubscription);
             realtimeSubscription = null;
         }
-        if (scrollInterval) clearInterval(scrollInterval);
         if (localTimerInterval) clearInterval(localTimerInterval);
     }, { once: true });
 
