@@ -59,9 +59,10 @@
                     <i class='bx bxs-cog'></i>
                     <span id="wst-dashboard-line-title">LINE X</span>
                 </div>
-                <div class="wst-badge-op">
+                <div class="wst-badge-op" id="wst-edit-team-trigger" style="cursor:pointer;" title="Click to Modify Crew">
                     <i class='bx bxs-user'></i>
                     <span id="wst-dashboard-operator">Operator</span>
+                    <i class='bx bxs-edit-alt' style="margin-left:5px; opacity:0.7;"></i>
                 </div>
             </div>
             <button class="btn-goldmex-secondary btn-sm" id="wst-release-line-btn">
@@ -225,6 +226,31 @@
         <div class="wst-login-actions">
             <button class="btn-goldmex-secondary" id="wst-create-line-cancel">Cancel</button>
             <button class="btn-goldmex-primary" id="wst-create-line-confirm">Create Line</button>
+        </div>
+    </div>
+</div>
+
+<div id="wst-live-crew-modal" class="wst-modal hidden">
+    <div class="wst-login-box">
+        <h3><i class='bx bxs-group'></i> Modify Active Crew</h3>
+        <p style="color:var(--wst-text-light); font-size:0.9rem; margin-bottom:1rem;">
+            Adding/Removing people will recalculate the remaining efficiency target automatically.
+        </p>
+
+        <div class="cm-form-group" style="display:flex; gap:0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="wst-live-crew-input" placeholder="Worker Name" style="flex:1;">
+            <button class="btn-goldmex-secondary" id="wst-live-crew-add-btn"><i class='bx bx-plus'></i></button>
+        </div>
+
+        <div id="wst-live-crew-list"
+            style="margin-bottom: 1rem; height: 150px; overflow-y: auto; background: var(--wst-bg); border-radius: 8px; border: 1px solid var(--wst-border);">
+        </div>
+
+        <div class="wst-login-actions">
+            <button class="btn-goldmex-secondary" id="wst-live-crew-cancel">Cancel</button>
+            <button class="btn-goldmex-primary" id="wst-live-crew-save">
+                <i class='bx bx-save'></i> Apply & Recalculate
+            </button>
         </div>
     </div>
 </div>
