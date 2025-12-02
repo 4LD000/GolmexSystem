@@ -193,12 +193,14 @@
     }
 
     async function attemptRestoreSession(sessionData) {
+        // 1. Get fresh data from Supabase
         const { data: lineData, error } = await supabase
             .from('warehouse_lines')
             .select('*')
             .eq('id', sessionData.lineId)
             .single();
 
+        // CASE A: Line not found or error
         if (error || !lineData) {
             console.warn("Line not found or mismatch. Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
@@ -206,6 +208,24 @@
             return;
         }
 
+        // CASE B (SECURITY FIX): Line exists, but OWNER IS NOT ME
+        // If the line has an owner, and that owner is not the current user,
+        // it means this localStorage session belongs to a previous user on this device.
+        if (currentUserEmail && lineData.owner_email &&
+            lineData.owner_email.toLowerCase() !== currentUserEmail.toLowerCase()) {
+            
+            console.error("SECURITY ALERT: Local session belongs to another user.");
+            console.log(`Local Owner: ${lineData.owner_email} vs Current User: ${currentUserEmail}`);
+            
+            // Clear the zombie session
+            localStorage.removeItem(SESSION_KEY);
+            
+            // Fallback: Check if *I* have a real session in the cloud
+            await checkCloudForActiveSession();
+            return;
+        }
+
+        // CASE C: Line is no longer busy (ended remotely)
         if (lineData.status !== 'busy') {
             console.warn("Line is no longer busy in DB. Clearing local session.");
             localStorage.removeItem(SESSION_KEY);
@@ -213,6 +233,7 @@
             return;
         }
 
+        // IF WE REACH HERE: Session is valid and belongs to current user
         let teamArr = sessionData.team || (sessionData.operator ? [sessionData.operator] : []);
         let wCount = sessionData.count || 1;
 
