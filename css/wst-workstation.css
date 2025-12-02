@@ -1,5 +1,5 @@
 /* ============================================================
-   Workstation Module Styles (WST V4 - Mobile Responsive & Dark Mode)
+   Workstation Module Styles (WST V5 - Enhanced UI/UX)
    File: css/wst-workstation.css
    ============================================================ */
 
@@ -19,9 +19,13 @@
 
     /* Semantic Colors */
     --wst-success: #10b981;
+    /* Green */
     --wst-danger: #ef4444;
+    /* Red */
     --wst-warning: #f59e0b;
+    /* Amber/Orange (NEW for Pause) */
     --wst-info: #3b82f6;
+    /* Blue */
     --wst-purple: #8b5cf6;
 
     --wst-header-height: 70px;
@@ -36,11 +40,9 @@ body.dark-mode {
     --wst-text-light: #9ca3af;
     --wst-border: #374151;
 
-    /* Dark Mode specific brand adjustments */
     --wst-primary: #3b82f6;
-    /* Lighter blue for UI elements/icons */
+    /* Lighter blue for dark mode visibility */
     --wst-accent: #d4af37;
-    /* Keep Gold */
 }
 
 /* --- MAIN CONTAINER --- */
@@ -81,15 +83,16 @@ body.dark-mode {
     display: none !important;
 }
 
-/* --- LOADING --- */
+/* --- LOADING OVERLAY --- */
 .wst-loading-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--wst-card-bg);
-    z-index: 999;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 9999;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -98,7 +101,7 @@ body.dark-mode {
 
 .wst-spinner {
     text-align: center;
-    color: var(--wst-primary);
+    color: white;
 }
 
 .wst-spinner i {
@@ -226,7 +229,7 @@ body.dark-mode .wst-line-card.busy {
     flex-shrink: 0;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     z-index: 10;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
     gap: 1rem;
 }
 
@@ -261,6 +264,11 @@ body.dark-mode .wst-dashboard-header {
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    transition: background 0.2s;
+}
+
+.wst-badge-op:hover {
+    background: rgba(255, 255, 255, 0.25);
 }
 
 /* --- LAYOUT --- */
@@ -277,7 +285,7 @@ body.dark-mode .wst-dashboard-header {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    padding-bottom: 100px; 
+    padding-bottom: 100px;
 }
 
 /* TOP AREA */
@@ -315,6 +323,7 @@ body.dark-mode .wst-select-btn {
     background: rgba(59, 130, 246, 0.1);
     border-color: var(--wst-info);
     color: var(--wst-info);
+    transform: scale(1.02);
 }
 
 .wst-select-btn:disabled {
@@ -333,7 +342,6 @@ body.dark-mode .wst-select-btn {
 .wst-metrics-grid {
     flex: 1;
     display: grid;
-    /* Desktop: 2x2 Grid */
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 1rem;
@@ -349,7 +357,7 @@ body.dark-mode .wst-select-btn {
     gap: 1rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: transform 0.2s;
-    min-height: 80px; /* Ensure visible height */
+    min-height: 80px;
 }
 
 .wst-metric-card:hover {
@@ -390,10 +398,6 @@ body.dark-mode .wst-select-btn {
     text-overflow: ellipsis;
 }
 
-body.dark-mode .metric-value {
-    color: var(--wst-text-main);
-}
-
 /* Card Colors */
 .wst-metric-card:nth-child(1) .metric-icon {
     background: rgba(59, 130, 246, 0.15);
@@ -410,7 +414,7 @@ body.dark-mode .metric-value {
     color: var(--wst-warning);
 }
 
-/* Real Time Card */
+/* --- REAL TIME CARD (ANIMATED) --- */
 .wst-metric-card.highlight-card {
     background: linear-gradient(to right, var(--wst-card-bg), rgba(239, 68, 68, 0.05));
     border-color: rgba(239, 68, 68, 0.3);
@@ -429,9 +433,34 @@ body.dark-mode .metric-value {
 }
 
 @keyframes pulseIcon {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* --- PAUSE MODE STYLES (New) --- */
+body.is-paused-mode .wst-metric-card.highlight-card {
+    background: linear-gradient(to right, var(--wst-card-bg), rgba(245, 158, 11, 0.1));
+    border-color: var(--wst-warning);
+}
+
+body.is-paused-mode .highlight-card .metric-value {
+    color: var(--wst-warning);
+}
+
+body.is-paused-mode .metric-icon {
+    color: var(--wst-warning);
+    background: rgba(245, 158, 11, 0.15);
+    animation: none;
+    /* Stop pulsing when paused */
 }
 
 /* ACTIONS */
@@ -467,6 +496,7 @@ body.dark-mode .wst-status-bar span {
     color: var(--wst-accent);
 }
 
+/* --- BUTTONS GRID --- */
 .wst-buttons-grid {
     display: flex;
     gap: 1.5rem;
@@ -488,12 +518,20 @@ body.dark-mode .wst-status-bar span {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Smooth Transition */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
 }
 
 .wst-action-btn:active {
-    transform: scale(0.98);
+    transform: scale(0.96);
+}
+
+.wst-action-btn:hover:not(:disabled) {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
 }
 
 .wst-action-btn:disabled {
@@ -502,8 +540,10 @@ body.dark-mode .wst-status-bar span {
     border: 1px solid var(--wst-border);
     cursor: not-allowed;
     box-shadow: none;
+    transform: none;
 }
 
+/* Specific Button Colors */
 .btn-start {
     background-color: var(--wst-success);
 }
@@ -514,6 +554,17 @@ body.dark-mode .wst-status-bar span {
 
 .btn-print {
     background-color: var(--wst-primary);
+}
+
+/* NEW BUTTON COLORS FOR PAUSE/RESUME LOGIC */
+.wst-action-btn.btn-warning {
+    background-color: var(--wst-warning) !important;
+    color: #fff;
+}
+
+.wst-action-btn.btn-success {
+    background-color: var(--wst-success) !important;
+    color: #fff;
 }
 
 /* SIDEBAR */
@@ -596,11 +647,6 @@ body.dark-mode .sidebar-header {
     border-top: 1px dashed var(--wst-border);
 }
 
-.hist-times {
-    font-size: 0.75rem;
-    color: var(--wst-text-light);
-}
-
 .btn-reprint-sm {
     background: transparent;
     border: 1px solid var(--wst-border);
@@ -637,11 +683,6 @@ body.dark-mode .sidebar-header {
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-.wst-modal.hidden,
-.wst-overlay.hidden {
-    display: none;
 }
 
 .wst-modal-content {
@@ -797,7 +838,6 @@ body.dark-mode .wst-modal-header h3 {
     color: var(--wst-text-main);
 }
 
-/* Dark Mode Popups */
 body.dark-mode .wst-confirm-box h3,
 body.dark-mode .wst-login-box h3 {
     color: var(--wst-accent);
@@ -823,18 +863,15 @@ body.dark-mode .wst-login-box h3 {
 }
 
 /* ============================================================
-   MOBILE RESPONSIVE (Tablets & Phones < 1024px)
+   MOBILE RESPONSIVE
    ============================================================ */
 @media (max-width: 1024px) {
-
-    /* Stack Layout Vertical */
     .wst-main-layout {
         flex-direction: column;
         height: auto;
         overflow-y: auto;
     }
 
-    /* Top Control Panel */
     .wst-control-panel {
         flex: none;
         width: 100%;
@@ -842,7 +879,6 @@ body.dark-mode .wst-login-box h3 {
         overflow: visible;
     }
 
-    /* Stack Top Dashboard (Select Button + Metrics) */
     .wst-top-dashboard {
         flex-direction: column;
         height: auto;
@@ -864,18 +900,16 @@ body.dark-mode .wst-login-box h3 {
         font-size: 2rem;
         margin-bottom: 0;
     }
-    
-    /* FIX: Cards in Stairs (Escalera) - 1 Column */
+
     .wst-metrics-grid {
         grid-template-columns: 1fr;
         grid-template-rows: auto;
     }
-    
+
     .wst-metric-card {
-        padding: 1rem; /* Better padding for touch */
+        padding: 1rem;
     }
 
-    /* Action Buttons - Increase Touch Area */
     .wst-buttons-grid {
         height: auto;
         flex-wrap: wrap;
@@ -886,7 +920,6 @@ body.dark-mode .wst-login-box h3 {
         font-size: 0.9rem;
     }
 
-    /* Sidebar moves to bottom */
     .wst-sidebar {
         width: 100%;
         height: auto;
@@ -895,7 +928,6 @@ body.dark-mode .wst-login-box h3 {
         border-top: 1px solid var(--wst-border);
     }
 
-    /* Header Adjustments */
     .wst-dashboard-header {
         padding: 0.5rem 1rem;
     }
@@ -909,7 +941,6 @@ body.dark-mode .wst-login-box h3 {
         font-size: 0.85rem;
     }
 
-    /* Line Grid Selection */
     .wst-lines-grid {
         padding: 1rem;
         gap: 1rem;
