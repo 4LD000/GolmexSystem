@@ -63,10 +63,13 @@
                             <th>Date</th>
                             <th>Line</th>
                             <th>Product</th>
-                            <th title="Number of workers assigned">Crew</th> <th>Start Time</th>
+                            <th title="Number of workers assigned">Crew</th> 
+                            <th>Start Time</th>
                             <th>End Time</th>
                             <th title="Time actually taken">Real Time</th>
-                            <th title="Target time adjusted by crew size">Adj. Target</th> <th title="Positive = Saved Time, Negative = Delay">Diff (+/-)</th> <th>Status</th>
+                            <th title="Target time adjusted by crew size">Adj. Target</th> 
+                            <th title="Positive = Saved Time, Negative = Delay">Diff (+/-)</th> 
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -79,7 +82,7 @@
             <div class="wst-database-toolbar" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
                 <div class="wst-db-info">
                     <h3>Product Standards Master List</h3>
-                    <p style="color: var(--color-text-secondary); font-size: 0.9rem;">Manage standard times and pallet configurations.</p>
+                    <p style="color: var(--color-text-secondary); font-size: 0.9rem;">Manage standard times, pallet configurations, and weights.</p>
                 </div>
                 <button class="btn-goldmex-primary" id="wst-add-product-btn">
                     <i class='bx bx-plus'></i> Add New Product
@@ -94,7 +97,9 @@
                             <th>Cases/Pallet</th>
                             <th>Units/Case</th>
                             <th>Std Time (Mins)</th>
-                            <th>Std Time (Secs)</th> <th>Total Pallet Time (Hrs)</th> <th>Actions</th>
+                            <th>Std Time (Secs)</th> 
+                            <th>Total Pallet Time (Hrs)</th> 
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -107,7 +112,7 @@
 </div>
 
 <div id="wstProductModal" class="cm-modal">
-    <div class="cm-modal-content max-w-600">
+    <div class="cm-modal-content" style="max-width: 950px;">
         <div class="cm-modal-header">
             <h2 id="wstModalTitle"><i class='bx bxs-package'></i> Add Product</h2>
             <span class="cm-close-btn" id="wst-modal-close-x">&times;</span>
@@ -116,30 +121,69 @@
             <form id="wstProductForm">
                 <input type="hidden" id="wst-prod-id">
                 
-                <div class="cm-form-group">
-                    <label for="wst-prod-name">Product Name / Description</label>
-                    <input type="text" id="wst-prod-name" placeholder="e.g. Lechera 235ml" required>
+                <div class="cm-form-group" style="margin-bottom: 1.5rem;">
+                    <label for="wst-prod-name" style="font-size:0.95rem;">Product Name / Description</label>
+                    <input type="text" id="wst-prod-name" placeholder="e.g. Leche Carnation 225g" required style="font-size: 1.1rem; font-weight:500;">
                 </div>
 
-                <div class="cm-form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    
                     <div class="cm-form-group">
-                        <label for="wst-prod-cases">Cases per Pallet</label>
-                        <input type="number" id="wst-prod-cases" placeholder="0" min="1" required>
+                        <label>Net Content (Value & Unit)</label>
+                        <div style="display: flex; align-items: center; border: 1px solid var(--color-border); border-radius: 4px; overflow: hidden; background-color: var(--color-bg);">
+                            <input type="number" id="wst-prod-value" step="0.01" placeholder="225" style="border: none; flex: 1; padding: 0.6rem 0.8rem; outline: none; background: transparent; color: var(--color-text-primary); min-width: 0;">
+                            
+                            <select id="wst-prod-uom" style="border: none; border-left: 1px solid var(--color-border); background-color: var(--color-surface); padding: 0.6rem 0.5rem; font-weight: 500; color: var(--color-text-secondary); width: 110px; outline: none; cursor: pointer;">
+                                <option value="g">grams (g)</option>
+                                <option value="kg">kilos (kg)</option>
+                                <option value="ml">ml</option>
+                                <option value="l">Liters (L)</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div class="cm-form-group">
                         <label for="wst-prod-units">Units per Case</label>
-                        <input type="number" id="wst-prod-units" placeholder="0" min="1" required>
+                        <input type="number" id="wst-prod-units" placeholder="e.g. 12" min="1" required>
                     </div>
+
+                    <div class="cm-form-group">
+                        <label for="wst-prod-cases">Cases per Pallet</label>
+                        <input type="number" id="wst-prod-cases" placeholder="e.g. 100" min="1" required>
+                    </div>
+
+                    <div class="cm-form-group">
+                        <label title="Weight of empty bottle/can">Empty Pkg Weight (g)</label>
+                        <input type="number" id="wst-prod-pkg-weight" step="0.01" placeholder="e.g. 28">
+                    </div>
+
+                    <div class="cm-form-group">
+                        <label title="Weight of empty cardboard box">Empty Case Weight (g)</label>
+                        <input type="number" id="wst-prod-case-weight" step="0.01" placeholder="e.g. 454">
+                    </div>
+
+                    <div style="display:flex; align-items:center; color:var(--goldmex-secondary-color); font-size:0.85rem; opacity:0.8;">
+                        <i class='bx bx-info-circle' style="margin-right:5px; font-size:1.2rem;"></i>
+                        Used for automatic BOL & Weight calculations.
+                    </div>
+
                 </div>
 
-                <div class="cm-form-group" style="margin-top: 1rem; background: rgba(255, 215, 0, 0.05); padding: 1rem; border: 1px dashed var(--goldmex-secondary-color); border-radius: 6px;">
-                    <label for="wst-prod-minutes" style="color: var(--goldmex-primary-color); font-weight: bold;">Standard Time per Case (Minutes)</label>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="number" id="wst-prod-minutes" placeholder="e.g. 6.5" step="0.01" min="0" required style="font-size: 1.1rem;">
-                        <span style="font-size: 0.9rem; color: var(--color-text-secondary);">mins</span>
+                <div class="cm-form-group" style="background: rgba(255, 215, 0, 0.05); padding: 1.5rem; border: 1px dashed var(--goldmex-secondary-color); border-radius: 8px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 2rem;">
+                    <div style="flex: 1;">
+                        <label for="wst-prod-minutes" style="color: var(--goldmex-primary-color); font-weight: bold; font-size: 1rem; margin-bottom:0.5rem; display:block;">Standard Time per Case</label>
+                        <div style="display: flex; align-items: center; gap: 0.8rem;">
+                            <input type="number" id="wst-prod-minutes" placeholder="0.00" step="0.01" min="0" required style="font-size: 1.4rem; width: 120px; border-color: var(--goldmex-secondary-color); font-weight:bold; padding:0.5rem;">
+                            <span style="font-weight: 600; color: var(--color-text-secondary); font-size:1.1rem;">Minutes</span>
+                        </div>
                     </div>
-                    <div class="wst-form-helper" id="wst-time-calc-preview" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--color-text-secondary);">
-                        Preview: 0 sec
+                    
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.85rem; color: var(--color-text-secondary); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Estimated Pallet Time</div>
+                        <div id="wst-time-calc-preview" style="font-size: 1.4rem; color: var(--goldmex-primary-color); font-weight: 800; margin-top:5px;">
+                            0h 0m
+                        </div>
+                        <div style="font-size: 0.8rem; color: #999;">(For 1 person)</div>
                     </div>
                 </div>
 
