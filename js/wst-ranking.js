@@ -18,15 +18,14 @@
     let localTimerInterval = null;
     let activeLinesData = [];
     
-    // Almacena referencias a los elementos del DOM para reutilizarlos
+    // Store DOM elements for FLIP Animation
     let cardElementsMap = new Map();
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("GMX Performance Board V6 (Smart Sort): Initialized");
+        console.log("GMX Performance Board V8 (Final Layout): Initialized");
         loadRankingData();
         setupRealtimeSubscription();
-        // REMOVED: startAutoScroll(); -> Ya no queremos el elevador
         startLocalTick();
     }
 
@@ -103,11 +102,15 @@
                     isPaused: false,
                     totalPauseSeconds: 0,
                     currentStartTime: null,
-                    currentProduct: null
+                    currentProduct: null,
+                    currentAdjTargetSecs: 0, 
+                    hasActiveLog: false,
+                    deviationSeconds: 0 
                 };
             }
 
-            if (log.final_time_seconds !== null) {
+            // 1. GLOBAL EFFICIENCY LOGIC (Only Completed & Scanned Pallets)
+            if (log.status === 'completed' && log.warehouse_scan_time) { 
                 linesMap[lineId].pallets += 1;
                 grandTotalPallets += 1;
 
@@ -118,23 +121,28 @@
                 linesMap[lineId].totalTargetSeconds += finalTarget;
                 linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0);
             }
-            else {
+            
+            // 2. ACTIVE LOG DETECTION (For Live Traffic Light)
+            if (log.status === 'in_progress') {
                 linesMap[lineId].currentStatus = 'active';
                 linesMap[lineId].isPaused = log.is_paused || false;
                 linesMap[lineId].totalPauseSeconds = log.total_pause_seconds || 0;
                 linesMap[lineId].currentStartTime = new Date(log.start_time).getTime();
                 linesMap[lineId].currentProduct = log.production_products?.name || 'Unknown Item';
                 linesMap[lineId].operator = opLabel;
+                linesMap[lineId].currentAdjTargetSecs = log.current_target_seconds || 0;
+                linesMap[lineId].hasActiveLog = true;
             }
         });
 
         const rankingArray = Object.values(linesMap).map(line => {
+            // Deviation is based strictly on historical data for sorting
             const deviationSeconds = line.totalTargetSeconds - line.totalRealSeconds;
             grandTotalDeviation += deviationSeconds;
             return { ...line, deviationSeconds };
         });
 
-        // Ordenar por Eficiencia (Mayor ahorro primero)
+        // Sort by Accumulated Efficiency (Highest savings first)
         rankingArray.sort((a, b) => b.deviationSeconds - a.deviationSeconds);
         
         activeLinesData = rankingArray;
@@ -142,12 +150,15 @@
         renderDashboard(rankingArray, grandTotalPallets, grandTotalDeviation);
     }
 
-    // --- SMART RENDERING (FLIP ANIMATION) ---
+    // --- RENDER DASHBOARD (DOM MANIPULATION) ---
     function renderDashboard(rankingData, totalPallets, totalDeviationSecs) {
-        // 1. Actualizar Header Global
+        // 1. Update Global Header
         totalPalletsEl.textContent = totalPallets;
+        
         const globalTimeData = formatTimeDiff(totalDeviationSecs);
         const globalFace = getFaceIcon(totalDeviationSecs);
+        
+        // Revert to original layout: Icon left (in static HTML), Pill + Face inside value
         globalTimeEl.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px;">
                 <i class='bx ${globalFace.icon} global-face-icon' style="color:${globalFace.color}"></i>
@@ -155,8 +166,7 @@
             </div>
         `;
 
-        // 2. Preparar animación FLIP (First, Last, Invert, Play)
-        // Capturar posiciones antiguas
+        // 2. Prepare FLIP Animation
         const prevPositions = new Map();
         rankingData.forEach(line => {
             const el = cardElementsMap.get(line.id);
@@ -165,36 +175,48 @@
             }
         });
 
-        // 3. Crear/Actualizar elementos en el DOM (Virtualmente primero)
+        // 3. Create/Update Elements
         const currentElements = [];
         
         rankingData.forEach((line, index) => {
             const rankPosition = index + 1;
             let card = cardElementsMap.get(line.id);
 
-            // Si no existe, crearla
             if (!card) {
                 card = document.createElement('div');
                 card.id = `line-card-${line.id}`;
                 cardElementsMap.set(line.id, card);
             }
 
-            // Actualizar Clases (Importante para bordes de estado)
-            const statusStyle = getStatusConfig(line.deviationSeconds);
+            // Defaults for Efficiency Column (Accumulated or Placeholder)
+            let formattedTime = formatTimeDiff(line.deviationSeconds);
+            let faceData = getFaceIcon(line.deviationSeconds);
+            
+            // If active, use placeholders (updateLocalTimers will handle live data)
+            if (line.hasActiveLog) {
+                 formattedTime = { text: 'Calc...', class: 'diff-neutral' }; 
+                 faceData = { icon: 'bx-loader-alt bx-spin', color: 'var(--rank-text-muted)' };
+            } else if (line.pallets === 0) {
+                 formattedTime = { text: '--', class: 'diff-neutral' };
+                 faceData = { icon: 'bx-moon', color: 'var(--rank-text-muted)' };
+            }
+
+            // Status Border Class
+            const statusStyle = getStatusConfig(line.deviationSeconds, line.hasActiveLog);
             card.className = `rank-card pos-${rankPosition} ${statusStyle.borderClass}`;
 
-            // Generar contenido interno HTML
-            const formattedTime = formatTimeDiff(line.deviationSeconds);
-            const faceData = getFaceIcon(line.deviationSeconds);
-            
+            // Internal Columns HTML
             let productHtml, statusBadgeHtml, timerHtml;
             const timerId = `timer-${line.id}`;
+            const targetTimerId = `target-timer-${line.id}`;
+            const faceId = `face-icon-${line.id}`;
 
             if (line.currentStatus === 'active') {
                 productHtml = `<div class="current-item-name" title="${line.currentProduct}">${line.currentProduct}</div>`;
                 if (line.isPaused) {
                     statusBadgeHtml = `<div class="rank-status-badge status-paused"><i class='bx bx-pause-circle'></i> PAUSED</div>`;
                     timerHtml = `<div id="${timerId}" class="live-timer-display" style="color:var(--rank-paused)">PAUSED</div>`;
+                    faceData = { icon: 'bx-time-five', color: 'var(--rank-paused)' };
                 } else {
                     statusBadgeHtml = `<div class="rank-status-badge status-active"><i class='bx bx-loader-alt bx-spin'></i> Processing</div>`;
                     timerHtml = `<div id="${timerId}" class="live-timer-display">00:00</div>`;
@@ -205,38 +227,47 @@
                 timerHtml = `<div class="live-timer-display" style="opacity:0;">--:--</div>`;
             }
 
-            // Actualizar HTML interno
+            // --- CONSTRUCT HTML (7 Columns) ---
             card.innerHTML = `
                 <div class="rank-pos">#${rankPosition}</div>
+                
                 <div class="rank-info">
                     <div class="line-name">${line.name}</div>
                     <div class="line-op"><i class='bx bxs-user'></i> ${line.operator}</div>
                 </div>
+                
                 ${productHtml}
+                
                 ${statusBadgeHtml}
-                ${timerHtml}
+                
                 <div class="rank-stat">
-                    <span class="stat-label">Efficiency</span>
-                    <div class="time-diff ${formattedTime.class}">${formattedTime.text}</div>
+                    <span class="timer-header">REAL TIME</span>
+                    ${timerHtml}
                 </div>
-                <div class="rank-face-icon">
-                    <i class='bx ${faceData.icon}' style="color:${faceData.color}"></i>
+
+                <div class="rank-stat">
+                    <span class="timer-header">TARGET TIME</span>
+                    <div id="${targetTimerId}" class="target-time-display">--:--</div>
                 </div>
-                <div class="rank-stat-pallets">
-                    <span class="stat-label">Pallets</span>
-                    <span class="stat-val">${line.pallets}</span>
+
+                <div class="rank-stat">
+                    <span class="timer-header">EFFICIENCY</span>
+                    <div class="efficiency-wrapper">
+                        <div class="time-diff ${formattedTime.class}">${formattedTime.text}</div>
+                        <div class="rank-face-icon">
+                            <i class='bx ${faceData.icon}' id="${faceId}" style="color:${faceData.color}"></i>
+                        </div>
+                    </div>
                 </div>
             `;
 
             currentElements.push(card);
         });
 
-        // 4. Reordenar el DOM real
-        // Esto mueve los elementos a sus nuevas posiciones instantáneamente
+        // 4. Update DOM & Animate
         rankList.innerHTML = ''; 
         currentElements.forEach(el => rankList.appendChild(el));
 
-        // 5. Ejecutar Animación FLIP
         currentElements.forEach(card => {
             const lineId = parseInt(card.id.replace('line-card-', ''));
             const oldTop = prevPositions.get(lineId);
@@ -244,14 +275,10 @@
             if (oldTop !== undefined) {
                 const newTop = card.getBoundingClientRect().top;
                 const delta = oldTop - newTop;
-
                 if (delta !== 0) {
-                    // INVERT: Mover visualmente al lugar antiguo
                     requestAnimationFrame(() => {
                         card.style.transition = 'none';
                         card.style.transform = `translateY(${delta}px)`;
-
-                        // PLAY: Soltarlo hacia el nuevo lugar
                         requestAnimationFrame(() => {
                             card.style.transition = 'transform 0.5s ease-in-out';
                             card.style.transform = '';
@@ -259,19 +286,17 @@
                     });
                 }
             } else {
-                // Elemento nuevo: Animación de entrada simple
                 card.style.animation = 'slideIn 0.5s ease-out';
             }
         });
 
-        // Forzar actualización inmediata de los relojes (para que no salgan en 00:00)
         updateLocalTimers();
     }
 
-    // --- HELPER FUNCTIONS (Sin cambios lógicos) ---
+    // --- HELPERS ---
     function getFaceIcon(seconds) {
         if (seconds >= 0) return { icon: 'bx-happy-heart-eyes', color: 'var(--rank-green)' };
-        else if (seconds > -600) return { icon: 'bx-meh', color: 'var(--rank-yellow)' };
+        else if (seconds > -900) return { icon: 'bx-meh', color: 'var(--rank-yellow)' };
         else return { icon: 'bx-sad', color: 'var(--rank-red)' };
     }
 
@@ -281,21 +306,21 @@
         const sign = isNegative ? '-' : '+';
         const text = `${sign} ${m} min`;
         let cssClass = 'diff-neutral';
-        let colorStyle = 'color: var(--rank-yellow)';
 
-        if (!isNegative && m > 0) { cssClass = 'diff-positive'; colorStyle = 'color: var(--rank-green)'; }
-        else if (isNegative) { cssClass = 'diff-negative'; colorStyle = 'color: var(--rank-red)'; }
+        if (!isNegative && m > 0) cssClass = 'diff-positive';
+        else if (isNegative) cssClass = 'diff-negative';
 
-        return { text, class: cssClass, html: `<span class="time-diff ${cssClass}" style="${colorStyle}">${text}</span>` };
+        return { text, class: cssClass, html: `<span class="time-diff ${cssClass}">${text}</span>` };
     }
 
-    function getStatusConfig(seconds) {
+    function getStatusConfig(seconds, isActive) {
+        if(isActive) return { borderClass: 'status-active-pulse' };
         if (seconds >= 0) return { borderClass: 'status-good' };
         else if (seconds > -900) return { borderClass: 'status-warn' };
         else return { borderClass: 'status-bad' };
     }
 
-    // --- LOCAL TIMER LOGIC ---
+    // --- LOCAL TIMER LOGIC (LIVE TRAFFIC LIGHT) ---
     function startLocalTick() {
         if (localTimerInterval) clearInterval(localTimerInterval);
         localTimerInterval = setInterval(updateLocalTimers, 1000);
@@ -306,21 +331,84 @@
         activeLinesData.forEach(line => {
             if (line.currentStatus === 'active' && line.currentStartTime) {
                 const timerEl = document.getElementById(`timer-${line.id}`);
-                if (timerEl) {
-                    if(line.isPaused) return; // Texto ya seteado en render
+                const targetEl = document.getElementById(`target-timer-${line.id}`);
+                const card = document.getElementById(`line-card-${line.id}`);
+                
+                if (!timerEl || !targetEl || !card) return;
 
-                    const elapsedSecs = Math.floor((now - line.currentStartTime) / 1000) - line.totalPauseSeconds;
-                    const validSecs = elapsedSecs > 0 ? elapsedSecs : 0;
-                    const hrs = Math.floor(validSecs / 3600);
-                    const mins = Math.floor((validSecs % 3600) / 60);
-                    const secs = (validSecs % 60);
-                    const pad = (n) => n.toString().padStart(2, '0');
+                const diffEl = card.querySelector('.time-diff');
+                const faceEl = document.getElementById(`face-icon-${line.id}`);
 
-                    let timeString = (hrs > 0) ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
-                    timerEl.textContent = timeString;
+                if (line.isPaused) {
+                    if (faceEl) { 
+                        faceEl.className = 'bx bx-time-five'; 
+                        faceEl.style.color = 'var(--rank-paused)'; 
+                    }
+                    if (diffEl) diffEl.textContent = "PAUSED";
+                    return; 
+                }
+
+                // 1. Calculate Real Time
+                const elapsedSecs = Math.floor((now - line.currentStartTime) / 1000) - line.totalPauseSeconds;
+                const validSecs = elapsedSecs > 0 ? elapsedSecs : 0;
+                
+                const hrs = Math.floor(validSecs / 3600);
+                const mins = Math.floor((validSecs % 3600) / 60);
+                const secs = (validSecs % 60);
+                const pad = (n) => n.toString().padStart(2, '0');
+
+                let timeString = (hrs > 0) ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
+                timerEl.textContent = timeString;
+
+                // 2. Show Target Time
+                if (line.currentAdjTargetSecs > 0) {
+                    const tHrs = Math.floor(line.currentAdjTargetSecs / 3600);
+                    const tMins = Math.floor((line.currentAdjTargetSecs % 3600) / 60);
+                    const tSecs = (line.currentAdjTargetSecs % 60);
                     
-                    if (validSecs > 7200) timerEl.style.color = 'var(--rank-red)';
-                    else timerEl.style.removeProperty('color');
+                    let targetString = (tHrs > 0) ? `${tHrs}:${pad(tMins)}:${pad(tSecs)}` : `${pad(tMins)}:${pad(tSecs)}`;
+                    targetEl.textContent = targetString;
+                } else {
+                    targetEl.textContent = "--:--";
+                }
+
+                // 3. Live Efficiency (Traffic Light)
+                if (diffEl && line.currentAdjTargetSecs > 0) {
+                    const timeLeftSecs = line.currentAdjTargetSecs - validSecs;
+                    const timeLeftMins = Math.floor(timeLeftSecs / 60);
+
+                    let trtClass = 'diff-positive'; // Green
+                    let trtFace = 'bx-happy-heart-eyes';
+                    let trtColor = 'var(--rank-green)';
+                    let trtText = `+ ${timeLeftMins} min`;
+
+                    if (timeLeftSecs < 0) {
+                        // RED: Late
+                        trtClass = 'diff-negative';
+                        trtFace = 'bx-sad';
+                        trtColor = 'var(--rank-red)';
+                        trtText = `${timeLeftMins} min`; 
+                    } else if (timeLeftSecs <= 300) { 
+                        // YELLOW: Warning (< 5 min)
+                        trtClass = 'diff-neutral';
+                        trtFace = 'bx-meh';
+                        trtColor = 'var(--rank-yellow)';
+                    }
+
+                    diffEl.textContent = trtText;
+                    diffEl.className = `time-diff ${trtClass}`;
+                    
+                    if (faceEl) {
+                        faceEl.className = `bx ${trtFace}`;
+                        faceEl.style.color = trtColor;
+                    }
+
+                    // Timer Red Alarm
+                    if (validSecs > line.currentAdjTargetSecs) {
+                        timerEl.style.color = 'var(--rank-red)';
+                    } else {
+                        timerEl.style.removeProperty('color');
+                    }
                 }
             }
         });
@@ -346,8 +434,7 @@
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'production_log' },
                 (payload) => {
-                    console.log('Realtime update:', payload);
-                    loadRankingData(); // Recarga y activa la animación FLIP
+                    loadRankingData();
                 }
             )
             .subscribe();
