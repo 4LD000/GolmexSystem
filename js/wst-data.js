@@ -1,3 +1,5 @@
+/* ================= INICIO ARCHIVO: wst-data.js ================= */
+
 // js/wst-data.js
 
 (function() {
@@ -43,7 +45,7 @@
 
     // --- 2. INITIALIZATION ---
     async function init() {
-        console.log("Initializing WST Data Manager V7 (DT 2.0 Support)...");
+        console.log("Initializing WST Data Manager V9 (Edit Fix)...");
         
         initTabs();
         initDataTables();
@@ -63,7 +65,7 @@
         await loadLogs();
 
         setupEventListeners();
-        setupTimeCalculator();
+        // NOTE: setupTimeCalculator is removed here, logic moved to separate function to be reusable
     }
 
     // --- 3. TAB LOGIC ---
@@ -90,21 +92,15 @@
 
     // --- 4. DATATABLES CONFIGURATION ---
     function initDataTables() {
-        // ESTRUCTURA DOM:
-        // l = length, f = filter (Búsqueda) -> header
-        // t = table -> cuerpo
-        // i = info, p = paging -> footer
-        // IMPORTANTE: DataTables 2.0 usa clases dt-paging y dt-info
         const domConfig = '<"wst-dt-header"lf>rt<"wst-dt-footer"ip>';
 
         const commonConfig = {
             dom: domConfig,
             responsive: true,
-            scrollY: '200px', // Altura base para el cálculo de scroll
+            scrollY: '200px', 
             scrollCollapse: true,
             paging: true,
             layout: {
-                // Desactivar layout por defecto de DT 2.0 para usar nuestro DOM
                 topStart: null, topEnd: null, bottomStart: null, bottomEnd: null
             }
         };
@@ -296,41 +292,63 @@
     }
 
     // --- 8. MODAL & CALC ---
-    function setupTimeCalculator() {
-        const update = () => {
-            const m = parseFloat(inputMinutes.value)||0; 
-            const c = parseInt(inputCases.value)||0;
-            if(m>0){
-                const sec = Math.round(m*60);
-                const tot = sec*c;
-                const h = Math.floor(tot/3600);
-                const rm = Math.floor((tot%3600)/60);
-                calcPreview.innerHTML = `<b>${m} min/case</b> = ${h}h ${rm}m Total (1 person)`;
-            } else calcPreview.innerHTML = 'Preview...';
-        };
-        if(inputMinutes) inputMinutes.oninput = update;
-        if(inputCases) inputCases.oninput = update;
+
+    // Shared calculation function (Fixes issue where preview doesn't update on Edit)
+    function updateTimePreview() {
+        if(!inputMinutes || !inputCases || !calcPreview) return;
+        
+        const m = parseFloat(inputMinutes.value)||0; 
+        const c = parseInt(inputCases.value)||0;
+        if(m>0){
+            const sec = Math.round(m*60);
+            const tot = sec*c;
+            const h = Math.floor(tot/3600);
+            const rm = Math.floor((tot%3600)/60);
+            calcPreview.innerHTML = `<b>${m} min/case</b> = ${h}h ${rm}m Total (1 person)`;
+        } else {
+            calcPreview.innerHTML = 'Preview: 0 sec';
+        }
     }
 
     function openModal(edit) {
         productModal.style.display = 'flex';
         modalTitle.innerHTML = edit ? 'Edit Product' : 'Add Product';
     }
+
     function closeModal() {
         productModal.style.display = 'none';
         productForm.reset();
         document.getElementById('wst-prod-id').value = '';
+        // Reset fields to avoid ghosts
+        if(calcPreview) calcPreview.innerHTML = 'Preview: 0 sec';
     }
 
     window.wstEditProduct = function(id) {
         const p = productsCache.find(x => x.id === id);
         if(!p) return;
+        
+        // --- CORE DATA ---
         document.getElementById('wst-prod-id').value = p.id;
         document.getElementById('wst-prod-name').value = p.name;
+        
+        // Set these first as they are needed for calculation
         document.getElementById('wst-prod-cases').value = p.cases_per_pallet;
-        document.getElementById('wst-prod-units').value = p.units_per_case;
         document.getElementById('wst-prod-minutes').value = (p.seconds_per_case/60).toFixed(2);
+
+        document.getElementById('wst-prod-units').value = p.units_per_case;
+
+        // --- WEIGHTS & MEASURES DATA ---
+        if(document.getElementById('wst-prod-value')) {
+            document.getElementById('wst-prod-value').value = p.value_per_piece || '';
+            document.getElementById('wst-prod-uom').value = p.unit_of_measure || 'g';
+            document.getElementById('wst-prod-pkg-weight').value = p.packaging_weight_g || '';
+            document.getElementById('wst-prod-case-weight').value = p.case_weight_g || '';
+        }
+
         openModal(true);
+        
+        // FORCE CALCULATION UPDATE
+        updateTimePreview();
     };
 
     window.wstDeleteProduct = async function(id) {
@@ -340,25 +358,40 @@
     };
 
     function setupEventListeners() {
-        if(addProductBtn) addProductBtn.onclick = () => openModal(false);
+        if(addProductBtn) addProductBtn.onclick = () => {
+            openModal(false);
+            updateTimePreview(); // Reset preview
+        };
         if(modalCloseX) modalCloseX.onclick = closeModal;
         if(modalCancelBtn) modalCancelBtn.onclick = closeModal;
+        
+        // Attach live calculation listeners
+        if(inputMinutes) inputMinutes.oninput = updateTimePreview;
+        if(inputCases) inputCases.oninput = updateTimePreview;
         
         if(productForm) productForm.onsubmit = async (e) => {
             e.preventDefault();
             const sec = Math.round(parseFloat(inputMinutes.value)*60);
+            
+            // Build Data Object (Updated V9)
             const data = {
                 name: document.getElementById('wst-prod-name').value,
-                cases_per_pallet: parseInt(inputCases.value),
-                units_per_case: parseInt(document.getElementById('wst-prod-units').value),
-                seconds_per_case: sec
+                cases_per_pallet: parseInt(inputCases.value) || 0,
+                units_per_case: parseInt(document.getElementById('wst-prod-units').value) || 0,
+                seconds_per_case: sec,
+                // New fields for BOL calc
+                value_per_piece: parseFloat(document.getElementById('wst-prod-value').value) || 0,
+                unit_of_measure: document.getElementById('wst-prod-uom').value,
+                packaging_weight_g: parseFloat(document.getElementById('wst-prod-pkg-weight').value) || 0,
+                case_weight_g: parseFloat(document.getElementById('wst-prod-case-weight').value) || 0
             };
+
             const id = document.getElementById('wst-prod-id').value;
             let err;
             if(id) ({error:err} = await supabase.from('production_products').update(data).eq('id', id));
             else ({error:err} = await supabase.from('production_products').insert([data]));
             
-            if(err) alert(err.message);
+            if(err) alert("Error saving product: " + err.message);
             else { loadProducts(); closeModal(); }
         };
 
@@ -401,3 +434,5 @@
 
     init();
 })();
+
+/* ================= FIN ARCHIVO: wst-data.js ================= */
