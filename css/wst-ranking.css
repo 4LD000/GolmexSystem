@@ -1,5 +1,5 @@
 /* ============================================================
-   GMX Performance Board (TV View) - SMART SORT LAYOUT
+   GMX Performance Board (TV View) - FINAL LAYOUT V8
    File: css/wst-ranking.css
    ============================================================ */
 
@@ -31,7 +31,6 @@ body.dark-mode {
     --rank-red: #ef4444;
     --rank-paused: #fbbf24;
 
-    /* FIX: Azul claro para que el reloj se vea en modo oscuro */
     --rank-blue: #60a5fa;
 }
 
@@ -39,7 +38,6 @@ body.dark-mode {
 .wst-ranking-container {
     position: fixed;
     top: 70px;
-    /* Offset para no tapar el Header principal */
     right: 0;
     bottom: 0;
     left: 15rem;
@@ -115,7 +113,7 @@ body.sidebar-minimize .wst-ranking-container,
     }
 }
 
-/* --- SUMMARY --- */
+/* --- SUMMARY (Global Header) --- */
 .wst-rank-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -165,9 +163,11 @@ body.sidebar-minimize .wst-ranking-container,
     line-height: 1;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
+    /* Space between Global Face and Global Pill */
 }
 
+/* Estilo especifico para el Global Efficiency en el header */
 .global-face-icon {
     font-size: 2.2rem;
 }
@@ -183,35 +183,40 @@ body.sidebar-minimize .wst-ranking-container,
     scrollbar-width: none;
     -ms-overflow-style: none;
     position: relative;
-    /* Necesario para contexto de apilamiento */
 }
 
 .wst-leaderboard::-webkit-scrollbar {
     display: none;
 }
 
-/* --- CARD --- */
+/* --- CARD LAYOUT --- */
 .rank-card {
     display: grid;
-    /* 1.Pos | 2.Info | 3.Prod | 4.Status | 5.Timer | 6.Eff | 7.Face | 8.Pallets */
-    grid-template-columns: 60px 1.5fr 2fr 1fr 1fr 1fr 0.5fr 0.6fr;
+    /* LAYOUT 7 COLUMNAS - Ajustado para expandirse a la izquierda
+       1. Pos (60px)
+       2. Info (1.2fr)
+       3. Product (2.2fr) - MÃ¡s espacio para nombre largo
+       4. Status (0.8fr)
+       5. Real Time (1fr)
+       6. Target Time (1fr)
+       7. Efficiency (1.3fr) - Espacio para Pill + Face
+    */
+    grid-template-columns: 60px 1.2fr 2.2fr 0.8fr 1fr 1fr 1.3fr;
     align-items: center;
     background: var(--rank-card-bg);
-    padding: 1rem 2rem;
+    padding: 0.8rem 1.5rem;
+    /* Padding vertical reducido */
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-
-    /* TRANSICIONES CLAVE PARA FLIP ANIMATION */
     transition: transform 0.5s ease-in-out, box-shadow 0.3s ease;
     will-change: transform;
-    /* Optimización de rendimiento */
-
     border-left: 6px solid transparent;
     position: relative;
-    gap: 2rem;
+    gap: 1.2rem;
+    height: 100px;
+    /* Altura fija compacta */
 }
 
-/* Animación inicial de entrada */
 @keyframes slideIn {
     from {
         opacity: 0;
@@ -232,7 +237,7 @@ body.sidebar-minimize .wst-ranking-container,
 
 /* Position Styles */
 .rank-pos {
-    font-size: 2.2rem;
+    font-size: 2rem;
     font-weight: 900;
     color: var(--rank-text-muted);
     opacity: 0.3;
@@ -261,50 +266,59 @@ body.sidebar-minimize .wst-ranking-container,
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    justify-content: center;
 }
 
 .line-name {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--rank-text);
     white-space: nowrap;
 }
 
 .line-op {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--rank-text-muted);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+/* PRODUCT NAME - MULTILINE STAIRS EFFECT */
 .current-item-name {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--rank-text);
-    white-space: nowrap;
+    line-height: 1.2;
     overflow: hidden;
-    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    /* MÃ¡ximo 2 lÃ­neas */
+    -webkit-box-orient: vertical;
+    white-space: normal;
     text-align: left;
-    padding-right: 1rem;
+    height: 2.4em;
+    /* Forzar altura para 2 lÃ­neas */
+    display: flex;
+    align-items: center;
 }
 
+/* STATUS BADGE */
 .rank-status-badge {
-    padding: 0.5rem 1rem;
+    padding: 0.3rem 0.6rem;
     border-radius: 6px;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.3rem;
     width: 100%;
     white-space: nowrap;
-    transform: translateY(12px);
 }
 
 .status-active {
@@ -325,17 +339,48 @@ body.sidebar-minimize .wst-ranking-container,
     color: var(--rank-text-muted);
 }
 
-.live-timer-display {
+/* TIMERS & HEADERS */
+.rank-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+}
+
+.timer-header {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: var(--rank-text-muted);
+    font-weight: 800;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+    width: 100%;
+    text-align: center;
+}
+
+.live-timer-display,
+.target-time-display {
     font-family: 'Courier New', monospace;
     font-size: 1.4rem;
+    /* TamaÃ±o grande */
     font-weight: 900;
-    color: var(--rank-blue);
-    background: rgba(0, 0, 0, 0.03);
-    padding: 0.3rem 0.5rem;
+    padding: 0.2rem 0;
     border-radius: 4px;
     width: 100%;
     text-align: center;
-    transform: translateY(12px);
+    line-height: 1;
+}
+
+.live-timer-display {
+    color: var(--rank-blue);
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.target-time-display {
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
 }
 
 body.dark-mode .live-timer-display {
@@ -343,45 +388,27 @@ body.dark-mode .live-timer-display {
     background: rgba(255, 255, 255, 0.05);
 }
 
-.rank-stat {
+body.dark-mode .target-time-display {
+    color: #818cf8;
+    background: rgba(129, 140, 248, 0.1);
+}
+
+/* EFFICIENCY COLUMN (Pill + Face) */
+.efficiency-wrapper {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.rank-stat-pallets {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
-    justify-self: end;
-    text-align: right;
-    padding-right: 0.5rem;
-}
-
-.stat-val {
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: var(--rank-text);
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    color: var(--rank-text-muted);
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.5px;
+    justify-content: flex-end;
+    /* Alineado a la derecha */
+    gap: 12px;
+    /* SeparaciÃ³n entre Pill y Cara */
+    width: 100%;
 }
 
 .time-diff {
     font-family: 'Courier New', monospace;
     font-weight: 900;
-    font-size: 1.5rem;
-    padding: 0.2rem 0.8rem;
+    font-size: 1.2rem;
+    padding: 0.3rem 0.8rem;
     border-radius: 8px;
     white-space: nowrap;
     line-height: 1;
@@ -403,13 +430,14 @@ body.dark-mode .live-timer-display {
 }
 
 .rank-face-icon {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
+    /* Cara grande */
+    line-height: 1;
     display: flex;
     align-items: center;
-    justify-content: center;
-    transform: translateY(10px);
 }
 
+/* Borders based on status */
 .rank-card.status-good {
     border-left-color: var(--rank-green);
 }
@@ -420,6 +448,10 @@ body.dark-mode .live-timer-display {
 
 .rank-card.status-bad {
     border-left-color: var(--rank-red);
+}
+
+.rank-card.status-active-pulse {
+    border-left-color: var(--rank-green);
 }
 
 @keyframes pulseBorder {
@@ -436,78 +468,30 @@ body.dark-mode .live-timer-display {
     }
 }
 
-@media (max-width: 1200px) {
-    .rank-card {
-        gap: 1rem;
-        padding: 1rem;
-    }
+/* HIDDEN PALLET COUNTER */
+.rank-stat-pallets {
+    display: none !important;
 }
 
-@media (max-width: 1024px) {
-    .wst-ranking-container {
-        left: 0;
-        top: 60px;
-        padding: 1rem;
-    }
-
+/* Media Queries */
+@media (max-width: 1400px) {
     .rank-card {
-        grid-template-columns: 50px 1fr;
-        grid-auto-rows: auto;
+        /* Ajuste responsivo manteniendo proporciones */
+        grid-template-columns: 50px 1.2fr 2fr 0.8fr 1fr 1fr 1.3fr;
+        padding: 0.8rem;
         gap: 0.8rem;
-        padding: 1rem;
     }
 
-    .rank-pos {
-        grid-column: 1 / 2;
-        grid-row: 1;
-        font-size: 1.5rem;
-    }
-
-    .rank-info {
-        grid-column: 2 / 3;
-        grid-row: 1;
-    }
-
-    .current-item-name {
-        grid-column: 1 / 3;
-        grid-row: 2;
-        border-top: 1px solid rgba(0, 0, 0, 0.05);
-        padding-top: 0.5rem;
-    }
-
-    .rank-status-badge {
-        grid-column: 1 / 2;
-        grid-row: 3;
-        width: auto;
-        transform: none;
-    }
-
-    .live-timer-display {
-        grid-column: 2 / 3;
-        grid-row: 3;
-        justify-self: end;
-        width: auto;
-        transform: none;
-    }
-
-    .rank-stat {
-        grid-column: 1 / 2;
-        grid-row: 4;
-        align-items: flex-start;
-        margin-top: 0.5rem;
+    .live-timer-display,
+    .target-time-display {
+        font-size: 1.2rem;
     }
 
     .rank-face-icon {
-        grid-column: 2 / 3;
-        grid-row: 4;
-        justify-self: center;
-        transform: none;
+        font-size: 1.8rem;
     }
 
-    .rank-stat-pallets {
-        grid-column: 2 / 3;
-        grid-row: 5;
-        justify-self: end;
-        margin-top: -30px;
+    .time-diff {
+        font-size: 1rem;
     }
 }
