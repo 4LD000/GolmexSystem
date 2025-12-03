@@ -23,7 +23,7 @@
 
     // --- INITIALIZATION ---
     function init() {
-        console.log("GMX Performance Board V8 (Final Layout): Initialized");
+        console.log("GMX Performance Board V8 (Sort Logic Fixed): Initialized");
         loadRankingData();
         setupRealtimeSubscription();
         startLocalTick();
@@ -36,6 +36,7 @@
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const todayLocal = `${year}-${month}-${day}`;
+        const startOfDayISO = `${todayLocal}T00:00:00`;
 
         const { data: logs, error } = await window.supabase
             .from('production_log')
@@ -44,7 +45,7 @@
                 warehouse_lines (id, line_name, current_operator, current_team),
                 production_products (name)
             `)
-            .gte('start_time', `${todayLocal}T00:00:00`) 
+            .or(`status.eq.in_progress,status.eq.waiting_for_scan,warehouse_scan_time.gte.${startOfDayISO},start_time.gte.${startOfDayISO}`)
             .order('start_time', { ascending: true });
 
         if (error) {
@@ -58,10 +59,17 @@
         }
 
         const todayLogs = logs.filter(log => {
-            const logDate = new Date(log.start_time);
-            return logDate.getFullYear() === now.getFullYear() &&
-                logDate.getMonth() === now.getMonth() &&
-                logDate.getDate() === now.getDate();
+            if (log.status === 'in_progress' || log.status === 'waiting_for_scan') return true;
+            if (log.warehouse_scan_time) {
+                const scanDate = new Date(log.warehouse_scan_time);
+                return scanDate.getFullYear() === now.getFullYear() &&
+                       scanDate.getMonth() === now.getMonth() &&
+                       scanDate.getDate() === now.getDate();
+            }
+            const startDate = new Date(log.start_time);
+            return startDate.getFullYear() === now.getFullYear() &&
+                   startDate.getMonth() === now.getMonth() &&
+                   startDate.getDate() === now.getDate();
         });
 
         if (todayLogs.length === 0) {
@@ -75,7 +83,7 @@
     function processRankingData(logs) {
         const linesMap = {};
         let grandTotalPallets = 0;
-        let grandTotalDeviation = 0;
+        let grandTotalDeviation = 0; // Tracks only "Banked" (Completed) efficiency for Global Header
 
         logs.forEach(log => {
             if (!log.warehouse_lines) return;
@@ -105,11 +113,12 @@
                     currentProduct: null,
                     currentAdjTargetSecs: 0, 
                     hasActiveLog: false,
+                    isWaitingScan: false,
                     deviationSeconds: 0 
                 };
             }
 
-            // 1. GLOBAL EFFICIENCY LOGIC (Only Completed & Scanned Pallets)
+            // 1. COMPLETED & SCANNED
             if (log.status === 'completed' && log.warehouse_scan_time) { 
                 linesMap[lineId].pallets += 1;
                 grandTotalPallets += 1;
@@ -122,7 +131,7 @@
                 linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0);
             }
             
-            // 2. ACTIVE LOG DETECTION (For Live Traffic Light)
+            // 2. IN PROGRESS
             if (log.status === 'in_progress') {
                 linesMap[lineId].currentStatus = 'active';
                 linesMap[lineId].isPaused = log.is_paused || false;
@@ -133,17 +142,51 @@
                 linesMap[lineId].currentAdjTargetSecs = log.current_target_seconds || 0;
                 linesMap[lineId].hasActiveLog = true;
             }
+
+            // 3. WAITING FOR SCAN
+            if (log.status === 'waiting_for_scan') {
+                linesMap[lineId].currentStatus = 'active'; 
+                linesMap[lineId].isWaitingScan = true; 
+                linesMap[lineId].currentProduct = log.production_products?.name || 'Unknown Item';
+                linesMap[lineId].operator = opLabel;
+                
+                // Add to calculations so sorting works for waiting lines
+                linesMap[lineId].totalRealSeconds += (log.final_time_seconds || 0); 
+                
+                // CRITICAL FIX: Also add the target, otherwise deviation is negative!
+                const waitingTarget = log.current_target_seconds 
+                    ? log.current_target_seconds 
+                    : (log.standard_time_seconds / (log.worker_count || 1));
+                linesMap[lineId].totalTargetSeconds += waitingTarget;
+            }
         });
 
+        // Calculate Global (Banked only)
+        Object.values(linesMap).forEach(line => {
+             grandTotalDeviation += (line.totalTargetSeconds - line.totalRealSeconds);
+        });
+
+        const nowMs = Date.now();
         const rankingArray = Object.values(linesMap).map(line => {
-            // Deviation is based strictly on historical data for sorting
-            const deviationSeconds = line.totalTargetSeconds - line.totalRealSeconds;
-            grandTotalDeviation += deviationSeconds;
-            return { ...line, deviationSeconds };
+            // Start with historical deviation
+            let scoreDeviation = line.totalTargetSeconds - line.totalRealSeconds;
+
+            // IF ACTIVE: Project the "Live" deviation into the score so sorting is correct
+            if (line.hasActiveLog && line.currentStartTime && line.currentAdjTargetSecs > 0) {
+                 const elapsed = Math.floor((nowMs - line.currentStartTime) / 1000) - line.totalPauseSeconds;
+                 const validElapsed = elapsed > 0 ? elapsed : 0;
+                 const liveDev = line.currentAdjTargetSecs - validElapsed;
+                 
+                 // Add live stats to the sorting score
+                 scoreDeviation += liveDev;
+            }
+
+            // We use scoreDeviation for sorting, but keep deviationSeconds for initial render if needed
+            return { ...line, sortingDeviation: scoreDeviation, deviationSeconds: scoreDeviation };
         });
 
-        // Sort by Accumulated Efficiency (Highest savings first)
-        rankingArray.sort((a, b) => b.deviationSeconds - a.deviationSeconds);
+        // SORT BY PROJECTED DEVIATION
+        rankingArray.sort((a, b) => b.sortingDeviation - a.sortingDeviation);
         
         activeLinesData = rankingArray;
 
@@ -152,13 +195,11 @@
 
     // --- RENDER DASHBOARD (DOM MANIPULATION) ---
     function renderDashboard(rankingData, totalPallets, totalDeviationSecs) {
-        // 1. Update Global Header
         totalPalletsEl.textContent = totalPallets;
         
         const globalTimeData = formatTimeDiff(totalDeviationSecs);
         const globalFace = getFaceIcon(totalDeviationSecs);
         
-        // Revert to original layout: Icon left (in static HTML), Pill + Face inside value
         globalTimeEl.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px;">
                 <i class='bx ${globalFace.icon} global-face-icon' style="color:${globalFace.color}"></i>
@@ -166,7 +207,6 @@
             </div>
         `;
 
-        // 2. Prepare FLIP Animation
         const prevPositions = new Map();
         rankingData.forEach(line => {
             const el = cardElementsMap.get(line.id);
@@ -175,7 +215,6 @@
             }
         });
 
-        // 3. Create/Update Elements
         const currentElements = [];
         
         rankingData.forEach((line, index) => {
@@ -188,30 +227,28 @@
                 cardElementsMap.set(line.id, card);
             }
 
-            // Defaults for Efficiency Column (Accumulated or Placeholder)
-            let formattedTime = formatTimeDiff(line.deviationSeconds);
-            let faceData = getFaceIcon(line.deviationSeconds);
+            // Use the projected deviation for the initial render colors/text
+            let formattedTime = formatTimeDiff(line.sortingDeviation);
+            let faceData = getFaceIcon(line.sortingDeviation);
             
-            // If active, use placeholders (updateLocalTimers will handle live data)
             if (line.hasActiveLog) {
+                 // Placeholders for active log, local timer will update text immediately
                  formattedTime = { text: 'Calc...', class: 'diff-neutral' }; 
                  faceData = { icon: 'bx-loader-alt bx-spin', color: 'var(--rank-text-muted)' };
-            } else if (line.pallets === 0) {
+            } else if (line.pallets === 0 && !line.isWaitingScan) {
                  formattedTime = { text: '--', class: 'diff-neutral' };
                  faceData = { icon: 'bx-moon', color: 'var(--rank-text-muted)' };
             }
 
-            // Status Border Class
-            const statusStyle = getStatusConfig(line.deviationSeconds, line.hasActiveLog);
+            const statusStyle = getStatusConfig(line.sortingDeviation, line.hasActiveLog || line.isWaitingScan);
             card.className = `rank-card pos-${rankPosition} ${statusStyle.borderClass}`;
 
-            // Internal Columns HTML
             let productHtml, statusBadgeHtml, timerHtml;
             const timerId = `timer-${line.id}`;
             const targetTimerId = `target-timer-${line.id}`;
             const faceId = `face-icon-${line.id}`;
 
-            if (line.currentStatus === 'active') {
+            if (line.hasActiveLog) {
                 productHtml = `<div class="current-item-name" title="${line.currentProduct}">${line.currentProduct}</div>`;
                 if (line.isPaused) {
                     statusBadgeHtml = `<div class="rank-status-badge status-paused"><i class='bx bx-pause-circle'></i> PAUSED</div>`;
@@ -221,35 +258,32 @@
                     statusBadgeHtml = `<div class="rank-status-badge status-active"><i class='bx bx-loader-alt bx-spin'></i> Processing</div>`;
                     timerHtml = `<div id="${timerId}" class="live-timer-display">00:00</div>`;
                 }
+            } else if (line.isWaitingScan) {
+                productHtml = `<div class="current-item-name" title="${line.currentProduct}">${line.currentProduct}</div>`;
+                statusBadgeHtml = `<div class="rank-status-badge status-paused" style="border-color:var(--rank-blue); color:var(--rank-blue); background:rgba(14,44,76,0.1);"><i class='bx bx-barcode'></i> Scanning...</div>`;
+                timerHtml = `<div class="live-timer-display" style="color:var(--rank-blue); font-size:1rem;">Ready</div>`;
             } else {
                 productHtml = `<div class="current-item-name" style="color:var(--rank-text-muted);">--</div>`;
                 statusBadgeHtml = `<div class="rank-status-badge status-idle"><i class='bx bx-coffee'></i> Idle</div>`;
                 timerHtml = `<div class="live-timer-display" style="opacity:0;">--:--</div>`;
             }
 
-            // --- CONSTRUCT HTML (7 Columns) ---
             card.innerHTML = `
                 <div class="rank-pos">#${rankPosition}</div>
-                
                 <div class="rank-info">
                     <div class="line-name">${line.name}</div>
                     <div class="line-op"><i class='bx bxs-user'></i> ${line.operator}</div>
                 </div>
-                
                 ${productHtml}
-                
                 ${statusBadgeHtml}
-                
                 <div class="rank-stat">
                     <span class="timer-header">REAL TIME</span>
                     ${timerHtml}
                 </div>
-
                 <div class="rank-stat">
                     <span class="timer-header">TARGET TIME</span>
-                    <div id="${targetTimerId}" class="target-time-display">--:--</div>
+                    <div id="${targetTimerId}" class="target-time-display">${line.hasActiveLog ? '--:--' : '--'}</div>
                 </div>
-
                 <div class="rank-stat">
                     <span class="timer-header">EFFICIENCY</span>
                     <div class="efficiency-wrapper">
@@ -260,11 +294,9 @@
                     </div>
                 </div>
             `;
-
             currentElements.push(card);
         });
 
-        // 4. Update DOM & Animate
         rankList.innerHTML = ''; 
         currentElements.forEach(el => rankList.appendChild(el));
 
@@ -320,7 +352,7 @@
         else return { borderClass: 'status-bad' };
     }
 
-    // --- LOCAL TIMER LOGIC (LIVE TRAFFIC LIGHT) ---
+    // --- LOCAL TIMER LOGIC ---
     function startLocalTick() {
         if (localTimerInterval) clearInterval(localTimerInterval);
         localTimerInterval = setInterval(updateLocalTimers, 1000);
@@ -329,7 +361,7 @@
     function updateLocalTimers() {
         const now = Date.now();
         activeLinesData.forEach(line => {
-            if (line.currentStatus === 'active' && line.currentStartTime) {
+            if (line.hasActiveLog && line.currentStartTime) {
                 const timerEl = document.getElementById(`timer-${line.id}`);
                 const targetEl = document.getElementById(`target-timer-${line.id}`);
                 const card = document.getElementById(`line-card-${line.id}`);
@@ -348,7 +380,6 @@
                     return; 
                 }
 
-                // 1. Calculate Real Time
                 const elapsedSecs = Math.floor((now - line.currentStartTime) / 1000) - line.totalPauseSeconds;
                 const validSecs = elapsedSecs > 0 ? elapsedSecs : 0;
                 
@@ -360,36 +391,33 @@
                 let timeString = (hrs > 0) ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
                 timerEl.textContent = timeString;
 
-                // 2. Show Target Time
                 if (line.currentAdjTargetSecs > 0) {
                     const tHrs = Math.floor(line.currentAdjTargetSecs / 3600);
                     const tMins = Math.floor((line.currentAdjTargetSecs % 3600) / 60);
                     const tSecs = (line.currentAdjTargetSecs % 60);
-                    
                     let targetString = (tHrs > 0) ? `${tHrs}:${pad(tMins)}:${pad(tSecs)}` : `${pad(tMins)}:${pad(tSecs)}`;
                     targetEl.textContent = targetString;
                 } else {
                     targetEl.textContent = "--:--";
                 }
 
-                // 3. Live Efficiency (Traffic Light)
                 if (diffEl && line.currentAdjTargetSecs > 0) {
+                    // Update efficiency in real-time on the card
                     const timeLeftSecs = line.currentAdjTargetSecs - validSecs;
+                    // Note: This matches the calculation used for sorting in 'processRankingData'
                     const timeLeftMins = Math.floor(timeLeftSecs / 60);
 
-                    let trtClass = 'diff-positive'; // Green
+                    let trtClass = 'diff-positive';
                     let trtFace = 'bx-happy-heart-eyes';
                     let trtColor = 'var(--rank-green)';
                     let trtText = `+ ${timeLeftMins} min`;
 
                     if (timeLeftSecs < 0) {
-                        // RED: Late
                         trtClass = 'diff-negative';
                         trtFace = 'bx-sad';
                         trtColor = 'var(--rank-red)';
                         trtText = `${timeLeftMins} min`; 
                     } else if (timeLeftSecs <= 300) { 
-                        // YELLOW: Warning (< 5 min)
                         trtClass = 'diff-neutral';
                         trtFace = 'bx-meh';
                         trtColor = 'var(--rank-yellow)';
@@ -397,13 +425,10 @@
 
                     diffEl.textContent = trtText;
                     diffEl.className = `time-diff ${trtClass}`;
-                    
                     if (faceEl) {
                         faceEl.className = `bx ${trtFace}`;
                         faceEl.style.color = trtColor;
                     }
-
-                    // Timer Red Alarm
                     if (validSecs > line.currentAdjTargetSecs) {
                         timerEl.style.color = 'var(--rank-red)';
                     } else {
@@ -426,7 +451,6 @@
         `;
     }
 
-    // --- REALTIME SUBSCRIPTION ---
     function setupRealtimeSubscription() {
         if (realtimeSubscription) return;
         realtimeSubscription = window.supabase
