@@ -5,7 +5,7 @@
     }
     document.body.dataset.quotingModuleInitialized = "true";
     console.log(
-        "Sales & Quoting Module Initialized (v18 - Fixed Tables Scroll)"
+        "Sales & Quoting Module Initialized (v19 - Trinity Layout Fix)"
     );
 
     // SECTION 1: SUPABASE & CONFIGURATION
@@ -1254,19 +1254,23 @@
     }
 
     // =========================================================
-    // MODIFICADO: Agregado scrollY y scrollCollapse
+    // MODIFICADO: Agregado scrollY y scrollCollapse, Limpieza Previa
     // =========================================================
     function initializeHistoryTable(data) {
         if (!$.fn.DataTable) return;
         if ($.fn.DataTable.isDataTable(historyTableElement)) {
-            historyDataTable.clear().rows.add(data).draw();
-            return;
+            // Destruir tabla existente y limpiar DOM para evitar conflictos
+            $(historyTableElement).DataTable().destroy();
+            $(historyTableElement).empty();
         }
         historyDataTable = $(historyTableElement).DataTable({
             data: data,
             responsive: true,
-            scrollY: '50vh',        // <--- NUEVO
-            scrollCollapse: true,   // <--- NUEVO
+            // Trinity Layout Fix
+            dom: '<"sq-dt-header"lf>rt<"sq-dt-footer"ip>',
+            scrollY: '50vh',
+            scrollCollapse: true,
+            paging: true,
             columns: [
                 { data: "id", title: "Quote ID" },
                 {
@@ -1318,19 +1322,23 @@
     }
 
     // =========================================================
-    // MODIFICADO: Agregado scrollY y scrollCollapse
+    // MODIFICADO: Agregado scrollY y scrollCollapse, Limpieza Previa
     // =========================================================
     function initializeProductsTable(data) {
         if (!$.fn.DataTable) return;
         if ($.fn.DataTable.isDataTable(productsTableElement)) {
-            productsDataTable.clear().rows.add(data).draw();
-            return;
+            // Destruir tabla existente y limpiar DOM para evitar conflictos
+            $(productsTableElement).DataTable().destroy();
+            $(productsTableElement).empty();
         }
         productsDataTable = $(productsTableElement).DataTable({
             data: data,
             responsive: true,
-            scrollY: '50vh',        // <--- NUEVO
-            scrollCollapse: true,   // <--- NUEVO
+            // Trinity Layout Fix
+            dom: '<"sq-dt-header"lf>rt<"sq-dt-footer"ip>',
+            scrollY: '50vh',
+            scrollCollapse: true,
+            paging: true,
             columns: [
                 { data: "name", title: "Product Name", className: "dt-left" },
                 {
@@ -1937,11 +1945,13 @@
         };
         const cleanupModule = () => {
             if (historyDataTable) {
-                historyDataTable.destroy();
+                $(historyTableElement).DataTable().destroy();
+                $(historyTableElement).empty();
                 historyDataTable = null;
             }
             if (productsDataTable) {
-                productsDataTable.destroy();
+                $(productsTableElement).DataTable().destroy();
+                $(productsTableElement).empty();
                 productsDataTable = null;
             }
             document.removeEventListener("supabaseAuthStateChange", handleAuthChange);
