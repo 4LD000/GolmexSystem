@@ -1,28 +1,33 @@
 /*
  * ====================================================================
- * == STYLES FOR SALES & QUOTING MODULE (SQ) - FULL & CORRECTED v5   ==
+ * == STYLES FOR SALES & QUOTING MODULE (SQ) - v20 FULL & RESTORED   ==
  * ====================================================================
  */
 
-/* NUEVA VARIABLE para bordes más visibles en tema claro */
 :root {
     --qcf-border-color-light: #d1d5db;
-    /* Un gris más oscuro (Tailwind gray-300) */
+    --goldmex-primary-rgb: 10, 37, 64; /* Approx for rgba usage */
+    --goldmex-secondary-rgb: 212, 175, 55;
 }
 
-/* Main Container and General Layout */
+/* 1. CONTENEDOR MAESTRO: 100vh y Flex Column */
 .sq-container {
     padding: 1.5rem;
     background-color: var(--color-bg);
-    display: flex;
-    flex-direction: column;
+    height: 100vh;          /* Ocupa toda la pantalla */
+    max-height: 100%;
+    display: flex;          /* Activa Flexbox */
+    flex-direction: column; /* Organiza verticalmente */
+    overflow: hidden;       /* Prohibido el scroll en el body */
+    box-sizing: border-box;
 }
 
-.sq-container>* {
+/* Animaciones */
+.sq-container > * {
     animation: fadeInSlideUp 0.6s var(--animation-timing-function) both;
 }
 
-/* Header with Integrated Tabs */
+/* Header (Fijo arriba) */
 .sq-header {
     display: flex;
     justify-content: space-between;
@@ -30,13 +35,11 @@
     margin-bottom: 1rem;
     padding-bottom: 0.8rem;
     border-bottom: 2px solid var(--qcf-border-color-light);
-    /* Borde más oscuro */
-    flex-shrink: 0;
+    flex-shrink: 0; /* No se encoge */
 }
 
 body.dark-mode .sq-header {
     border-bottom-color: var(--color-border);
-    /* Revierte al color original en modo oscuro */
 }
 
 .sq-header h2 {
@@ -47,6 +50,7 @@ body.dark-mode .sq-header {
     align-items: center;
     gap: 0.6rem;
     flex-shrink: 0;
+    margin: 0;
 }
 
 .sq-header h2 .bx {
@@ -59,7 +63,7 @@ body.dark-mode .sq-header {
     flex-shrink: 0;
 }
 
-/* Tabs centered inside the header */
+/* Tabs */
 .sq-tabs {
     display: flex;
     justify-content: center;
@@ -80,7 +84,7 @@ body.dark-mode .sq-header {
     align-items: center;
     gap: 0.5rem;
     transition: all 0.3s ease;
-    margin-bottom: -10px;
+    margin-bottom: -10px; /* Visual trick for border alignment */
 }
 
 .sq-tab-button:hover {
@@ -94,36 +98,186 @@ body.dark-mode .sq-header {
     font-weight: 600;
 }
 
-/* Tab Content Wrapper and Content Visibility */
+/* * =================================================================
+ * == WRAPPER DE CONTENIDO (FULL HEIGHT LOGIC)                    == 
+ * =================================================================
+ */
 .sq-tab-content-wrapper {
-    flex-grow: 1;
+    flex: 1;                /* Ocupa todo el espacio restante */
     position: relative;
     padding-top: 1rem;
     display: flex;
+    flex-direction: column;
+    min-height: 0;          /* Permite que los hijos hagan scroll */
+    overflow: hidden;
 }
 
 .sq-tab-content {
     display: none;
     width: 100%;
+    height: 100%;           /* Ocupa el 100% del wrapper */
+    flex-direction: column;
 }
 
 .sq-tab-content.active {
     display: flex;
-    flex-direction: column;
     animation: fadeInSlideUp 0.5s ease-out;
 }
 
+/* * CASO ESPECIAL: El Tab "Creator" necesita scroll normal 
+ * porque es un formulario largo, no una tabla fija.
+ */
+#qcf-creator-tab.active {
+    overflow-y: auto;       /* Scroll vertical habilitado */
+    padding-right: 5px;     /* Espacio para scrollbar */
+}
 
-/*
- * =================================================================================
- * == STYLES for Quote Creator Flow (QCF) - Using new IDs and Classes            ==
- * =================================================================================
+/* * CASO ESPECIAL: Los Tabs "History" y "Database" necesitan 
+ * overflow hidden para que la DataTable maneje el scroll interno.
+ */
+#qcf-history-tab.active,
+#qcf-database-tab.active {
+    overflow: hidden;
+}
+
+/* ====================================================================
+ * == DATATABLES FLEXBOX HACK (Scoped for SQ)                        ==
+ * ====================================================================
+ */
+
+/* Wrapper del Header (Inyectado por JS) */
+.sq-dt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.8rem;
+    flex-shrink: 0;
+}
+
+/* Inputs & Selects dentro del header de tabla */
+.sq-dt-header input,
+.sq-dt-header select {
+    border: 1px solid var(--qcf-border-color-light);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    outline: none;
+    height: 32px;
+}
+
+/* Wrapper generado por DataTables */
+.sq-container .dt-scroll,
+.sq-container .dataTables_scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    border: 1px solid var(--qcf-border-color-light);
+    border-radius: 6px 6px 0 0;
+}
+
+body.dark-mode .sq-container .dt-scroll {
+    border-color: var(--color-border);
+}
+
+/* EL HACK: Forzar body a flex */
+.sq-container .dataTables_scrollBody {
+    flex: 1 1 auto !important;
+    height: 10px !important;
+    max-height: none !important;
+    width: 100% !important;
+    background-color: var(--color-surface);
+}
+
+/* Footer (Paginación) fijo abajo */
+.sq-dt-footer {
+    height: 45px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.5rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--qcf-border-color-light);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+body.dark-mode .sq-dt-footer {
+    border-color: var(--color-border);
+}
+
+/* Tablas full width */
+.sq-container table.dataTable {
+    width: 100% !important;
+    margin: 0 !important;
+    border-collapse: collapse !important;
+}
+
+.sq-container table.dataTable thead th {
+    background-color: var(--color-bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid var(--qcf-border-color-light);
+}
+
+.sq-container table.dataTable tbody td {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--qcf-border-color-light);
+    vertical-align: middle !important;
+}
+
+/* Contenedor de Tabla (El padre directo) */
+.sq-table-container {
+    background-color: var(--color-surface);
+    padding: 1rem;
+    padding-bottom: 0; /* Ajuste para el footer */
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 10px var(--shadow-border);
+    border: 1px solid var(--qcf-border-color-light);
+    
+    /* Propiedades Flex para crecer */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.dark-mode .sq-table-container {
+    border-color: var(--color-border);
+}
+
+/* Filtros Superiores (No se encogen) */
+.sq-history-filters,
+.sq-db-actions {
+    margin-bottom: 1rem;
+    padding: 0.8rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--qcf-border-color-light);
+    border-radius: 0.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-shrink: 0; /* IMPORTANTE */
+}
+
+/* =================================================================
+ * == ESTILOS DEL CREADOR (QCF)                                   ==
+ * =================================================================
  */
 
 .qcf-view-container {
     display: none;
     flex-direction: column;
     flex-grow: 1;
+    min-height: 0; 
 }
 
 /* Start View */
@@ -142,7 +296,6 @@ body.dark-mode .sq-header {
     max-width: 600px;
     background-color: var(--color-surface);
     border: 1px solid var(--qcf-border-color-light);
-    /* Borde más oscuro */
     border-radius: 0.5rem;
     padding: 1.5rem 2rem;
     box-shadow: 0 4px 12px var(--shadow-border);
@@ -152,7 +305,6 @@ body.dark-mode .sq-header {
 body.dark-mode .sq-company-input-container {
     border-color: var(--color-border);
 }
-
 
 .sq-company-input-container h3 {
     margin-bottom: 0.5rem;
@@ -197,7 +349,6 @@ body.dark-mode .sq-company-input-container {
     padding: 2rem;
     background-color: var(--color-surface);
     border: 1px solid var(--qcf-border-color-light);
-    /* Borde más oscuro */
     border-radius: 0.5rem;
     text-align: center;
     transition: all 0.3s ease;
@@ -206,7 +357,6 @@ body.dark-mode .sq-company-input-container {
 body.dark-mode .sq-choice-card {
     border-color: var(--color-border);
 }
-
 
 .sq-choice-card.disabled {
     opacity: 0.4;
@@ -257,7 +407,6 @@ body.dark-mode .sq-choice-card i {
     display: flex;
     gap: 1.5rem;
     flex-grow: 1;
-    overflow: hidden;
 }
 
 /* Controls Panel (Left side) */
@@ -266,7 +415,6 @@ body.dark-mode .sq-choice-card i {
     min-width: 400px;
     padding-right: 1.5rem;
     border-right: 1px solid var(--qcf-border-color-light);
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -275,7 +423,6 @@ body.dark-mode .sq-choice-card i {
 body.dark-mode .sq-controls-panel {
     border-right-color: var(--color-border);
 }
-
 
 /* Preview Panel Styling */
 .sq-preview-panel {
@@ -288,6 +435,9 @@ body.dark-mode .sq-controls-panel {
     flex-direction: column;
     overflow: hidden;
     border: 1px solid var(--qcf-border-color-light);
+    height: fit-content; 
+    position: sticky; 
+    top: 0;
 }
 
 body.dark-mode .sq-preview-panel {
@@ -304,7 +454,6 @@ body.dark-mode .sq-preview-panel {
 body.dark-mode .sq-step {
     border-color: var(--color-border);
 }
-
 
 .sq-step-title {
     font-size: 1rem;
@@ -396,7 +545,6 @@ body.dark-mode .sq-form-group select {
     border-color: var(--color-border);
 }
 
-
 .sq-form-group input:focus,
 .sq-form-group select:focus {
     outline: none;
@@ -435,7 +583,6 @@ body.dark-mode .sq-product-selector {
     border-color: var(--color-border);
 }
 
-
 .sq-product-selector i {
     font-size: 1.1rem;
     color: var(--color-text-secondary);
@@ -453,7 +600,6 @@ body.dark-mode .sq-product-selector {
 
 .sq-selected-product-display {
     display: none;
-    /* Controlado por JS */
     align-items: center;
     gap: 0.8rem;
     margin-top: 0.8rem;
@@ -481,7 +627,6 @@ body.dark-mode .sq-selected-product-display img {
     border-color: var(--color-border);
 }
 
-
 .sq-selected-product-display h5 {
     font-size: 0.95rem;
     font-weight: 600;
@@ -503,28 +648,13 @@ body.dark-mode .sq-selected-product-display img {
         "cost margin price";
 }
 
-.sq-form-group.transport-type {
-    grid-area: type;
-}
+.sq-form-group.transport-type { grid-area: type; }
+.sq-form-group.transport-name { grid-area: name; }
+.sq-form-group.transport-cost { grid-area: cost; }
+.sq-form-group.transport-margin { grid-area: margin; }
+.sq-form-group.transport-price { grid-area: price; }
 
-.sq-form-group.transport-name {
-    grid-area: name;
-}
-
-.sq-form-group.transport-cost {
-    grid-area: cost;
-}
-
-.sq-form-group.transport-margin {
-    grid-area: margin;
-}
-
-.sq-form-group.transport-price {
-    grid-area: price;
-}
-
-
-/* Preview Panel Styling */
+/* Preview Header */
 .sq-preview-header {
     padding: 0.8rem 1.2rem;
     border-bottom: 1px solid var(--qcf-border-color-light);
@@ -535,7 +665,6 @@ body.dark-mode .sq-selected-product-display img {
 body.dark-mode .sq-preview-header {
     border-bottom-color: var(--color-border);
 }
-
 
 .sq-preview-header img {
     display: none;
@@ -553,6 +682,7 @@ body.dark-mode .sq-preview-header {
     overflow-y: auto;
     background-color: #ffffff;
     color: #333;
+    min-height: 200px;
 }
 
 .sq-preview-placeholder {
@@ -577,55 +707,6 @@ body.dark-mode .sq-preview-header {
 
 body.dark-mode .sq-preview-actions {
     border-top-color: var(--color-border);
-}
-
-
-/* History Filters & Product Database Actions */
-.sq-history-filters,
-.sq-db-actions {
-    margin-bottom: 1rem;
-    padding: 0.8rem;
-    background-color: var(--color-surface);
-    border: 1px solid var(--qcf-border-color-light);
-    border-radius: 0.4rem;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1rem;
-}
-
-body.dark-mode .sq-history-filters,
-body.dark-mode .sq-db-actions {
-    border-color: var(--color-border);
-}
-
-
-.sq-db-actions {
-    justify-content: flex-end;
-}
-
-/* History & Product Database Table */
-.sq-table-container {
-    background-color: var(--color-surface);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 10px var(--shadow-border);
-    overflow-x: auto;
-    border: 1px solid var(--qcf-border-color-light);
-    flex-grow: 1;
-}
-
-body.dark-mode .sq-table-container {
-    border-color: var(--color-border);
-}
-
-
-#sq-quotes-history-table th,
-#sq-quotes-history-table td,
-#sq-products-table th,
-#sq-products-table td {
-    text-align: center !important;
-    vertical-align: middle !important;
 }
 
 /* Modal General Styles */
@@ -686,7 +767,6 @@ body.dark-mode .sq-modal-header {
     border-bottom-color: var(--color-border);
 }
 
-
 .sq-modal-header h3 {
     margin: 0;
     font-size: 1.3rem;
@@ -734,12 +814,7 @@ body.dark-mode .sq-modal-footer {
     color: var(--color-text-secondary);
 }
 
-body.dark-mode #sqCustomConfirmModal .sq-modal-body p {
-    color: var(--color-text-secondary);
-}
-
-
-/* Product Explorer Controls, Filters, and Search */
+/* Product Explorer Controls */
 .sq-explorer-controls {
     display: flex;
     justify-content: space-between;
@@ -807,7 +882,6 @@ body.dark-mode .sq-explorer-search input {
     border-color: var(--color-border);
 }
 
-/* 4-column grid for product cards */
 .sq-product-cards-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -817,6 +891,9 @@ body.dark-mode .sq-explorer-search input {
     padding: 1rem 0.5rem;
 }
 
+/* ================================================================= */
+/* == PRODUCT CARD STYLES & VISUAL SELECTION (RESTORED)           == */
+/* ================================================================= */
 .sq-product-card {
     display: flex;
     align-items: center;
@@ -827,17 +904,37 @@ body.dark-mode .sq-explorer-search input {
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
+    background-color: var(--color-surface);
 }
 
 body.dark-mode .sq-product-card {
     border-color: var(--color-border);
 }
 
-
 .sq-product-card:hover {
     border-color: var(--goldmex-secondary-color);
     box-shadow: 0 4px 10px rgba(var(--goldmex-secondary-color-rgb), 0.2);
     transform: translateY(-3px);
+}
+
+/* --- THE FIX: Specific style for SELECTED state --- */
+.sq-product-card.selected {
+    border: 2px solid var(--goldmex-secondary-color) !important;
+    box-shadow: 0 0 0 3px rgba(var(--goldmex-secondary-color-rgb), 0.2) !important;
+    background-color: rgba(var(--goldmex-secondary-color-rgb), 0.05);
+    transform: translateY(-2px);
+}
+
+/* Optional: Checkmark indicator */
+.sq-product-card.selected::after {
+    content: "\ec9d"; /* Boxicons check-circle */
+    font-family: 'boxicons';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    color: var(--goldmex-secondary-color);
+    font-size: 1.3rem;
+    font-weight: 600;
 }
 
 .sq-product-card img {
@@ -860,117 +957,7 @@ body.dark-mode .sq-product-card {
     margin: 0.2rem 0 0 0;
 }
 
-/* Product Management Modal Form Styles */
-#sq-product-form h4 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    color: var(--color-text-primary);
-}
-
-.sq-product-form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.2rem 1.5rem;
-}
-
-#p-current-image {
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
-    margin-top: 4px;
-    font-style: italic;
-}
-
-.sq-input-with-select {
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--qcf-border-color-light);
-    border-radius: 0.3rem;
-    background-color: var(--color-bg);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-body.dark-mode .sq-input-with-select {
-    border-color: var(--color-border);
-}
-
-.sq-input-with-select:focus-within {
-    border-color: var(--goldmex-secondary-color);
-    box-shadow: 0 0 0 2px rgba(var(--goldmex-secondary-color-rgb), 0.2);
-}
-
-.sq-input-with-select input {
-    border: none;
-    background: none;
-    outline: none;
-    flex-grow: 1;
-    padding: 0.45rem 0.6rem;
-}
-
-.sq-input-with-select select {
-    border: none;
-    border-left: 1px solid var(--qcf-border-color-light);
-    background: none;
-    outline: none;
-    padding-right: 0.5rem;
-    color: var(--color-text-secondary);
-    font-weight: 500;
-}
-
-body.dark-mode .sq-input-with-select select {
-    border-left-color: var(--color-border);
-}
-
-/* Custom Notifications */
-.custom-notification-le-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 2100;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.custom-notification-st {
-    padding: 12px 18px;
-    border-radius: 6px;
-    color: #fff;
-    background-color: #17a2b8;
-    font-weight: 500;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 280px;
-    opacity: 0;
-    transform: translateX(110%);
-    transition: transform 0.4s ease, opacity 0.4s ease;
-}
-
-.custom-notification-st.show {
-    opacity: 1;
-    transform: translateX(0);
-}
-
-.custom-notification-st.success {
-    background-color: #28a745;
-}
-
-.custom-notification-st.error {
-    background-color: #e31837;
-}
-
-.custom-notification-st.warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.custom-notification-st i {
-    font-size: 1.3rem;
-}
-
-/* Table-like Quote Preview */
+/* Quote Preview Content */
 .sq-preview-invoice-box {
     font-family: 'Arial', sans-serif;
     color: #333;
@@ -989,10 +976,6 @@ body.dark-mode .sq-input-with-select select {
     border-bottom: 2px solid var(--goldmex-primary-color);
     padding-bottom: 10px;
     margin-bottom: 20px;
-}
-
-.sq-preview-top-section .sq-preview-logo {
-    display: none;
 }
 
 .sq-preview-company-info {
@@ -1095,11 +1078,16 @@ body.dark-mode .sq-input-with-select select {
     color: var(--goldmex-secondary-color);
 }
 
+/* Multi-Item Specifics */
+.qcf-multi-creator-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    align-items: stretch;
+    gap: 1.5rem;
+}
 
-/* Multi-Item Creator Specifics */
 .qcf-multi-left-panel {
     flex-shrink: 0;
-    /* Evita que se encoja */
     width: 320px;
     background-color: var(--color-surface);
     border-radius: 0.5rem;
@@ -1124,7 +1112,6 @@ body.dark-mode .qcf-multi-left-panel h4 {
     border-bottom-color: var(--color-border);
 }
 
-
 .qcf-multi-item-list {
     flex-grow: 1;
     overflow-y: auto;
@@ -1137,6 +1124,14 @@ body.dark-mode .qcf-multi-left-panel h4 {
 
 #qcf-multi-add-products-btn {
     margin-top: 2.2rem;
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #ffffff;
+}
+
+#qcf-multi-add-products-btn:hover {
+    background-color: #218838;
+    border-color: #218838;
 }
 
 .sq-multi-item {
@@ -1149,12 +1144,12 @@ body.dark-mode .qcf-multi-left-panel h4 {
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
+    padding-left: 40px;
 }
 
 body.dark-mode .sq-multi-item {
     border-color: var(--color-border);
 }
-
 
 .sq-multi-item:hover {
     background-color: var(--color-bg);
@@ -1199,6 +1194,32 @@ body.dark-mode .sq-multi-item {
     color: #28a745;
 }
 
+.sq-multi-item .sq-multi-item-delete-btn {
+    background-color: transparent;
+    border: none;
+    color: #e31837;
+    cursor: pointer;
+    font-size: 1.4rem;
+    padding: 5px;
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    transform: translateY(-50%);
+    z-index: 5;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.sq-multi-item .sq-multi-item-delete-btn:hover {
+    color: #c8142e;
+    transform: translateY(-50%) scale(1.15);
+}
+
+.qcf-multi-form-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .qcf-multi-form-placeholder {
     display: flex;
     flex-direction: column;
@@ -1236,7 +1257,6 @@ body.dark-mode .qcf-multi-form-placeholder i {
     padding: 0;
 }
 
-
 #qcf-multi-form-product-title {
     border-bottom: 1px solid var(--qcf-border-color-light);
     padding-bottom: 0.8rem;
@@ -1255,7 +1275,6 @@ body.dark-mode #qcf-multi-form-product-title {
     margin-right: 0.5rem;
 }
 
-/* Multi-Item Footer */
 .qcf-multi-footer-actions {
     flex-shrink: 0;
     display: flex;
@@ -1289,12 +1308,295 @@ body.dark-mode .qcf-multi-footer-actions {
     align-items: flex-end;
 }
 
-/* Multi-select style for product explorer */
-.sq-product-card.selected {
-    border-color: var(--goldmex-secondary-color);
-    box-shadow: 0 0 0 3px rgba(var(--goldmex-secondary-color-rgb), 0.4);
-    background-color: rgba(var(--goldmex-secondary-color-rgb), 0.1);
+.sq-grid-costs-2x2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 0.8rem;
 }
+
+.sq-grid-logistics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+    align-items: end;
+}
+
+.sq-grid-logistics .sq-form-group-combined {
+    grid-column: 1 / -1;
+}
+
+.sq-form-group-combined {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.sq-input-with-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sq-input-with-buttons input {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.sq-unit-selector {
+    display: flex;
+    flex-shrink: 0;
+    background-color: var(--color-bg);
+    border: 1px solid var(--qcf-border-color-light);
+    border-radius: 0.3rem;
+    overflow: hidden;
+}
+
+body.dark-mode .sq-unit-selector {
+    border-color: var(--color-border);
+}
+
+.sq-unit-btn {
+    background-color: transparent;
+    border: none;
+    padding: 0.45rem 1.5rem;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 1px solid var(--qcf-border-color-light);
+}
+
+.sq-unit-selector .sq-unit-btn:first-child {
+    border-left: none;
+}
+
+body.dark-mode .sq-unit-btn {
+    border-left-color: var(--color-border);
+}
+
+.sq-unit-btn:hover {
+    background-color: var(--active-hover-bg);
+    color: var(--active-hover-text);
+}
+
+.sq-unit-btn.active {
+    background-color: var(--goldmex-primary-color);
+    color: var(--goldmex-white-color);
+    box-shadow: 0 1px 4px rgba(var(--goldmex-primary-color-rgb), 0.2);
+}
+
+body.dark-mode .sq-unit-btn.active {
+    background-color: var(--goldmex-secondary-color);
+    color: var(--goldmex-primary-color);
+    box-shadow: none;
+}
+
+/* Truck Visualization */
+.sq-truck-capacity-dashboard {
+    display: flex;
+    padding: 0;
+    border: none;
+    background: none;
+}
+
+.sq-trailer-visualizer {
+    width: 100%;
+    background-color: var(--color-surface);
+    border: 1px solid var(--qcf-border-color-light);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+body.dark-mode .sq-trailer-visualizer {
+    background-color: var(--goldmex-primary-color);
+    border-color: var(--color-border);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.sq-progress-bars-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--qcf-border-color-light);
+}
+
+body.dark-mode .sq-progress-bars-container {
+    border-bottom-color: var(--color-border);
+}
+
+body.dark-mode .sq-capacity-meter h5 {
+    color: var(--goldmex-light-color);
+}
+
+.sq-capacity-meter .sq-progress-bar-text {
+    color: var(--goldmex-gray-color);
+}
+
+.sq-capacity-meter .sq-progress-bar {
+    background-color: var(--color-bg);
+}
+
+body.dark-mode .sq-capacity-meter .sq-progress-bar {
+    background-color: var(--goldmex-dark-color);
+}
+
+.sq-progress-bar {
+    width: 100%;
+    height: 22px;
+    background-color: var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--qcf-border-color-light);
+    position: relative;
+}
+
+.sq-progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--goldmex-secondary-color);
+    border-radius: 6px;
+    transition: width 0.4s ease-out, background-color 0.4s ease;
+    position: absolute;
+    z-index: 1;
+    min-width: 2px;
+}
+
+.sq-progress-bar-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    mix-blend-mode: difference;
+    z-index: 2;
+    margin-top: 0;
+    text-shadow: none;
+}
+
+.sq-trailer-grid-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.sq-trailer-label-rear,
+.sq-trailer-label-front {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+body.dark-mode .sq-trailer-label-rear,
+body.dark-mode .sq-trailer-label-front {
+    color: var(--goldmex-secondary-color);
+    opacity: 0.7;
+}
+
+.sq-trailer-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    width: 100%;
+}
+
+.sq-trailer-slot {
+    position: relative;
+    background-color: var(--color-bg);
+    border: 1px solid var(--qcf-border-color-light);
+    border-radius: 3px;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+
+body.dark-mode .sq-trailer-slot {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(var(--goldmex-secondary-color-rgb), 0.3);
+}
+
+.sq-slot-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0%;
+    background-color: var(--goldmex-secondary-color);
+    opacity: 0.9;
+    transition: height 0.7s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+body.dark-mode .sq-slot-fill {
+    background-color: var(--goldmex-secondary-color);
+}
+
+.sq-slot-number {
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-size: 8px;
+    font-weight: bold;
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+}
+
+body.dark-mode .sq-slot-number {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sq-form-group .sq-label-highlight {
+    background-color: var(--goldmex-primary-color);
+    color: var(--goldmex-white-color);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Notifications */
+.custom-notification-le-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.custom-notification-st {
+    padding: 12px 18px;
+    border-radius: 6px;
+    color: #fff;
+    background-color: #17a2b8;
+    font-weight: 500;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 280px;
+    opacity: 0;
+    transform: translateX(110%);
+    transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.custom-notification-st.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.custom-notification-st.success { background-color: #28a745; }
+.custom-notification-st.error { background-color: #e31837; }
+.custom-notification-st.warning { background-color: #ffc107; color: #212529; }
 
 /* Disabled Button Visuals */
 button:disabled,
@@ -1380,175 +1682,20 @@ button.disabled {
     order: 2;
 }
 
-/* Delete Button Styles */
-.sq-multi-item {
-    padding-left: 40px;
-}
-
-.sq-multi-item .sq-multi-item-delete-btn {
-    background-color: transparent;
-    border: none;
-    border-radius: 0;
-    color: #e31837;
-    cursor: pointer;
-    font-size: 1.4rem;
-    padding: 5px;
-    position: absolute;
-    top: 50%;
-    left: 8px;
-    transform: translateY(-50%);
-    z-index: 5;
-    transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.sq-multi-item .sq-multi-item-delete-btn:hover {
-    background-color: transparent;
-    color: #c8142e;
-    transform: translateY(-50%) scale(1.15);
-}
-
-#qcf-multi-add-products-btn {
-    background-color: #28a745;
-    border-color: #28a745;
-    color: #ffffff;
-}
-
-#qcf-multi-add-products-btn:hover {
-    background-color: #218838;
-    border-color: #218838;
-}
-
-/*
- * ====================================================================
- * == NUEVOS ESTILOS PARA LAYOUT DE 3 COLUMNAS Y FORMULARIO          ==
- * ====================================================================
- */
-
-/* 1. Layout principal de 3 columnas para el creador multi-item */
-.qcf-multi-creator-layout {
-    display: grid;
-    grid-template-columns: 320px 1fr 300px;
-    /* Izquierda (fijo), Centro (flexible), Derecha (fijo) */
-    align-items: stretch;
-    gap: 1.5rem;
-}
-
-/* 2. Panel del formulario (columna central) */
-.qcf-multi-form-panel {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-/* 3. Corrección de la rejilla de costos para que se muestren todos los inputs */
-.sq-grid-costs-2x2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    /* 2 columnas de ancho igual */
-    gap: 1rem 0.8rem;
-}
-
-.sq-grid-logistics {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    /* <-- LÍNEA ACTUALIZADA */
-    gap: 0.8rem;
-    align-items: end;
-}
-
-.sq-grid-logistics .sq-form-group-combined {
-    grid-column: 1 / -1;
-}
-
-.sq-form-group-combined {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-/* 4. Estilos para el input de cantidad con botones de unidad */
-.sq-input-with-buttons {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.sq-input-with-buttons input {
-    flex-grow: 1;
-    min-width: 0;
-}
-
-.sq-unit-selector {
-    display: flex;
-    flex-shrink: 0;
-    background-color: var(--color-bg);
-    border: 1px solid var(--qcf-border-color-light);
-    border-radius: 0.3rem;
-    overflow: hidden;
-}
-
-body.dark-mode .sq-unit-selector {
-    border-color: var(--color-border);
-}
-
-.sq-unit-btn {
-    background-color: transparent;
-    border: none;
-    padding: 0.45rem 1.5rem;
-    /* <-- CORRECCIÓN DE ERROR DE SINTAXIS */
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    font-size: 0.8rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    border-left: 1px solid var(--qcf-border-color-light);
-}
-
-.sq-unit-selector .sq-unit-btn:first-child {
-    border-left: none;
-}
-
-body.dark-mode .sq-unit-btn {
-    border-left-color: var(--color-border);
-}
-
-.sq-unit-btn:hover {
-    background-color: var(--active-hover-bg);
-    color: var(--active-hover-text);
-}
-
-.sq-unit-btn.active {
-    background-color: var(--goldmex-primary-color);
-    color: var(--goldmex-white-color);
-    box-shadow: 0 1px 4px rgba(var(--goldmex-primary-color-rgb), 0.2);
-}
-
-body.dark-mode .sq-unit-btn.active {
-    background-color: var(--goldmex-secondary-color);
-    color: var(--goldmex-primary-color);
-    box-shadow: none;
-}
-
-
-/* ================================================================= */
-/* == ESTILOS PARA PDF - VERSIÓN COMPACTA                         == */
-/* ================================================================= */
+/* PDF Render Mode - Compact */
 .pdf-render-mode .sq-preview-invoice-box {
     font-size: 8.5pt;
-    /* Reducimos el tamaño de fuente base */
 }
 
 .pdf-render-mode .sq-preview-items-table th,
 .pdf-render-mode .sq-preview-items-table td {
     padding: 5px 8px;
-    /* Reducimos el padding vertical y horizontal en las celdas */
     white-space: nowrap;
     word-break: keep-all;
 }
 
 .pdf-render-mode .sq-preview-items-table th {
     font-size: 8pt;
-    /* Hacemos los encabezados ligeramente más pequeños */
 }
 
 .pdf-render-mode .sq-price-breakdown-table {
@@ -1558,210 +1705,8 @@ body.dark-mode .sq-unit-btn.active {
 .pdf-render-mode .sq-preview-top-section,
 .pdf-render-mode .sq-preview-details-section {
     margin-bottom: 10px;
-    /* Reducimos a la mitad */
 }
 
 .pdf-render-mode .sq-preview-footer {
     margin-top: 15px;
-    /* Reducimos el espacio antes del pie de página */
-}
-
-/* ================================================================= */
-/* == ESTILOS PARA VISUALIZADOR DE TRÁILER (VERSIÓN FINAL)        == */
-/* ================================================================= */
-
-.sq-truck-capacity-dashboard {
-    display: flex;
-    padding: 0;
-    border: none;
-    background: none;
-}
-
-.sq-trailer-visualizer {
-    width: 100%;
-    background-color: var(--color-surface);
-    border: 1px solid var(--qcf-border-color-light);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-body.dark-mode .sq-trailer-visualizer {
-    background-color: var(--goldmex-primary-color);
-    border-color: var(--color-border);
-    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3);
-}
-
-.sq-progress-bars-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--qcf-border-color-light);
-}
-
-body.dark-mode .sq-progress-bars-container {
-    border-bottom-color: var(--color-border);
-}
-
-body.dark-mode .sq-capacity-meter h5 {
-    color: var(--goldmex-light-color);
-}
-
-.sq-capacity-meter .sq-progress-bar-text {
-    color: var(--goldmex-gray-color);
-}
-
-.sq-capacity-meter .sq-progress-bar {
-    background-color: var(--color-bg);
-}
-
-body.dark-mode .sq-capacity-meter .sq-progress-bar {
-    background-color: var(--goldmex-dark-color);
-}
-
-.sq-progress-bar {
-    width: 100%;
-    height: 22px;
-    background-color: var(--color-border);
-    /* Fondo gris claro para la barra vacía */
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid var(--qcf-border-color-light);
-    position: relative;
-}
-
-.sq-progress-bar-fill {
-    height: 100%;
-    width: 0%;
-    background-color: var(--goldmex-primary-color);
-    border-radius: 6px;
-    transition: width 0.4s ease-out, background-color 0.4s ease;
-    position: absolute;
-    z-index: 1;
-}
-
-.sq-progress-bar-text {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 600;
-
-    /* === LA MAGIA OCURRE AQUÍ === */
-    color: white;
-    /* El color base del texto será blanco */
-    mix-blend-mode: difference;
-    /* Invierte el color de lo que tiene detrás */
-    /* ============================ */
-
-    z-index: 2;
-    margin-top: 0;
-    /* Quitamos la sombra para un look más limpio con este efecto */
-    text-shadow: none;
-}
-
-.sq-trailer-grid-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.sq-trailer-label-rear,
-.sq-trailer-label-front {
-    font-size: 0.65rem;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-}
-
-body.dark-mode .sq-trailer-label-rear,
-body.dark-mode .sq-trailer-label-front {
-    color: var(--goldmex-secondary-color);
-    opacity: 0.7;
-}
-
-.sq-trailer-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 5px;
-    width: 100%;
-}
-
-.sq-trailer-slot {
-    position: relative;
-    background-color: var(--color-bg);
-    border: 1px solid var(--qcf-border-color-light);
-    border-radius: 3px;
-    overflow: hidden;
-    aspect-ratio: 1 / 1;
-}
-
-body.dark-mode .sq-trailer-slot {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-color: rgba(var(--goldmex-secondary-color-rgb), 0.3);
-}
-
-.sq-slot-fill {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 0%;
-    background-color: var(--goldmex-secondary-color);
-    opacity: 0.9;
-    transition: height 0.7s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-body.dark-mode .sq-slot-fill {
-    background-color: var(--goldmex-secondary-color);
-}
-
-.sq-slot-number {
-    position: absolute;
-    top: 2px;
-    left: 3px;
-    font-size: 8px;
-    font-weight: bold;
-    color: var(--color-text-secondary);
-    opacity: 0.7;
-}
-
-body.dark-mode .sq-slot-number {
-    color: rgba(255, 255, 255, 0.6);
-}
-
-/* ================================================================= */
-/* == ESTILOS PARA RESALTAR LABELS EDITABLES                      == */
-/* ================================================================= */
-.sq-form-group .sq-label-highlight {
-    background-color: var(--goldmex-primary-color);
-    color: var(--goldmex-white-color);
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-/* css/quoting-module.css */
-
-
-
-.sq-progress-bar-fill {
-    min-width: 2px;
-    height: 100%;
-    transition: width 0.3s ease;
-    background-color: var(--goldmex-secondary-color); /* Dorado siempre */
-}
-
-/* Contenedores de barras */
-#truck-pallet-bar-fill,
-#truck-weight-bar-fill {
-    display: block;
 }
