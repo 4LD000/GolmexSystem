@@ -1,30 +1,31 @@
-// js/script.js (COMPLETO Y CORREGIDO)
+// js/script.js (COMPLETO - V18 - SIN OMISIONES)
 
-console.log("Script.js: >>> SCRIPT EXECUTION STARTED <<<");
+console.log("Script.js: >>> CORE SYSTEM STARTED <<<");
 
-// Select DOM elements once for better performance
-const menusItemsDropDown = document.querySelectorAll(".menu-item-dropdown");
+// --- 1. SELECCIÓN DE ELEMENTOS DOM ---
 const sidebar = document.getElementById("sidebar");
 const menuBtnDesktop = document.getElementById("menu-btn");
 const sidebarBtnMobile = document.getElementById("sidebar-btn");
 const darkModeBtn = document.getElementById("dark-mode-btn");
 const mainContent = document.querySelector("main");
-const allMenuLinks = document.querySelectorAll(
-  ".sidebar .menu-link, .sidebar .sub-menu-link"
-);
-const allDropdownParents = document.querySelectorAll(".menu-item-dropdown");
+const mainAppContent = document.getElementById("main-app-content");
+const authRequiredMessage = document.getElementById("auth-required-message");
+const authButton = document.getElementById("auth-button");
 
-// Authentication and user profile elements
+// Elementos de Perfil de Usuario
 const userProfileArea = document.getElementById("user-profile-area");
 const userNameElement = document.getElementById("user-name");
 const userEmailElement = document.getElementById("user-email");
 const userAvatarElement = document.getElementById("user-avatar");
-const authButton = document.getElementById("auth-button");
-const authRequiredMessage = document.getElementById("auth-required-message");
-const mainAppContent = document.getElementById("main-app-content");
 const userContainer = document.querySelector(".user");
 
-// --- Supabase Configuration ---
+// Elementos de Menú
+const menusItemsDropDown = document.querySelectorAll(".menu-item-dropdown");
+const allMenuLinks = document.querySelectorAll(
+  ".sidebar .menu-link, .sidebar .sub-menu-link"
+);
+
+// --- 2. CONFIGURACIÓN SUPABASE ---
 const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
@@ -35,306 +36,168 @@ try {
       SUPABASE_URL,
       SUPABASE_ANON_KEY
     );
-    console.log("Supabase client initialized in script.js.");
+    console.log("Supabase client initialized.");
   } else {
-    throw new Error(
-      "Supabase library not found or createClient is not a function."
-    );
+    throw new Error("Supabase library not found.");
   }
 } catch (error) {
-  console.error("Error initializing Supabase in script.js:", error);
+  console.error("Supabase Init Error:", error);
 }
 
-// --- Inactivity Logout Configuration ---
+// --- 3. ESTADO GLOBAL ---
 let inactivityTimer;
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
-
-// --- Global User State Tracking ---
-let currentGlobalUserId = null;
-let currentGlobalProfile = null;
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 mins
 let currentGlobalUser = null;
+let currentGlobalProfile = null;
 
-// --- Role Configuration ---
-const MANAGER_USERS = [
-  "fulfillment@gmxecommerce.com",
-  "tgarcia@goldmexintl.com",
-  "kmartinez@goldmexintl.com",
-  "anogales@goldmexintl.com",
-  "carlos@flexbpo.com",
-  "alexandermontes@flexbpo.com",
-  "jorge@customscity.com",
-  "jachags@gmail.com",
-  "aesquivez@goldmexintl.com"
-];
+// --- 4. GESTIÓN DE SESIÓN ---
 
-const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-const EMPLOYEE_EXCEPTIONS = [
-  "kikecanfir@gmail.com",
-  "enriqueflores.10@hotmail.com",
-  "jatejix@gmail.com"
-];
-
-const RESTRICTED_VIEW_DOMAINS = [
-  "estafeta.com",
-  "gelalogs.com",
-  "viettelpost.com.vn",
-];
-
-const RESTRICTED_VIEW_USERS = [
-  "kikecanfir5@gmail.com",
-  "quynhanhtruonga8@gmail.com",
-  "quanganhpn2002@gmail.com",
-];
-
-const CLIENT_VIEW_MODULES = ["brokerage-cqp", "import-portal"];
-
-function isUserAllowed(email) {
-  if (!email) return false;
-  const lowerEmail = email.toLowerCase();
-  const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
-
-  if (
-    MANAGER_USERS.includes(lowerEmail) ||
-    EMPLOYEE_DOMAINS.includes(domain) ||
-    EMPLOYEE_EXCEPTIONS.includes(lowerEmail) ||
-    RESTRICTED_VIEW_DOMAINS.includes(domain) ||
-    RESTRICTED_VIEW_USERS.includes(lowerEmail)
-  ) {
-    return true;
-  }
-  return false;
-}
-
-// --- CORRECCIÓN CRÍTICA EN SIGNOUT (Actualizado para limpieza profunda) ---
-async function signOut(isDueToInactivity = false) {
-  if (!window.supabase) return;
-  
+async function signOut() {
+  stopInactivityTimer();
   try {
-    stopInactivityTimer();
-    
-    // Intentamos cerrar sesión en el servidor
-    const { error } = await window.supabase.auth.signOut();
-    
-    if (error) {
-      // Si hay error (ej. 403 session missing), solo lo registramos como warning
-      // pero NO detenemos el proceso de limpieza local.
-      console.warn("Supabase signOut warning (forcing local logout):", error.message);
-    } else {
-      console.log("Signed out successfully from server.");
-    }
-
-  } catch (error) {
-    console.error("Exception during sign out:", error);
+    await window.supabase.auth.signOut();
+  } catch (e) {
+    console.warn("SignOut error:", e);
   } finally {
-    // *** LIMPIEZA FORZADA ***
-    // Esto se ejecuta SIEMPRE, haya error o no.
-    
-    console.log("Performing local session cleanup...");
-    currentGlobalUserId = null;
-    currentGlobalUser = null;
-    currentGlobalProfile = null;
-
-    // 1. Limpiar localStorage específico de Workstation (EL FIX PARA CRUCE DE SESIONES)
-    localStorage.removeItem('gmx_wst_session_v4_cloud');
-
-    // 2. Limpiar localStorage específico de Supabase para evitar el bucle de sesión fantasma
-    const projectKey = 'sb-ogatafslnevidfopuvbp-auth-token'; 
-    localStorage.removeItem(projectKey);
-
-    updateUserUI(null);
+    localStorage.removeItem("gmx_wst_session_v5_cloud");
     window.location.href = "login.html";
   }
 }
 
-// --- Inactivity Logout Functions ---
-function logoutDueToInactivity() {
-  console.log("Inactivity timeout reached. Logging out user...");
-  showCustomNotificationST(
-    "You have been logged out due to inactivity.",
-    "info",
-    7000
-  );
-  signOut(true);
-}
-
+// Lógica de Inactividad
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
-  
-  // Check: If Ranking/TV mode is active, disable logout timer.
-  const currentModule = mainContent ? mainContent.dataset.currentModule : '';
-  if (currentModule === 'wst-ranking') {
-      return; 
-  }
-
-  inactivityTimer = setTimeout(logoutDueToInactivity, INACTIVITY_TIMEOUT_MS);
+  if (mainContent && mainContent.dataset.currentModule === "wst-ranking")
+    return;
+  inactivityTimer = setTimeout(() => {
+    console.log("Inactivity timeout. Logging out.");
+    showCustomNotificationST("Session expired due to inactivity.", "info");
+    signOut();
+  }, INACTIVITY_TIMEOUT_MS);
 }
 
 function startInactivityTimer() {
   stopInactivityTimer();
+  if (mainContent && mainContent.dataset.currentModule === "wst-ranking")
+    return;
 
-  // Initial Check for TV mode
-  const currentModule = mainContent ? mainContent.dataset.currentModule : '';
-  if (currentModule === 'wst-ranking') {
-      console.log("TV Mode detected on start: Inactivity timer skipped.");
-      return;
-  }
-
-  console.log(`script.js: Starting inactivity timer.`);
   resetInactivityTimer();
-  window.addEventListener("mousemove", resetInactivityTimer, { passive: true });
-  window.addEventListener("keydown", resetInactivityTimer, { passive: true });
-  window.addEventListener("scroll", resetInactivityTimer, { passive: true });
-  window.addEventListener("click", resetInactivityTimer, { passive: true });
-  window.addEventListener("focus", resetInactivityTimer);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("mousemove", resetInactivityTimer);
+  window.addEventListener("keydown", resetInactivityTimer);
+  window.addEventListener("click", resetInactivityTimer);
+  window.addEventListener("scroll", resetInactivityTimer);
 }
 
 function stopInactivityTimer() {
   clearTimeout(inactivityTimer);
   window.removeEventListener("mousemove", resetInactivityTimer);
   window.removeEventListener("keydown", resetInactivityTimer);
-  window.removeEventListener("scroll", resetInactivityTimer);
   window.removeEventListener("click", resetInactivityTimer);
-  window.removeEventListener("focus", resetInactivityTimer);
-  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("scroll", resetInactivityTimer);
 }
 
-function handleVisibilityChange() {
-  if (!document.hidden) {
-    resetInactivityTimer();
-  }
-}
+// --- 5. UI UPDATE & PERMISOS (CORE) ---
 
 function updateUserUI(user, profile = null) {
-  const allMenuItems = document.querySelectorAll(".sidebar .menu > .menu-item");
-
   if (user) {
-    const displayName = profile
-      ? profile.full_name
-      : user.user_metadata?.full_name || user.email.split("@")[0];
-    const displayAvatar = profile
-      ? profile.avatar_url
-      : user.user_metadata?.avatar_url || "assets/user-placeholder.jpg";
+    const name = profile ? profile.full_name : user.email.split("@")[0];
+    const avatar = profile ? profile.avatar_url : "assets/user-placeholder.jpg";
 
-    if (userNameElement) userNameElement.textContent = displayName;
+    if (userNameElement) userNameElement.textContent = name;
     if (userEmailElement) userEmailElement.textContent = user.email;
-    if (userAvatarElement) userAvatarElement.src = displayAvatar;
+    if (userAvatarElement) userAvatarElement.src = avatar;
 
     if (authButton) {
       authButton.innerHTML = "<i class='bx bx-log-out'></i>";
       authButton.title = "Sign Out";
+      authButton.onclick = signOut;
     }
+
     if (authRequiredMessage) authRequiredMessage.style.display = "none";
     if (mainAppContent) mainAppContent.style.display = "block";
 
-    if (!profile && userContainer) {
-      userContainer.classList.add("loading-profile");
-    }
-    
-    // Determine Role & Visibility
-    const userEmail = user.email.toLowerCase();
-    const userDomain = userEmail.substring(userEmail.lastIndexOf("@"));
-    let userRole = "Employee";
-    
-    if (MANAGER_USERS.includes(userEmail)) userRole = "Manager";
-    else if (
-      RESTRICTED_VIEW_DOMAINS.includes(userDomain) ||
-      RESTRICTED_VIEW_USERS.includes(userEmail)
-    ) userRole = "Client";
-
-    switch (userRole) {
-      case "Manager":
-        allMenuItems.forEach((item) => {
-          item.style.display = "list-item";
-          item.querySelectorAll(".sub-menu > li").forEach((sub) => (sub.style.display = "list-item"));
-        });
-        break;
-      case "Client":
-        allMenuItems.forEach((menuItem) => {
-          const link = menuItem.querySelector(".menu-link");
-          if (!link) return;
-          const moduleName = link.dataset.module;
-          const isDropdown = menuItem.classList.contains("menu-item-dropdown");
-
-          if (isDropdown) {
-            let hasVisibleSubMenu = false;
-            menuItem.querySelectorAll(".sub-menu-link").forEach((subLink) => {
-              if (CLIENT_VIEW_MODULES.includes(subLink.dataset.module)) {
-                hasVisibleSubMenu = true;
-                subLink.parentElement.style.display = "list-item";
-              } else {
-                subLink.parentElement.style.display = "none";
-              }
-            });
-            menuItem.style.display = hasVisibleSubMenu ? "list-item" : "none";
-          } else if (moduleName) {
-            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName) ? "list-item" : "none";
-          }
-        });
-        break;
-      default:
-        allMenuItems.forEach((menuItem) => {
-          const link = menuItem.querySelector(".menu-link");
-          if (!link) return;
-          const moduleName = link.dataset.module;
-          const isDropdown = menuItem.classList.contains("menu-item-dropdown");
-
-          if (isDropdown) {
-            let hasVisibleSubMenu = false;
-            menuItem.querySelectorAll(".sub-menu-link").forEach((subLink) => {
-              if (CLIENT_VIEW_MODULES.includes(subLink.dataset.module)) {
-                subLink.parentElement.style.display = "none";
-              } else {
-                hasVisibleSubMenu = true;
-                subLink.parentElement.style.display = "list-item";
-              }
-            });
-            menuItem.style.display = hasVisibleSubMenu ? "list-item" : "none";
-          } else if (moduleName) {
-            menuItem.style.display = CLIENT_VIEW_MODULES.includes(moduleName) ? "none" : "list-item";
-          }
-        });
-        break;
-    }
+    // Aplicar permisos
+    applyMenuPermissions(profile);
 
     startInactivityTimer();
-
-    const homeLink = document.querySelector('.menu-link[data-module="home"]');
-    if (
-      homeLink &&
-      mainContent &&
-      (!mainContent.dataset.currentModule ||
-        ["auth-required", "access-denied", ""].includes(mainContent.dataset.currentModule))
-    ) {
-        if (mainContent) {
-             mainContent.innerHTML = "<h1>GMX Content Area</h1><p>Welcome.</p>";
-             mainContent.dataset.currentModule = "home";
-        }
-        setActiveMenuItem(homeLink);
-    }
-
   } else {
     if (userNameElement) userNameElement.textContent = "Guest";
     if (userEmailElement) userEmailElement.textContent = "Please sign in";
-    if (userAvatarElement) userAvatarElement.src = "assets/user-placeholder.jpg";
-    
-    if (authButton) {
-      authButton.innerHTML = "<i class='bx bx-log-in'></i>";
-      authButton.title = "Sign In";
-    }
     if (mainAppContent) mainAppContent.style.display = "none";
     if (authRequiredMessage) authRequiredMessage.style.display = "block";
-    
-    document.body.classList.remove("sidebar-loaded");
-    if (userContainer) userContainer.classList.remove("loading-profile");
-
-    setActiveMenuItem(null);
     stopInactivityTimer();
   }
 }
 
+function applyMenuPermissions(profile) {
+  if (!profile) return;
+
+  const role = profile.role || "employee";
+  const isSuperAdmin = profile.is_super_admin === true;
+  let allowedModules = profile.allowed_modules || [];
+
+  console.log(
+    `Applying Permissions -> Role: ${role}, Modules:`,
+    allowedModules
+  );
+
+  // 1. Manejo del botón SUPER ADMIN
+  const superAdminItems = document.querySelectorAll(".role-super-admin");
+  superAdminItems.forEach((item) => {
+    item.style.display = isSuperAdmin ? "list-item" : "none";
+  });
+
+  // 2. Iterar TODOS los items del menú (excluyendo super admin)
+  const allMenuItems = document.querySelectorAll(
+    ".sidebar .menu > .menu-item:not(.role-super-admin)"
+  );
+
+  allMenuItems.forEach((item) => {
+    const link = item.querySelector(".menu-link");
+    const isDropdown = item.classList.contains("menu-item-dropdown");
+
+    if (isDropdown) {
+      // Lógica para Dropdowns (ej: CRM, Warehouse)
+      const subLinks = item.querySelectorAll(".sub-menu-link");
+      let visibleChildrenCount = 0;
+
+      subLinks.forEach((subLink) => {
+        const moduleName = subLink.dataset.module;
+        // Acceso si: es Manager O el módulo está en la lista permitida
+        const canSee =
+          role === "manager" || allowedModules.includes(moduleName);
+
+        if (canSee) {
+          subLink.parentElement.style.display = "list-item";
+          visibleChildrenCount++;
+        } else {
+          subLink.parentElement.style.display = "none";
+        }
+      });
+
+      // Mostrar el padre solo si tiene hijos visibles
+      item.style.display = visibleChildrenCount > 0 ? "list-item" : "none";
+    } else {
+      // Lógica para Links Simples (ej: Home, Brokerage CQP)
+      if (!link) return;
+      const moduleName = link.dataset.module;
+
+      if (moduleName) {
+        // Home siempre visible, el resto depende de permisos/rol
+        const isHome = moduleName === "home";
+        const canSee =
+          isHome || role === "manager" || allowedModules.includes(moduleName);
+        item.style.display = canSee ? "list-item" : "none";
+      } else {
+        item.style.display = "list-item";
+      }
+    }
+  });
+}
+
 async function fetchProfileAndUpdateUI(user) {
-  let profileData = null;
+  if (userContainer) userContainer.classList.add("loading-profile");
+
   try {
     const { data: profile, error } = await window.supabase
       .from("profiles")
@@ -344,34 +207,218 @@ async function fetchProfileAndUpdateUI(user) {
 
     if (error) throw error;
 
-    if (profile) {
-      profileData = profile;
-      currentGlobalProfile = profile;
-      updateUserUI(user, profile);
-    } else {
-      updateUserUI(user);
+    currentGlobalProfile = profile;
+    updateUserUI(user, profile);
+
+    // Cargar Home si estamos en root
+    const currentModule = mainContent.dataset.currentModule;
+    if (!currentModule || currentModule === "auth-required") {
+      const homeLink = document.querySelector('.menu-link[data-module="home"]');
+      if (homeLink) loadModule("home", homeLink);
     }
 
     document.dispatchEvent(
-        new CustomEvent("supabaseAuthStateChange", { detail: { user: user, profile: profileData } })
+      new CustomEvent("supabaseAuthStateChange", {
+        detail: { user, profile },
+      })
     );
-
   } catch (error) {
-    console.error("Error fetching profile:", error.message);
-    updateUserUI(user);
-    currentGlobalProfile = null;
-    document.dispatchEvent(
-        new CustomEvent("supabaseAuthStateChange", { detail: { user: user, profile: null } })
-    );
+    console.error("Profile Fetch Error:", error);
+    updateUserUI(user, { role: "employee", allowed_modules: [] });
   } finally {
     if (userContainer) userContainer.classList.remove("loading-profile");
+
+    // FIX ANTI-PARPADEO
     setTimeout(() => {
-        document.body.classList.add("sidebar-loaded");
+      document.body.classList.remove("loading-permissions");
+      document.body.classList.add("sidebar-loaded");
     }, 50);
   }
 }
 
+// --- 6. ROUTING (CARGA DE MÓDULOS) ---
+
+async function loadModule(moduleName, clickedLink) {
+  if (!mainContent) return;
+
+  // 1. Verificar Permisos en Cliente (Seguridad Visual)
+  if (
+    currentGlobalProfile &&
+    currentGlobalProfile.role !== "manager" &&
+    !currentGlobalProfile.is_super_admin
+  ) {
+    const allowed = currentGlobalProfile.allowed_modules || [];
+    if (
+      moduleName !== "home" &&
+      moduleName !== "super-admin" &&
+      !allowed.includes(moduleName)
+    ) {
+      showCustomNotificationST("Access Denied to this module.", "error");
+      return;
+    }
+  }
+
+  document.dispatchEvent(new CustomEvent("moduleWillUnload"));
+
+  if (authRequiredMessage) authRequiredMessage.style.display = "none";
+  if (mainAppContent) mainAppContent.style.display = "block";
+
+  // Stop timer for TV mode
+  if (moduleName === "wst-ranking") stopInactivityTimer();
+  else startInactivityTimer();
+
+  // Loading State
+  mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
+  mainContent.dataset.currentModule = moduleName;
+
+  try {
+    const response = await fetch(`${moduleName}.html`);
+    if (!response.ok) throw new Error(`Error loading ${moduleName}`);
+    const html = await response.text();
+    mainContent.innerHTML = html;
+
+    // Activar animación
+    if (mainContent.children[0])
+      mainContent.children[0].classList.add("module-enter-animation");
+
+    setActiveMenuItem(clickedLink);
+
+    // Re-ejecutar scripts dentro del HTML inyectado
+    processModuleScripts();
+
+    // Notificar eventos
+    document.dispatchEvent(
+      new CustomEvent("moduleContentLoaded", { detail: { moduleName } })
+    );
+    waitForModuleReady(moduleName);
+  } catch (error) {
+    mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error</h2><p>${error.message}</p></div>`;
+  }
+}
+
+function processModuleScripts() {
+  Array.from(mainContent.querySelectorAll("script")).forEach((oldScript) => {
+    const newScript = document.createElement("script");
+    Array.from(oldScript.attributes).forEach((attr) =>
+      newScript.setAttribute(attr.name, attr.value)
+    );
+    if (oldScript.textContent) newScript.textContent = oldScript.textContent;
+    oldScript.parentNode.replaceChild(newScript, oldScript);
+  });
+}
+
+function waitForModuleReady(moduleName) {
+  const handler = (e) => {
+    if (e.detail?.moduleName === moduleName) {
+      document.dispatchEvent(
+        new CustomEvent("supabaseAuthStateChange", {
+          detail: { user: currentGlobalUser, profile: currentGlobalProfile },
+        })
+      );
+      document.removeEventListener("moduleReadyForAuth", handler);
+    }
+  };
+  document.addEventListener("moduleReadyForAuth", handler);
+}
+
+// --- 7. INTERACCIÓN UI (Sidebar, Dark Mode) ---
+
+if (menuBtnDesktop) {
+  menuBtnDesktop.addEventListener("click", () => {
+    sidebar.classList.toggle("minimize");
+    if (sidebar.classList.contains("minimize")) {
+      menusItemsDropDown.forEach((item) => {
+        item.classList.remove("sub-menu-toggle");
+        const sub = item.querySelector(".sub-menu");
+        if (sub) {
+          sub.style.height = "0";
+          sub.style.padding = "0";
+        }
+      });
+    }
+  });
+}
+
+if (sidebarBtnMobile) {
+  sidebarBtnMobile.addEventListener("click", () => {
+    document.body.classList.toggle("sidebar-hidden");
+  });
+}
+
+// Lógica de Acordeón para Menú
+menusItemsDropDown.forEach((menuItem) => {
+  const link = menuItem.querySelector(".menu-link");
+  if (link) {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (sidebar.classList.contains("minimize")) return;
+
+      const isActive = menuItem.classList.toggle("sub-menu-toggle");
+      const subMenu = menuItem.querySelector(".sub-menu");
+
+      // Cerrar otros
+      menusItemsDropDown.forEach((other) => {
+        if (other !== menuItem && other.classList.contains("sub-menu-toggle")) {
+          other.classList.remove("sub-menu-toggle");
+          const otherSub = other.querySelector(".sub-menu");
+          if (otherSub) {
+            otherSub.style.height = "0";
+            otherSub.style.padding = "0";
+          }
+        }
+      });
+
+      if (subMenu) {
+        // Altura dinámica
+        subMenu.style.height = isActive ? `${subMenu.scrollHeight}px` : "0";
+        subMenu.style.padding = isActive ? "0.2rem 0" : "0";
+      }
+    });
+  }
+});
+
+// Click en Links de Módulo
+allMenuLinks.forEach((link) => {
+  const moduleName = link.dataset.module;
+  if (moduleName) {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      loadModule(moduleName, link);
+      if (window.innerWidth <= 768)
+        document.body.classList.add("sidebar-hidden");
+    });
+  }
+});
+
+function setActiveMenuItem(clicked) {
+  if (!clicked) return;
+  allMenuLinks.forEach((l) => l.classList.remove("link-active"));
+  document
+    .querySelectorAll(".menu-item-dropdown")
+    .forEach((d) => d.classList.remove("parent-active"));
+
+  clicked.classList.add("link-active");
+  const parent = clicked.closest(".menu-item-dropdown");
+  if (parent) {
+    parent.classList.add("parent-active");
+    if (!sidebar.classList.contains("minimize")) {
+      // Solo expandir si no estaba ya expandido para evitar animación doble
+      if (!parent.classList.contains("sub-menu-toggle")) {
+        parent.classList.add("sub-menu-toggle");
+        const sub = parent.querySelector(".sub-menu");
+        if (sub) {
+          sub.style.height = `${sub.scrollHeight}px`;
+          sub.style.padding = "0.2rem 0";
+        }
+      }
+    }
+  }
+}
+
+// Dark Mode Persistence
 if (darkModeBtn) {
+  if (localStorage.getItem("darkMode") === "enabled")
+    document.body.classList.add("dark-mode");
   darkModeBtn.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
     localStorage.setItem(
@@ -379,317 +426,109 @@ if (darkModeBtn) {
       document.body.classList.contains("dark-mode") ? "enabled" : "disabled"
     );
   });
-  if (localStorage.getItem("darkMode") === "enabled") {
-    document.body.classList.add("dark-mode");
-  }
 }
 
-if (sidebarBtnMobile) {
-  sidebarBtnMobile.addEventListener("click", () => {
-    document.body.classList.toggle("sidebar-hidden");
-    if (document.body.classList.contains("sidebar-hidden") && sidebar) {
-      sidebar.classList.remove("minimize");
-    }
-  });
-}
-
-if (menuBtnDesktop) {
-  menuBtnDesktop.addEventListener("click", () => {
-    if (sidebar) sidebar.classList.toggle("minimize");
-    if (sidebar?.classList.contains("minimize")) {
-      menusItemsDropDown.forEach((item) => {
-        if (item.classList.contains("sub-menu-toggle")) {
-          item.classList.remove("sub-menu-toggle");
-          const subMenu = item.querySelector(".sub-menu");
-          if (subMenu) {
-            subMenu.style.height = "0";
-            subMenu.style.padding = "0";
-          }
-        }
-      });
-    }
-  });
-}
-
-menusItemsDropDown.forEach((menuItem) => {
-  const menuLink = menuItem.querySelector(":scope > .menu-link");
-  if (menuLink) {
-    menuLink.addEventListener("click", (event) => {
-      event.preventDefault();
-      if (sidebar?.classList.contains("minimize")) return;
-      const subMenu = menuItem.querySelector(".sub-menu");
-      const isActive = menuItem.classList.toggle("sub-menu-toggle");
-      
-      menusItemsDropDown.forEach((item) => {
-        if (item !== menuItem && item.classList.contains("sub-menu-toggle")) {
-          item.classList.remove("sub-menu-toggle");
-          const otherSubmenu = item.querySelector(".sub-menu");
-          if (otherSubmenu) {
-            otherSubmenu.style.height = "0";
-            otherSubmenu.style.padding = "0";
-          }
-        }
-      });
-      
-      if (subMenu) {
-        subMenu.style.height = isActive ? `${subMenu.scrollHeight + 6}px` : "0";
-        subMenu.style.padding = isActive ? "0.2rem 0" : "0";
-      }
-    });
-  }
-});
-
-if (authButton) {
-  authButton.addEventListener("click", async () => {
-    if (!window.supabase) return;
-    const { data: { session } } = await window.supabase.auth.getSession();
-    if (session?.user) await signOut();
-    else window.location.href = "login.html";
-  });
-}
-
-function setActiveMenuItem(clickedLinkElement) {
-  allMenuLinks.forEach((link) => link.classList.remove("link-active"));
-  allDropdownParents.forEach((item) => item.classList.remove("parent-active"));
-  if (clickedLinkElement) {
-    clickedLinkElement.classList.add("link-active");
-    const parentDropdown = clickedLinkElement.closest(".menu-item-dropdown");
-    if (parentDropdown) {
-      parentDropdown.classList.add("parent-active");
-      if (
-        sidebar &&
-        !sidebar.classList.contains("minimize") &&
-        !parentDropdown.classList.contains("sub-menu-toggle")
-      ) {
-        parentDropdown.classList.add("sub-menu-toggle");
-        const subMenu = parentDropdown.querySelector(".sub-menu");
-        if (subMenu) {
-          subMenu.style.height = `${subMenu.scrollHeight + 6}px`;
-          subMenu.style.padding = "0.2rem 0";
-        }
-      }
-    }
-  }
-}
-
-async function loadModule(moduleName, clickedLink) {
-  if (!mainContent || !window.supabase) return;
-  
-  document.dispatchEvent(new CustomEvent("moduleWillUnload"));
-  if (authRequiredMessage) authRequiredMessage.style.display = "none";
-  if (mainAppContent) mainAppContent.style.display = "block";
-  
-  mainContent.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:80vh; flex-direction:column;"><i class='bx bx-loader-alt bx-spin' style='font-size: 3rem; color: var(--goldmex-secondary-color);'></i><p style="margin-top: 1rem; font-size: 1.1rem; color: var(--color-text-secondary);">Loading ${moduleName}...</p></div>`;
-  mainContent.dataset.currentModule = `loading-${moduleName}`;
-  
-  // ** INACTIVITY CHECK: Stop timer if loading Rank/TV module **
-  if (moduleName === 'wst-ranking') {
-      stopInactivityTimer();
-  } else {
-      if (currentGlobalUser) startInactivityTimer();
-  }
-
-  try {
-    const response = await fetch(`${moduleName}.html`);
-    if (!response.ok) throw new Error(`Could not load ${moduleName}.html`);
-    const htmlContent = await response.text();
-    mainContent.innerHTML = htmlContent;
-
-    const moduleContainer = mainContent.children[0];
-    if (moduleContainer) {
-      moduleContainer.classList.add("module-enter-animation");
-    }
-
-    mainContent.dataset.currentModule = moduleName;
-    setActiveMenuItem(clickedLink);
-    
-    document.dispatchEvent(
-      new CustomEvent("moduleContentLoaded", { detail: { moduleName } })
-    );
-    
-    Array.from(mainContent.querySelectorAll("script")).forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) =>
-        newScript.setAttribute(attr.name, attr.value)
-      );
-      if (oldScript.textContent) newScript.textContent = oldScript.textContent;
-      
-      if (oldScript.parentNode)
-        oldScript.parentNode.replaceChild(newScript, oldScript);
-      else document.body.appendChild(newScript).remove();
-    });
-
-    const onModuleReady = (event) => {
-        if (event.detail?.moduleName === moduleName) {
-            if (currentGlobalUser) {
-                document.dispatchEvent(
-                    new CustomEvent("supabaseAuthStateChange", {
-                        detail: {
-                            user: currentGlobalUser,
-                            profile: currentGlobalProfile
-                        }
-                    })
-                );
-            } else {
-                document.dispatchEvent(
-                    new CustomEvent("supabaseAuthStateChange", {
-                        detail: { user: null, profile: null }
-                    })
-                );
-            }
-            document.removeEventListener("moduleReadyForAuth", onModuleReady);
-        }
-    };
-    document.addEventListener("moduleReadyForAuth", onModuleReady);
-
-  } catch (error) {
-    mainContent.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error loading module: ${moduleName}</h2><p style="color: var(--goldmex-accent-color);">${error.message}</p></div>`;
-    mainContent.dataset.currentModule = "error";
-    setActiveMenuItem(clickedLink);
-  }
-}
-
-allMenuLinks.forEach((link) => {
-  const moduleName = link.dataset.module;
-  if (moduleName) {
-    link.addEventListener("click", async function (event) {
-      event.preventDefault();
-      loadModule(moduleName, this);
-
-      if (
-        window.innerWidth <= 768 &&
-        document.body.classList.contains("sidebar-hidden")
-      ) {
-        sidebarBtnMobile.click();
-      }
-    });
-  }
-});
-
-function handleResize() {
-  if (window.innerWidth > 768 && document.body) {
-    document.body.classList.remove("sidebar-hidden");
-  }
-}
-
+// --- 8. INICIALIZACIÓN GLOBAL ---
 document.addEventListener("DOMContentLoaded", () => {
-  handleResize();
-
   if (!window.supabase) {
-    if (!window.location.pathname.includes("/login.html")) {
+    if (!window.location.pathname.includes("login.html"))
       window.location.href = "login.html";
-    }
     return;
   }
 
-  window.supabase.auth.onAuthStateChange(async (event, session) => {
-    const newUser = session ? session.user : null;
-    stopInactivityTimer();
-
-    if (newUser) {
-      currentGlobalUser = newUser;
-
-      if (currentGlobalUserId !== newUser.id) {
-        currentGlobalUserId = newUser.id;
-        updateUserUI(newUser);
-        fetchProfileAndUpdateUI(newUser);
-
-        const homeLink = document.querySelector('.sidebar .menu-link[data-module="home"]');
-        if (homeLink) loadModule("home", homeLink);
-
-      } else {
-         startInactivityTimer();
-         document.dispatchEvent(
-            new CustomEvent("supabaseAuthStateChange", { detail: { user: newUser, profile: currentGlobalProfile } })
-         );
+  window.supabase.auth.onAuthStateChange((event, session) => {
+    const user = session?.user;
+    if (user) {
+      currentGlobalUser = user;
+      if (!currentGlobalProfile || currentGlobalProfile.id !== user.id) {
+        fetchProfileAndUpdateUI(user);
       }
     } else {
-      currentGlobalUserId = null;
       currentGlobalUser = null;
       currentGlobalProfile = null;
       updateUserUI(null);
-      document.dispatchEvent(
-        new CustomEvent("supabaseAuthStateChange", { detail: { user: null, profile: null } })
-      );
-    }
-
-    const isLoginPage = window.location.pathname.includes("/login.html");
-    if (!newUser && !isLoginPage) {
-      window.location.href = "login.html";
-    } else if (newUser && isLoginPage) {
-      window.location.href = "index.html";
+      if (!window.location.pathname.includes("login.html"))
+        window.location.href = "login.html";
     }
   });
 });
 
-window.addEventListener("resize", handleResize);
-
-function showCustomNotificationST(message, type = "info", duration = 3800) {
-  const containerId = "customNotificationContainerST_Global";
-  let notificationContainer = document.getElementById(containerId);
-  if (!notificationContainer) {
-    notificationContainer = document.createElement("div");
-    notificationContainer.id = containerId;
-    notificationContainer.style.position = "fixed";
-    notificationContainer.style.top = "20px";
-    notificationContainer.style.right = "20px";
-    notificationContainer.style.zIndex = "2050";
-    notificationContainer.style.display = "flex";
-    notificationContainer.style.flexDirection = "column";
-    notificationContainer.style.gap = "10px";
-    document.body.appendChild(notificationContainer);
+// --- HELPER: TOAST NOTIFICATIONS (COMPLETA) ---
+function showCustomNotificationST(message, type = "info") {
+  const id = "global-notification-area";
+  let container = document.getElementById(id);
+  if (!container) {
+    container = document.createElement("div");
+    container.id = id;
+    container.style.position = "fixed";
+    container.style.top = "20px";
+    container.style.right = "20px";
+    container.style.zIndex = "9999";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "10px";
+    document.body.appendChild(container);
   }
 
-  const notification = document.createElement("div");
-  notification.style.padding = "12px 18px";
-  notification.style.borderRadius = "6px";
-  notification.style.color = "#fff";
-  notification.style.fontWeight = "500";
-  notification.style.boxShadow = "0 5px 15px rgba(0,0,0,0.2)";
-  notification.style.display = "flex";
-  notification.style.alignItems = "center";
-  notification.style.gap = "10px";
-  notification.style.minWidth = "280px";
-  notification.style.opacity = "0";
-  notification.style.transform = "translateX(110%)";
-  notification.style.transition = "transform 0.4s ease, opacity 0.4s ease";
-
-  let iconClass = "bx bx-info-circle";
-  if (type === "success") {
-    iconClass = "bx bx-check-circle";
-    notification.style.backgroundColor = "#28a745";
-  } else if (type === "error") {
-    iconClass = "bx bx-x-circle";
-    notification.style.backgroundColor = "#e31837";
-  } else if (type === "warning") {
-    iconClass = "bx bx-error-circle";
-    notification.style.backgroundColor = "#ffc107";
-    notification.style.color = "#212529";
-  } else {
-    notification.style.backgroundColor = "#17a2b8";
-  }
-
-  notification.innerHTML = `<i class='${iconClass}' style="font-size:1.3rem;"></i><span>${message}</span><button class='custom-notification-st-close-global' style="background:none;border:none;color:inherit;opacity:0.7;font-size:1.3rem;font-weight:bold;cursor:pointer;margin-left:auto;">&times;</button>`;
-  notificationContainer.appendChild(notification);
-
-  void notification.offsetWidth;
-  notification.style.opacity = "1";
-  notification.style.transform = "translateX(0)";
-
-  const closeButton = notification.querySelector(
-    ".custom-notification-st-close-global"
-  );
-  const removeNotification = () => {
-    if (notification.parentNode) {
-      notification.style.opacity = "0";
-      notification.style.transform = "translateX(110%)";
-      setTimeout(() => {
-        notification.remove();
-      }, 400);
-    }
+  const toast = document.createElement("div");
+  const colors = {
+    success: "#10b981", // Green
+    error: "#ef4444", // Red
+    warning: "#f59e0b", // Orange
+    info: "#3b82f6", // Blue
   };
-  closeButton.addEventListener("click", removeNotification);
-  if (duration > 0) {
-    setTimeout(removeNotification, duration);
-  }
+  const icons = {
+    success: "bx-check-circle",
+    error: "bx-x-circle",
+    warning: "bx-error-circle",
+    info: "bx-info-circle",
+  };
+
+  // Estilos inline para asegurar funcionamiento sin CSS externo
+  toast.style.backgroundColor = colors[type] || colors.info;
+  toast.style.color = "#fff";
+  toast.style.padding = "12px 20px";
+  toast.style.borderRadius = "6px";
+  toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+  toast.style.display = "flex";
+  toast.style.alignItems = "center";
+  toast.style.gap = "10px";
+  toast.style.minWidth = "280px";
+  toast.style.fontWeight = "500";
+  toast.style.opacity = "0";
+  toast.style.transform = "translateX(100%)";
+  toast.style.transition = "all 0.3s ease-out";
+
+  toast.innerHTML = `<i class='bx ${icons[type] || icons.info
+    }' style="font-size:1.4rem"></i><span>${message}</span>`;
+
+  // Botón cerrar
+  const closeBtn = document.createElement("span");
+  closeBtn.innerHTML = "&times;";
+  closeBtn.style.marginLeft = "auto";
+  closeBtn.style.cursor = "pointer";
+  closeBtn.style.fontSize = "1.2rem";
+  closeBtn.onclick = () => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(100%)";
+    setTimeout(() => toast.remove(), 300);
+  };
+  toast.appendChild(closeBtn);
+
+  container.appendChild(toast);
+
+  // Animación de entrada
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateX(0)";
+  });
+
+  // Auto eliminar
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateX(100%)";
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 4000);
 }
