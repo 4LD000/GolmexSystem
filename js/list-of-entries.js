@@ -18,6 +18,7 @@
     let allEntriesData = [];
     let historyYearsPopulated = false;
     let originalEntryStatus = {}; 
+    let highestZIndexLE = 1300;
 
     const dutyTypes = ['Duties', 'Potato fee', 'Dairy fee', 'Watermelon fee', 'Honey fee'];
     const dutyUnits = ['$', 'kg', 'L', 'unit'];
@@ -34,7 +35,6 @@
     const saveEntryBtn = document.getElementById('saveEntryBtn');
     const entryIdInput = document.getElementById('entryId');
     const customerTypeSelect = document.getElementById('le-customer-type-select');
-    // MODIFIED: Updated the selector for the new customer name input field.
     const customerNameInput = document.getElementById('le-customer-name-input');
     const entryNumberSelect = document.getElementById('le-entry-number-select');
     const entryDetailsSection = document.getElementById('entryDetailsSection');
@@ -119,8 +119,24 @@
 
     function openLeModal(modalElement) {
         if (modalElement) {
+            // TRUCO: Aumentamos el z-index cada vez que abrimos uno nuevo
+            // Esto garantiza que el nuevo modal SIEMPRE esté encima del anterior
+            highestZIndexLE++;
+            modalElement.style.zIndex = highestZIndexLE;
+
             modalElement.style.display = 'flex';
             setTimeout(() => modalElement.classList.add('le-modal-open'), 10);
+            
+            // Ajuste de tablas (ya lo tenías, lo dejamos igual)
+            const table = modalElement.querySelector('table.dataTable');
+            if (table) {
+                setTimeout(() => {
+                    const dt = $(table).DataTable();
+                    dt.columns.adjust();
+                    // Si aplicaste el fix de CSS, esto ayuda a que se vea perfecto al abrir
+                    dt.draw(); 
+                }, 200);
+            }
         }
     }
 
@@ -195,7 +211,7 @@
     }
 
 
-    // SECTION 3: DATATABLE INITIALIZATION
+    // SECTION 3: DATATABLE INITIALIZATION (CLEAN FLEXBOX SETUP)
     function initializeEntriesTable(data) {
         if ($.fn.DataTable.isDataTable(entriesTableElement)) {
             entriesDataTable.clear().rows.add(data).draw();
@@ -204,8 +220,15 @@
 
         entriesDataTable = $(entriesTableElement).DataTable({
             data: data,
-            responsive: true,
+            dom: '<"dt-top"l f>rt<"dt-bottom"ip>',
+            // --- CLEAN CONFIGURATION (Matches Invoice Tracking) ---
+            responsive: false, // Critical to avoid ghost rows
             scrollX: true,
+            scrollY: true,
+            scrollCollapse: true,
+            autoWidth: false,
+            deferRender: true,
+
             columns: [
                 { data: 'entry_number', title: 'Entry Number', className: 'dt-left' },
                 { data: 'customer_name', title: 'Customer', className: 'dt-left' },
@@ -290,8 +313,32 @@
                     `
                 }
             ],
-            language: { search: "Search:", emptyTable: "No active entries recorded yet." },
-            order: [[2, 'desc']]
+            language: { 
+                search: "", 
+                searchPlaceholder: "Search...",
+                emptyTable: "No active entries recorded yet.",
+                lengthMenu: "_MENU_ rows"
+            },
+            order: [[2, 'desc']],
+            
+            // --- CLEAN INIT COMPLETE (NO HACKS) ---
+            initComplete: function(settings, json) {
+                const api = this.api();
+                const wrapper = $(api.table().container());
+
+                api.columns.adjust();
+                
+                setTimeout(() => {
+                    api.columns.adjust().draw();
+                    // Add fade-in class
+                    wrapper.addClass('le-ready');
+                }, 250); 
+
+                setTimeout(() => {
+                    $(window).trigger('resize');
+                    api.columns.adjust();
+                }, 500);
+            }
         });
     }
 
@@ -302,8 +349,15 @@
         }
         historyDataTable = $(historyTableElement).DataTable({
             data: data,
-            responsive: true,
+            dom: '<"dt-top"l f>rt<"dt-bottom"ip>',
+            // --- CLEAN CONFIGURATION ---
+            responsive: false,
             scrollX: true,
+            scrollY: true,
+            scrollCollapse: true,
+            autoWidth: false,
+            deferRender: true,
+
             columns: [
                 { data: 'entry_number', title: 'Entry Number', className: 'dt-center' },
                 { data: 'customer_name', title: 'Customer', className: 'dt-center' },
@@ -357,8 +411,30 @@
                     `
                 }
             ],
-            language: { search: "Search History:", emptyTable: "No historical entries found." },
-            order: [[3, 'desc']]
+            language: { 
+                search: "", 
+                searchPlaceholder: "Search History...",
+                emptyTable: "No historical entries found.",
+                lengthMenu: "_MENU_ rows"
+            },
+            order: [[3, 'desc']],
+            
+            // --- CLEAN INIT COMPLETE ---
+            initComplete: function(settings, json) {
+                const api = this.api();
+                const wrapper = $(api.table().container());
+
+                api.columns.adjust();
+                
+                setTimeout(() => {
+                    api.columns.adjust().draw();
+                    wrapper.addClass('le-ready');
+                }, 250); 
+
+                setTimeout(() => {
+                    api.columns.adjust();
+                }, 500);
+            }
         });
     }
 
@@ -399,7 +475,6 @@
         const entryId = entryIdInput.value;
         const dataToSave = {
             customer_type: customerTypeSelect.value,
-            // MODIFIED: Read value from the new text input field.
             customer_name: customerNameInput.value.trim(),
             entry_number: entryNumberSelect.value,
             invoice: invoiceInput.value.trim() || null,
@@ -485,7 +560,6 @@
         entryIdInput.value = '';
         originalEntryStatus = {}; 
         customerTypeSelect.disabled = false;
-        // MODIFIED: Reset logic for the new text input.
         customerNameInput.value = '';
         customerNameInput.disabled = true;
         entryNumberSelect.innerHTML = '<option value="">Select type first...</option>';
@@ -511,12 +585,9 @@
             entryIdInput.value = entry.id;
             customerTypeSelect.value = entry.customer_type;
             customerTypeSelect.disabled = true;
-
-            // MODIFIED: Populate the text input instead of a select.
             customerNameInput.value = entry.customer_name;
-            customerNameInput.disabled = true; // Keep it disabled during edit.
+            customerNameInput.disabled = true;
 
-            // MODIFIED: Fetch entries for the type.
             await fetchAvailableEntriesForType(entry.customer_type, entry.entry_number, true);
             entryNumberSelect.disabled = true;
             
@@ -537,44 +608,111 @@
         }
     }
 
+    // --- MODIFIED: New Dashboard Layout Implementation for View Modal ---
     function populateViewModal(entry) {
-        viewEntryModalTitle.innerHTML = `<i class='bx bx-show-alt'></i> Entry Details - ${entry.entry_number}`;
-        let dutiesHtml = '<p>No duties recorded.</p>';
+        // Modal Header Title
+        viewEntryModalTitle.innerHTML = `<i class='bx bx-show-alt'></i> Entry Details`;
+
+        // Prepare Duties HTML with card style
+        let dutiesHtml = '<div class="le-view-empty-state">No duties recorded.</div>';
         if (entry.duties && entry.duties.length > 0) {
-            dutiesHtml = entry.duties.map(d => `<li><span class="le-duty-name">${d.type}</span> <span class="le-duty-value">${d.value} ${d.unit}</span></li>`).join('');
-            dutiesHtml = `<ul class="le-duties-view-container">${dutiesHtml}</ul>`;
+            const listItems = entry.duties.map(d => `
+                <div class="le-view-duty-card">
+                    <div class="le-duty-icon"><i class='bx bx-purchase-tag'></i></div>
+                    <div class="le-duty-info">
+                        <span class="le-duty-type">${d.type}</span>
+                        <span class="le-duty-amount">${d.value} <small>${d.unit}</small></span>
+                    </div>
+                </div>
+            `).join('');
+            dutiesHtml = `<div class="le-view-duties-grid">${listItems}</div>`;
         }
+
+        // Sanitize status strings for CSS classes
         const safeStatus = (entry.status || 'In Progress').toLowerCase().replace(/\s/g, '-');
         const safeFdaStatus = (entry.fda_status || 'Hold').toLowerCase().replace(/\s/g, '-');
         const safeCargoStatus = (entry.cargo_release || 'Pending').toLowerCase().replace(/\s/g, '-');
 
+        // Format Date
+        const dateStr = entry.created_at ? new Date(entry.created_at).toLocaleDateString() : 'N/A';
+
+        // --- NEW HTML STRUCTURE (DASHBOARD STYLE) ---
         viewEntryDetailsBody.innerHTML = `
-            <div class="le-detail-section">
-                <h4><i class='bx bx-info-circle'></i> General Information</h4>
-                <div class="le-detail-grid">
-                    <div class="le-detail-group"><span class="le-detail-label">Entry Number:</span><span class="le-detail-value">${entry.entry_number}</span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Customer:</span><span class="le-detail-value">${entry.customer_name}</span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Customer Type:</span><span class="le-detail-value">${entry.customer_type}</span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Date:</span><span class="le-detail-value">${new Date(entry.created_at).toLocaleDateString()}</span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Invoice:</span><span class="le-detail-value">${entry.invoice || 'N/A'}</span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Bond Type:</span><span class="le-detail-value">${entry.bond_type}</span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Status:</span><span class="le-detail-value"><span class="le-status-badge status-${safeStatus}">${entry.status}</span></span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">FDA Status:</span><span class="le-detail-value"><span class="le-status-badge status-${safeFdaStatus}">${entry.fda_status || 'Hold'}</span></span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">Cargo Release:</span><span class="le-detail-value"><span class="le-status-badge status-${safeCargoStatus}">${entry.cargo_release || 'Pending'}</span></span></div>
-                    <div class="le-detail-group"><span class="le-detail-label">User:</span><span class="le-detail-value">${entry.user_name}</span></div>
+            <div class="le-view-hero">
+                <div class="le-view-hero-content">
+                    <span class="le-hero-label">Entry Number</span>
+                    <h2 class="le-hero-title">${entry.entry_number}</h2>
+                </div>
+                <div class="le-view-hero-meta">
+                    <div class="le-meta-item">
+                        <i class='bx bx-calendar'></i> <span>${dateStr}</span>
+                    </div>
+                    <div class="le-meta-item">
+                        <i class='bx bx-user'></i> <span>${entry.user_name || 'System'}</span>
+                    </div>
                 </div>
             </div>
-            <div class="le-detail-section">
-                <h4><i class='bx bx-dollar-circle'></i> Duties</h4>
+
+            <div class="le-view-status-row">
+                <div class="le-status-card">
+                    <span class="le-card-label">General Status</span>
+                    <span class="le-status-badge status-${safeStatus} large-badge">${entry.status}</span>
+                </div>
+                <div class="le-status-card">
+                    <span class="le-card-label">FDA Status</span>
+                    <span class="le-status-badge status-${safeFdaStatus} large-badge">${entry.fda_status || 'Hold'}</span>
+                </div>
+                <div class="le-status-card">
+                    <span class="le-card-label">Cargo Release</span>
+                    <span class="le-status-badge status-${safeCargoStatus} large-badge">${entry.cargo_release || 'Pending'}</span>
+                </div>
+            </div>
+
+            <div class="le-view-main-grid">
+                <div class="le-view-section">
+                    <h4 class="le-section-title"><i class='bx bx-buildings'></i> Customer Details</h4>
+                    <div class="le-info-box">
+                        <div class="le-info-row">
+                            <span class="le-info-label">Customer Name:</span>
+                            <span class="le-info-value highlight">${entry.customer_name}</span>
+                        </div>
+                        <div class="le-info-row">
+                            <span class="le-info-label">Customer Type:</span>
+                            <span class="le-info-value">${entry.customer_type}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="le-view-section">
+                    <h4 class="le-section-title"><i class='bx bx-box'></i> Logistics & Bond</h4>
+                    <div class="le-info-box">
+                        <div class="le-info-row">
+                            <span class="le-info-label">Invoice #:</span>
+                            <span class="le-info-value">${entry.invoice || 'N/A'}</span>
+                        </div>
+                        <div class="le-info-row">
+                            <span class="le-info-label">Bond Type:</span>
+                            <span class="le-info-value">${entry.bond_type}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="le-view-section full-width">
+                <h4 class="le-section-title"><i class='bx bx-dollar-circle'></i> Duties & Fees</h4>
                 ${dutiesHtml}
             </div>
-            <div class="le-detail-section">
-                <h4><i class='bx bx-note'></i> Notes</h4>
-                <p class="le-detail-value">${entry.notes || 'No notes provided.'}</p>
+
+            <div class="le-view-section full-width">
+                <h4 class="le-section-title"><i class='bx bx-note'></i> Notes</h4>
+                <div class="le-notes-box">
+                    ${entry.notes ? entry.notes : '<span class="text-muted">No additional notes provided for this entry.</span>'}
+                </div>
             </div>
         `;
         openLeModal(viewEntryModal);
     }
+    // --- END MODIFICATION ---
 
     // SECTION 6: DOCUMENT MANAGEMENT
     async function uploadEntryDocument() {
@@ -721,12 +859,8 @@
 
             const { provider_token, user } = session;
             if (!provider_token) {
-                // This means the user needs to grant the gmail.send scope
                 closeLeModal(sendingNotificationModal);
                 await signInWithGmailScope();
-                // After the user grants permission, they will be redirected back.
-                // The action will need to be re-initiated by the user.
-                // A more advanced implementation could store the pending action in localStorage.
                 showLENotification('Permission required. Please try the action again.', 'info');
                 return;
             }
@@ -793,18 +927,9 @@
         });
     }
 
-    // MODIFIED: This function is no longer needed with the new logic.
-    /*
-    async function fetchCustomersForType(customerType, selectedCustomer = null) {
-        // ... (code removed)
-    }
-    */
-
-    // MODIFIED: Renamed and changed this function to fetch entries based on Customer Type.
     async function fetchAvailableEntriesForType(customerType, selectedEntry = null, isEditing = false) {
         entryNumberSelect.innerHTML = '<option>Loading...</option>';
         entryNumberSelect.disabled = true;
-        // MODIFIED: Query is now based on customer_type instead of customer_name.
         let query = supabase.from(AVAILABLE_ENTRIES_TABLE).select('entry_number').eq('customer_type', customerType);
         if (!isEditing) {
             query = query.eq('is_used', false);
@@ -837,7 +962,6 @@
         csvResultsMessage.textContent = '';
     }
 
-    // MODIFIED: This function is completely overhauled for the new 2-column CSV format.
     async function handleProcessCsv() {
         const file = csvUploadInput.files[0];
         if (!file) return showLENotification('Please select a CSV file.', 'warning');
@@ -864,8 +988,6 @@
                 
                 if (entries.length === 0) throw new Error('No valid data rows found.');
 
-                // Check for duplicates based on entry_number only, assuming they are globally unique.
-                // If entry_number can be the same for different types, change the check.
                 const { data: existing } = await supabase.from(AVAILABLE_ENTRIES_TABLE).select('entry_number');
                 const existingSet = new Set(existing.map(e => e.entry_number));
                 
@@ -882,7 +1004,6 @@
                 showLENotification(error.message, 'error');
             } finally {
                 processCsvBtn.innerHTML = 'Process Data';
-                // Do not re-enable the button to prevent double-uploads. User can close and reopen.
             }
         };
         reader.readAsText(file);
@@ -972,7 +1093,6 @@
             closeLeModal(leCustomConfirmModal);
         });
         
-        // MODIFIED: Event listener for Customer Type now fetches entry numbers directly.
         customerTypeSelect.addEventListener('change', () => {
             const selectedType = customerTypeSelect.value;
             if (selectedType) {
@@ -984,9 +1104,6 @@
             }
         });
 
-        // MODIFIED: Removed the event listener for the old customer select dropdown.
-        // customerSelect.addEventListener('change', () => fetchAvailableEntriesForCustomer(customerSelect.value));
-        
         entryNumberSelect.addEventListener('change', () => {
             if (entryNumberSelect.value) {
                 entryDetailsSection.classList.add('visible');
@@ -1024,6 +1141,13 @@
                 showLENotification('Please enter a valid email address.', 'error');
             }
         });
+
+        // Global Resize Handler (Simple)
+        $(window).on('resize', function () {
+            if ($.fn.dataTable) {
+                $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+            }
+        });
     }
 
     // SECTION 9: HISTORY FUNCTIONS
@@ -1031,6 +1155,14 @@
         populateHistoryFilterDropdowns();
         handleFilterHistoryEntries();
         openLeModal(historyModal);
+        
+        // --- UPDATED: Recalculate DataTables layout on History Modal Open ---
+        setTimeout(() => {
+            if ($.fn.DataTable.isDataTable(historyTableElement)) {
+                const table = $(historyTableElement).DataTable();
+                table.columns.adjust().draw(); // Simple redraw
+            }
+        }, 250);
     }
 
     function populateHistoryFilterDropdowns() {
@@ -1108,6 +1240,7 @@
             if (historyDataTable) { historyDataTable.destroy(); historyDataTable = null; }
             document.removeEventListener("supabaseAuthStateChange", handleAuthChange);
             document.removeEventListener("moduleWillUnload", cleanupModule);
+            $(window).off('resize');
             console.log("LE Module Unloaded");
         };
 
