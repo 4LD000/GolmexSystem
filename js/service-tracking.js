@@ -969,8 +969,7 @@
     } catch (error) {
       console.error("ST Module: Error fetching services from Supabase:", error);
       showCustomNotification(
-        `Error fetching ${error.type || ""} services: ${
-          error.message || "Unknown error"
+        `Error fetching ${error.type || ""} services: ${error.message || "Unknown error"
         }`,
         "error"
       );
@@ -1671,7 +1670,6 @@
   }
 
   // SECTION 7: MODAL SPECIFIC LOGIC & UI SETUP
-  // ===== REPLACE THE ENTIRE FUNCTION WITH THIS VERSION =====
   function createChargeRowElement(
     serviceType,
     charge = null,
@@ -1692,7 +1690,7 @@
       return fieldWrapper;
     };
 
-    // --- Form elements (no changes to variable names) ---
+    // --- Form elements ---
     const nameSelect = document.createElement("select");
     nameSelect.name = "chargeName[]";
     nameSelect.required = true;
@@ -1726,7 +1724,7 @@
     deleteBtn.innerHTML = "<i class='bx bx-trash'></i>";
     deleteBtn.title = "Delete Charge";
 
-    // --- Bi-directional calculation logic (no changes here) ---
+    // --- Bi-directional calculation logic ---
     let isCalculating = false;
     const calculateFinalPrice = () => {
       if (isCalculating) return;
@@ -1751,13 +1749,12 @@
       isCalculating = false;
     };
 
-    // --- Assign values and events (no changes here) ---
+    // --- Assign values and events ---
     const availableCharges = SERVICE_CHARGES_MAP[serviceType] || [];
     let nameOptionsHtml = '<option value="">Select Charge...</option>';
     availableCharges.forEach((chargeName) => {
-      nameOptionsHtml += `<option value="${chargeName}" ${
-        charge?.name === chargeName ? "selected" : ""
-      }>${chargeName}</option>`;
+      nameOptionsHtml += `<option value="${chargeName}" ${charge?.name === chargeName ? "selected" : ""
+        }>${chargeName}</option>`;
     });
     nameSelect.innerHTML = nameOptionsHtml;
     if (charge?.name) nameSelect.value = charge.name;
@@ -1786,33 +1783,20 @@
       const isSelected =
         charge?.currency === currencyCode ||
         (!charge && currencyCode === SERVICE_CHARGES_MAP.defaultCurrency);
-      currencyOptionsHtml += `<option value="${currencyCode}" ${
-        isSelected ? "selected" : ""
-      }>${currencyCode}</option>`;
+      currencyOptionsHtml += `<option value="${currencyCode}" ${isSelected ? "selected" : ""
+        }>${currencyCode}</option>`;
     });
     currencySelect.innerHTML = currencyOptionsHtml;
     if (charge?.currency) currencySelect.value = charge.currency;
     deleteBtn.addEventListener("click", () => chargeRow.remove());
 
-    // --- Build the row with the new fields and SPECIFIC CLASSES (using ENGLISH labels) ---
-    chargeRow.appendChild(
-      createField("Charge Type", nameSelect, "st-field-charge-type")
-    );
-    chargeRow.appendChild(
-      createField("Provider", providerNameInput, "st-field-provider")
-    );
-    chargeRow.appendChild(
-      createField("Provider Cost", internalCostInput, "st-field-provider-cost")
-    );
-    chargeRow.appendChild(
-      createField("Margin %", marginPercentInput, "st-field-margin")
-    );
-    chargeRow.appendChild(
-      createField("Final Price", finalPriceInput, "st-field-final-price")
-    );
-    chargeRow.appendChild(
-      createField("Currency", currencySelect, "st-field-currency")
-    );
+    // --- Build the row ---
+    chargeRow.appendChild(createField("Charge Type", nameSelect, "st-field-charge-type"));
+    chargeRow.appendChild(createField("Provider", providerNameInput, "st-field-provider"));
+    chargeRow.appendChild(createField("Provider Cost", internalCostInput, "st-field-provider-cost"));
+    chargeRow.appendChild(createField("Margin %", marginPercentInput, "st-field-margin"));
+    chargeRow.appendChild(createField("Final Price", finalPriceInput, "st-field-final-price"));
+    chargeRow.appendChild(createField("Currency", currencySelect, "st-field-currency"));
     chargeRow.appendChild(createField("Action", deleteBtn, "st-field-action"));
 
     return chargeRow;
@@ -1833,14 +1817,18 @@
           createChargeRowElement(serviceType, charge, isEditable)
         );
       });
-      if (viewNoChargesMessage && !isEditable)
-        viewNoChargesMessage.style.display = "none";
-    } else if (!isEditable && viewNoChargesMessage) {
-      viewNoChargesMessage.style.display = "block";
-      viewNoChargesMessage.textContent =
-        "No charges associated with this service.";
+      // Safety check for viewNoChargesMessage
+      const noMsg = document.getElementById("viewNoChargesMessage");
+      if (noMsg && !isEditable) noMsg.style.display = "none";
+    } else if (!isEditable) {
+      const noMsg = document.getElementById("viewNoChargesMessage");
+      if (noMsg) {
+        noMsg.style.display = "block";
+        noMsg.textContent = "No charges associated with this service.";
+      }
     }
   }
+
   function resetCreateFormSpecifics() {
     if (oceanFieldsModal) oceanFieldsModal.style.display = "none";
     if (airFieldsModal) airFieldsModal.style.display = "none";
@@ -1850,12 +1838,12 @@
     if (containerFieldsModal) containerFieldsModal.style.display = "none";
     if (dimensionsCbmGroupModal) dimensionsCbmGroupModal.style.display = "none";
     if (isfErrorModal) isfErrorModal.style.display = "none";
-    if (isfRequiredIndicatorModal)
-      isfRequiredIndicatorModal.style.display = "inline";
+    if (isfRequiredIndicatorModal) isfRequiredIndicatorModal.style.display = "inline";
     if (isfFileInputModal) isfFileInputModal.value = "";
     if (addIsfLaterCheckboxModal) addIsfLaterCheckboxModal.checked = false;
     if (chargesContainerCreate) chargesContainerCreate.innerHTML = "";
   }
+
   function handleCreateCategoryChange() {
     const category = serviceCategoryModalSelect.value;
     resetCreateFormSpecifics();
@@ -1867,41 +1855,27 @@
       if (hblHawbGroupModal) hblHawbGroupModal.style.display = "block";
       if (hblLabel) hblLabel.textContent = "HBL (Ocean):";
       if (containerFieldsModal) containerFieldsModal.style.display = "block";
-      if (isfRequiredIndicatorModal)
-        isfRequiredIndicatorModal.style.display = "inline";
+      if (isfRequiredIndicatorModal) isfRequiredIndicatorModal.style.display = "inline";
     } else if (category === "air") {
       if (airFieldsModal) airFieldsModal.style.display = "block";
-      if (flightNumberGroupModal)
-        flightNumberGroupModal.style.display = "block";
+      if (flightNumberGroupModal) flightNumberGroupModal.style.display = "block";
       if (hblHawbGroupModal) hblHawbGroupModal.style.display = "block";
       if (hblLabel) hblLabel.textContent = "HAWB (Air):";
-      if (document.getElementById("dimensionsModal"))
-        document
-          .getElementById("dimensionsModal")
-          .closest(".st-form-group").style.display = "block";
-      if (document.getElementById("cbmModal"))
-        document
-          .getElementById("cbmModal")
-          .closest(".st-form-group").style.display = "none";
-      if (dimensionsCbmGroupModal)
-        dimensionsCbmGroupModal.style.display = "block";
-      if (isfRequiredIndicatorModal)
-        isfRequiredIndicatorModal.style.display = "none";
+      const dimInput = document.getElementById("dimensionsModal");
+      if (dimInput) dimInput.closest(".st-form-group").style.display = "block";
+      const cbmInput = document.getElementById("cbmModal");
+      if (cbmInput) cbmInput.closest(".st-form-group").style.display = "none";
+      if (dimensionsCbmGroupModal) dimensionsCbmGroupModal.style.display = "block";
+      if (isfRequiredIndicatorModal) isfRequiredIndicatorModal.style.display = "none";
     } else if (category === "truck") {
       if (truckFieldsModal) truckFieldsModal.style.display = "block";
-      if (document.getElementById("dimensionsModal"))
-        document
-          .getElementById("dimensionsModal")
-          .closest(".st-form-group").style.display = "block";
-      if (document.getElementById("cbmModal"))
-        document
-          .getElementById("cbmModal")
-          .closest(".st-form-group").style.display = "block";
-      if (dimensionsCbmGroupModal)
-        dimensionsCbmGroupModal.style.display = "block";
+      const dimInput = document.getElementById("dimensionsModal");
+      if (dimInput) dimInput.closest(".st-form-group").style.display = "block";
+      const cbmInput = document.getElementById("cbmModal");
+      if (cbmInput) cbmInput.closest(".st-form-group").style.display = "block";
+      if (dimensionsCbmGroupModal) dimensionsCbmGroupModal.style.display = "block";
       if (hblHawbGroupModal) hblHawbGroupModal.style.display = "none";
-      if (isfRequiredIndicatorModal)
-        isfRequiredIndicatorModal.style.display = "none";
+      if (isfRequiredIndicatorModal) isfRequiredIndicatorModal.style.display = "none";
     }
 
     if (category && chargesContainerCreate) {
@@ -1911,145 +1885,179 @@
     }
     validateIsfCreateModal();
   }
+
   function validateIsfCreateModal() {
-    if (
-      !isfErrorModal ||
-      !serviceCategoryModalSelect ||
-      !isfFileInputModal ||
-      !addIsfLaterCheckboxModal
-    )
-      return true;
+    if (!isfErrorModal || !serviceCategoryModalSelect || !isfFileInputModal || !addIsfLaterCheckboxModal) return true;
     const category = serviceCategoryModalSelect.value;
     if (
       category === "ocean" &&
       !addIsfLaterCheckboxModal.checked &&
       (!isfFileInputModal.files || isfFileInputModal.files.length === 0)
     ) {
-      isfErrorModal.textContent =
-        'For Ocean services, ISF file or "Add ISF Later" is required.';
+      isfErrorModal.textContent = 'For Ocean services, ISF file or "Add ISF Later" is required.';
       isfErrorModal.style.display = "block";
       return false;
     }
     if (isfErrorModal) isfErrorModal.style.display = "none";
     return true;
   }
-  function populateViewModal(serviceData) {
-    if (!viewServiceModal || !serviceData) return;
 
-    const categoryInfo = getCategoryTextAndClass(
-      serviceData.serviceCategoryInternal
-    );
-    if (viewServiceTypeBadge) {
-      viewServiceTypeBadge.innerHTML = categoryInfo.text;
-      viewServiceTypeBadge.className = `st-type-badge ${categoryInfo.class}`;
+  // --- POPULATE VIEW MODAL (SAFE/DEFENSIVE VERSION) ---
+  function populateViewModal(serviceData) {
+    // 1. Safety Checks
+    const modal = document.getElementById("viewServiceModal");
+    if (!modal || !serviceData) return;
+
+    // Helper to safely set text content, falling back to document.getElementById if the variable is null
+    const safeSetText = (elementOrId, text) => {
+      let el = elementOrId;
+      if (typeof elementOrId === 'string') {
+        el = document.getElementById(elementOrId);
+      }
+      // If element passed is a variable that is null, try to find it by ID inferred from variable name
+      // (This is tricky in minified JS, so we rely on explicit ID checks here)
+      if (el) {
+        el.textContent = text || "N/A";
+      }
+    };
+
+    const categoryInfo = getCategoryTextAndClass(serviceData.serviceCategoryInternal);
+
+    // Header Badges
+    const badgeEl = document.getElementById("viewServiceTypeBadge");
+    if (badgeEl) {
+      badgeEl.innerHTML = categoryInfo.text;
+      badgeEl.className = `st-type-badge ${categoryInfo.class}`;
+    }
+    const statusEl = document.getElementById("viewServiceStatus");
+    if (statusEl) {
+      statusEl.textContent = serviceData.status || "N/A";
+      statusEl.className = 'st-status-badge';
     }
 
-    viewServiceId.textContent = serviceData.service_display_id || "N/A";
-    viewCustomer.textContent = serviceData.customer || "N/A";
-    viewEtd.textContent = serviceData.etd || "N/A";
-    viewEta.textContent = serviceData.eta || "N/A";
-    viewShipper.textContent = serviceData.shipper || "N/A";
-    viewConsignee.textContent = serviceData.consignee || "N/A";
-    viewCarrier.textContent = serviceData.carrier || "N/A";
-    viewPol.textContent = serviceData.pol || "N/A";
-    viewPod.textContent = serviceData.pod || "N/A";
-    viewFinalDestination.textContent = serviceData.finalDestination || "N/A";
-    viewMblHawbPro.textContent = serviceData.mblHawbPro || "N/A";
-    viewNumPackages.textContent = serviceData.numPackages || "N/A";
-    viewGrossWeight.textContent = serviceData.grossWeight || "N/A";
-    viewCommodityDescription.textContent =
-      serviceData.commodityDescription || "N/A";
-    viewHtsCode.textContent = serviceData.htsCode || "N/A";
-    viewServiceStatus.textContent = serviceData.status || "N/A";
-    viewServiceNotes.textContent = serviceData.notes || "N/A";
-    const creatorInfoEl = viewServiceModal.querySelector("#viewServiceCreator");
-    if (creatorInfoEl)
-      creatorInfoEl.textContent = serviceData.user_email || "N/A";
+    // Hero & Basic Info
+    safeSetText("viewServiceId", serviceData.service_display_id);
+    safeSetText("viewCustomer", serviceData.customer);
+    safeSetText("viewServiceCreator", serviceData.user_email || "System");
 
-    viewOceanSpecificDetails.style.display = "none";
-    viewAirSpecificDetails.style.display = "none";
-    viewTruckSpecificDetails.style.display = "none";
+    // Status Cards (Dates)
+    safeSetText("viewEtd", serviceData.etd || "TBD");
+    safeSetText("viewEta", serviceData.eta || "TBD");
+    safeSetText("viewMblHawbPro", serviceData.mblHawbPro);
+
+    // Routes & Parties
+    safeSetText("viewShipper", serviceData.shipper);
+    safeSetText("viewConsignee", serviceData.consignee);
+    safeSetText("viewCarrier", serviceData.carrier);
+    safeSetText("viewPol", serviceData.pol);
+    safeSetText("viewPod", serviceData.pod);
+    safeSetText("viewFinalDestination", serviceData.finalDestination);
+
+    // Category Specifics Toggle
+    const oceanDetails = document.getElementById("viewOceanSpecificDetails");
+    const airDetails = document.getElementById("viewAirSpecificDetails");
+    const truckDetails = document.getElementById("viewTruckSpecificDetails");
+
+    if (oceanDetails) oceanDetails.style.display = "none";
+    if (airDetails) airDetails.style.display = "none";
+    if (truckDetails) truckDetails.style.display = "none";
 
     if (serviceData.serviceCategoryInternal === "ocean") {
-      viewOceanSpecificDetails.style.display = "block";
-      viewHblOcean.textContent = serviceData.hbl || "N/A";
-      viewOceanServiceType.textContent = serviceData.oceanServiceType || "N/A";
-      viewOceanService.textContent = serviceData.oceanService || "N/A";
-      viewContainerNumber.textContent = serviceData.containerNumber || "N/A";
-      viewContainerType.textContent = serviceData.containerType || "N/A";
-      viewSealNumber.textContent = serviceData.sealNumber || "N/A";
+      if (oceanDetails) oceanDetails.style.display = "block";
+      safeSetText("viewHblOcean", serviceData.hbl);
+      safeSetText("viewOceanServiceType", serviceData.oceanServiceType);
+      safeSetText("viewOceanService", serviceData.oceanService);
+      safeSetText("viewContainerNumber", serviceData.containerNumber);
+      safeSetText("viewContainerType", serviceData.containerType);
+      safeSetText("viewSealNumber", serviceData.sealNumber);
     } else if (serviceData.serviceCategoryInternal === "air") {
-      viewAirSpecificDetails.style.display = "block";
-      viewHblAir.textContent = serviceData.hawb || "N/A";
-      viewFlightNumber.textContent = serviceData.flightNumber || "N/A";
-      viewDimensionsAir.textContent = serviceData.dimensions || "N/A";
+      if (airDetails) airDetails.style.display = "block";
+      safeSetText("viewHblAir", serviceData.hawb);
+      safeSetText("viewFlightNumber", serviceData.flightNumber);
+      safeSetText("viewDimensionsAir", serviceData.dimensions);
     } else if (serviceData.serviceCategoryInternal === "truck") {
-      viewTruckSpecificDetails.style.display = "block";
-      viewTruckServiceType.textContent = serviceData.truckServiceType || "N/A";
-      viewCbm.textContent = serviceData.cbm || "N/A";
-      viewDimensionsTruck.textContent = serviceData.dimensions || "N/A";
+      if (truckDetails) truckDetails.style.display = "block";
+      safeSetText("viewTruckServiceType", serviceData.truckServiceType);
+      safeSetText("viewCbm", serviceData.cbm);
+      safeSetText("viewDimensionsTruck", serviceData.dimensions);
     }
 
-    if (viewServiceChargesContainer && viewNoChargesMessage) {
-      viewServiceChargesContainer.innerHTML = "";
-      viewNoChargesMessage.style.display = "none";
+    // Cargo Details
+    safeSetText("viewNumPackages", serviceData.numPackages);
+    safeSetText("viewGrossWeight", serviceData.grossWeight);
+    safeSetText("viewCommodityDescription", serviceData.commodityDescription);
+    safeSetText("viewHtsCode", serviceData.htsCode);
+
+    // Notes
+    safeSetText("viewServiceNotes", serviceData.notes || "No additional notes.");
+
+    // Charges (New Card Layout)
+    const chargesContainer = document.getElementById("viewServiceChargesContainer");
+    const noChargesMsg = document.getElementById("viewNoChargesMessage");
+
+    if (chargesContainer) {
+      // Clear existing content except the "No charges" message
+      Array.from(chargesContainer.children).forEach(child => {
+        if (child.id !== "viewNoChargesMessage") {
+          chargesContainer.removeChild(child);
+        }
+      });
+
+      if (noChargesMsg) noChargesMsg.style.display = "none";
+
       const charges = serviceData.service_charges || [];
+
       if (charges.length > 0) {
-        const totalsByCurrency = {};
+        chargesContainer.className = "st-view-charges-grid"; // Enable Grid
+
         charges.forEach((charge) => {
-          const chargeDiv = document.createElement("div");
-          chargeDiv.className = "st-detail-group charge-item-view";
-          chargeDiv.innerHTML = `
-                <span class="st-detail-value charge-name-view">${
-                  charge.name
-                }</span>
-                <span class="st-detail-value charge-cost-view">${(
-                  charge.final_price || 0
-                ) // <-- CORREGIDO
-                  .toFixed(2)} ${
-            charge.currency || SERVICE_CHARGES_MAP.defaultCurrency
-          }</span>
-            `;
-          viewServiceChargesContainer.appendChild(chargeDiv);
+          const chargeCard = document.createElement("div");
+          chargeCard.className = "st-charge-card";
 
-          const currency =
-            charge.currency || SERVICE_CHARGES_MAP.defaultCurrency;
-          totalsByCurrency[currency] =
-            (totalsByCurrency[currency] || 0) + (charge.final_price || 0); // <-- CORREGIDO
-        });
+          const iconDiv = document.createElement("div");
+          iconDiv.className = "st-charge-icon";
+          iconDiv.innerHTML = "<i class='bx bx-dollar'></i>";
 
-        Object.keys(totalsByCurrency).forEach((currency) => {
-          const totalDiv = document.createElement("div");
-          totalDiv.className = "charge-total-view";
-          totalDiv.innerHTML = `
-                <span class="charge-total-label-view">TOTAL (${currency}):</span>
-                <span class="charge-total-amount-view">${totalsByCurrency[
-                  currency
-                ].toFixed(2)} ${currency}</span>
-            `;
-          viewServiceChargesContainer.appendChild(totalDiv);
+          const infoDiv = document.createElement("div");
+          infoDiv.className = "st-charge-info";
+
+          const nameSpan = document.createElement("span");
+          nameSpan.className = "st-charge-name";
+          nameSpan.textContent = charge.name;
+          nameSpan.title = charge.name;
+
+          const amountSpan = document.createElement("span");
+          amountSpan.className = "st-charge-amount";
+          const amount = parseFloat(charge.final_price || 0).toFixed(2);
+          const currency = charge.currency || "USD";
+          amountSpan.textContent = `${amount} ${currency}`;
+
+          infoDiv.appendChild(nameSpan);
+          infoDiv.appendChild(amountSpan);
+          chargeCard.appendChild(iconDiv);
+          chargeCard.appendChild(infoDiv);
+
+          chargesContainer.appendChild(chargeCard);
         });
       } else {
-        viewNoChargesMessage.style.display = "block";
-        viewNoChargesMessage.textContent =
-          "No charges associated with this service.";
+        chargesContainer.className = ""; // Reset grid for message
+        if (noChargesMsg) noChargesMsg.style.display = "block";
       }
     }
   }
+
   function resetEditFormSpecifics() {
     if (editOceanFieldsModal) editOceanFieldsModal.style.display = "none";
     if (editAirFieldsModal) editAirFieldsModal.style.display = "none";
     if (editTruckFieldsModal) editTruckFieldsModal.style.display = "none";
-    if (editFlightNumberGroupModal)
-      editFlightNumberGroupModal.style.display = "none";
+    if (editFlightNumberGroupModal) editFlightNumberGroupModal.style.display = "none";
     if (editHblHawbGroupModal) editHblHawbGroupModal.style.display = "none";
-    if (editContainerFieldsModal)
-      editContainerFieldsModal.style.display = "none";
-    if (editDimensionsCbmGroupModal)
-      editDimensionsCbmGroupModal.style.display = "none";
+    if (editContainerFieldsModal) editContainerFieldsModal.style.display = "none";
+    if (editDimensionsCbmGroupModal) editDimensionsCbmGroupModal.style.display = "none";
     if (editIsfErrorModal) editIsfErrorModal.style.display = "none";
-    if (editIsfRequiredIndicatorModal)
-      editIsfRequiredIndicatorModal.style.display = "inline";
+    if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "inline";
+
+    // Check if elements exist before accessing props
     if (editIsfFileModalInput) {
       editIsfFileModalInput.value = "";
       editIsfFileModalInput.style.display = "block";
@@ -2061,20 +2069,18 @@
     }
     if (chargesContainerEdit) chargesContainerEdit.innerHTML = "";
   }
+
   function handleEditCategoryChange() {
     const category = editServiceCategoryModalSelect.value;
+    // Safe resets
     if (editOceanFieldsModal) editOceanFieldsModal.style.display = "none";
     if (editAirFieldsModal) editAirFieldsModal.style.display = "none";
     if (editTruckFieldsModal) editTruckFieldsModal.style.display = "none";
-    if (editFlightNumberGroupModal)
-      editFlightNumberGroupModal.style.display = "none";
+    if (editFlightNumberGroupModal) editFlightNumberGroupModal.style.display = "none";
     if (editHblHawbGroupModal) editHblHawbGroupModal.style.display = "none";
-    if (editContainerFieldsModal)
-      editContainerFieldsModal.style.display = "none";
-    if (editDimensionsCbmGroupModal)
-      editDimensionsCbmGroupModal.style.display = "none";
-    if (editIsfRequiredIndicatorModal)
-      editIsfRequiredIndicatorModal.style.display = "none";
+    if (editContainerFieldsModal) editContainerFieldsModal.style.display = "none";
+    if (editDimensionsCbmGroupModal) editDimensionsCbmGroupModal.style.display = "none";
+    if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "none";
 
     const hblLabelEdit = document.querySelector('label[for="editHblModal"]');
 
@@ -2082,60 +2088,52 @@
       if (editOceanFieldsModal) editOceanFieldsModal.style.display = "block";
       if (editHblHawbGroupModal) editHblHawbGroupModal.style.display = "block";
       if (hblLabelEdit) hblLabelEdit.textContent = "HBL (Ocean):";
-      if (editContainerFieldsModal)
-        editContainerFieldsModal.style.display = "block";
-      if (editIsfRequiredIndicatorModal)
-        editIsfRequiredIndicatorModal.style.display = "inline";
+      if (editContainerFieldsModal) editContainerFieldsModal.style.display = "block";
+      if (editIsfRequiredIndicatorModal) editIsfRequiredIndicatorModal.style.display = "inline";
     } else if (category === "air") {
       if (editAirFieldsModal) editAirFieldsModal.style.display = "block";
-      if (editFlightNumberGroupModal)
-        editFlightNumberGroupModal.style.display = "block";
+      if (editFlightNumberGroupModal) editFlightNumberGroupModal.style.display = "block";
       if (editHblHawbGroupModal) editHblHawbGroupModal.style.display = "block";
       if (hblLabelEdit) hblLabelEdit.textContent = "HAWB (Air):";
-      if (document.getElementById("editDimensionsModal"))
-        document
-          .getElementById("editDimensionsModal")
-          .closest(".st-form-group").style.display = "block";
-      if (document.getElementById("editCbmModal"))
-        document
-          .getElementById("editCbmModal")
-          .closest(".st-form-group").style.display = "none";
-      if (editDimensionsCbmGroupModal)
-        editDimensionsCbmGroupModal.style.display = "block";
+
+      const dimInput = document.getElementById("editDimensionsModal");
+      if (dimInput) dimInput.closest(".st-form-group").style.display = "block";
+      const cbmInput = document.getElementById("editCbmModal");
+      if (cbmInput) cbmInput.closest(".st-form-group").style.display = "none";
+      if (editDimensionsCbmGroupModal) editDimensionsCbmGroupModal.style.display = "block";
     } else if (category === "truck") {
       if (editTruckFieldsModal) editTruckFieldsModal.style.display = "block";
-      if (document.getElementById("editDimensionsModal"))
-        document
-          .getElementById("editDimensionsModal")
-          .closest(".st-form-group").style.display = "block";
-      if (document.getElementById("editCbmModal"))
-        document
-          .getElementById("editCbmModal")
-          .closest(".st-form-group").style.display = "block";
-      if (editDimensionsCbmGroupModal)
-        editDimensionsCbmGroupModal.style.display = "block";
+      const dimInput = document.getElementById("editDimensionsModal");
+      if (dimInput) dimInput.closest(".st-form-group").style.display = "block";
+      const cbmInput = document.getElementById("editCbmModal");
+      if (cbmInput) cbmInput.closest(".st-form-group").style.display = "block";
+      if (editDimensionsCbmGroupModal) editDimensionsCbmGroupModal.style.display = "block";
     }
 
     if (chargesContainerEdit) {
       const currentCharges = [];
-      const existingChargeRows =
-        chargesContainerEdit.querySelectorAll(".st-charge-row");
+      const existingChargeRows = chargesContainerEdit.querySelectorAll(".st-charge-row");
       existingChargeRows.forEach((row) => {
         const nameSelect = row.querySelector('select[name="chargeName[]"]');
-        const costInput = row.querySelector('input[name="chargeCost[]"]');
-        const currencySelect = row.querySelector(
-          'select[name="chargeCurrency[]"]'
-        );
+        const costInput = row.querySelector('input[name="internal_cost[]"]');
+        const marginInput = row.querySelector('input[name="margin_percent[]"]');
+        const finalPriceInput = row.querySelector('input[name="final_price[]"]');
+        const providerNameInput = row.querySelector('input[name="provider_name[]"]');
+        const currencySelect = row.querySelector('select[name="chargeCurrency[]"]');
+
         if (
           nameSelect &&
-          costInput &&
+          finalPriceInput &&
           currencySelect &&
           nameSelect.value &&
-          !isNaN(parseFloat(costInput.value))
+          !isNaN(parseFloat(finalPriceInput.value))
         ) {
           currentCharges.push({
             name: nameSelect.value,
-            cost: parseFloat(costInput.value),
+            provider_name: providerNameInput ? providerNameInput.value : "",
+            internal_cost: parseFloat(costInput ? costInput.value : 0),
+            margin_percent: parseFloat(marginInput ? marginInput.value : 0),
+            final_price: parseFloat(finalPriceInput.value),
             currency: currencySelect.value,
           });
         }
@@ -2144,16 +2142,15 @@
     }
     validateIsfEditModal();
   }
+
   function validateIsfEditModal() {
     if (editIsfErrorModal) editIsfErrorModal.style.display = "none";
     return true;
   }
+
   function populateEditModal(serviceData) {
     if (!editServiceForm || !serviceData) {
-      console.error(
-        "populateEditModal: Form or serviceData missing.",
-        serviceData
-      );
+      console.error("populateEditModal: Form or serviceData missing.", serviceData);
       return;
     }
     editServiceForm.reset();
@@ -2161,99 +2158,64 @@
 
     editServiceIdInput.value = serviceData.id;
     if (editServiceDisplayIdHeader)
-      editServiceDisplayIdHeader.textContent = `(${
-        serviceData.service_display_id || "N/A"
-      })`;
+      editServiceDisplayIdHeader.textContent = `(${serviceData.service_display_id || "N/A"})`;
     editServiceCategoryModalSelect.value = serviceData.serviceCategoryInternal;
     editServiceCategoryModalSelect.disabled = true;
     handleEditCategoryChange();
 
-    editCustomerModalInput.value =
-      serviceData.customer !== "N/A" ? serviceData.customer : "";
-    editEtdModalInput.value = serviceData.etd !== "N/A" ? serviceData.etd : "";
-    editEtaModalInput.value = serviceData.eta !== "N/A" ? serviceData.eta : "";
-    editShipperModalInput.value =
-      serviceData.shipper !== "N/A" ? serviceData.shipper : "";
-    editConsigneeModalInput.value =
-      serviceData.consignee !== "N/A" ? serviceData.consignee : "";
-    editCarrierModalInput.value =
-      serviceData.carrier !== "N/A" ? serviceData.carrier : "";
-    editPolModalInput.value = serviceData.pol !== "N/A" ? serviceData.pol : "";
-    editPodModalInput.value = serviceData.pod !== "N/A" ? serviceData.pod : "";
-    editFinalDestinationModalInput.value =
-      serviceData.finalDestination !== "N/A"
-        ? serviceData.finalDestination
-        : "";
-    editMblHawbModalInput.value =
-      serviceData.mblHawbPro !== "N/A" ? serviceData.mblHawbPro : "";
-    editNumPackagesModalInput.value =
-      serviceData.numPackages !== "N/A" ? serviceData.numPackages : "";
-    editGrossWeightModalInput.value =
-      serviceData.grossWeight && serviceData.grossWeight !== "N/A"
+    // Helper for safe assignment
+    const setVal = (el, val) => { if (el) el.value = (val !== "N/A" && val !== null) ? val : ""; };
+
+    setVal(editCustomerModalInput, serviceData.customer);
+    setVal(editEtdModalInput, serviceData.etd);
+    setVal(editEtaModalInput, serviceData.eta);
+    setVal(editShipperModalInput, serviceData.shipper);
+    setVal(editConsigneeModalInput, serviceData.consignee);
+    setVal(editCarrierModalInput, serviceData.carrier);
+    setVal(editPolModalInput, serviceData.pol);
+    setVal(editPodModalInput, serviceData.pod);
+    setVal(editFinalDestinationModalInput, serviceData.finalDestination);
+    setVal(editMblHawbModalInput, serviceData.mblHawbPro);
+    setVal(editNumPackagesModalInput, serviceData.numPackages);
+
+    if (editGrossWeightModalInput) {
+      editGrossWeightModalInput.value = (serviceData.grossWeight && serviceData.grossWeight !== "N/A")
         ? parseFloat(String(serviceData.grossWeight).replace(" kg", ""))
         : "";
-    editCommodityDescriptionModalTextarea.value =
-      serviceData.commodityDescription !== "N/A"
-        ? serviceData.commodityDescription
-        : "";
-    editHtsCodeModalInput.value =
-      serviceData.htsCode !== "N/A" ? serviceData.htsCode : "";
-    editServiceStatusModalSelect.value = serviceData.status || "Pending";
-    editServiceNotesModalTextarea.value =
-      serviceData.notes !== "N/A" ? serviceData.notes : "";
+    }
+
+    setVal(editCommodityDescriptionModalTextarea, serviceData.commodityDescription);
+    setVal(editHtsCodeModalInput, serviceData.htsCode);
+    setVal(editServiceStatusModalSelect, serviceData.status || "Pending");
+    setVal(editServiceNotesModalTextarea, serviceData.notes);
 
     if (serviceData.serviceCategoryInternal === "ocean") {
-      editOceanServiceTypeModalSelect.value =
-        serviceData.oceanServiceType !== "N/A"
-          ? serviceData.oceanServiceType
-          : "";
-      editOceanServiceModalSelect.value =
-        serviceData.oceanService !== "N/A" ? serviceData.oceanService : "";
-      editHblModalInput.value =
-        serviceData.hbl !== "N/A" ? serviceData.hbl : "";
-      const isfDoc = serviceData.documents?.find(
-        (doc) => doc.doc_type === "ISF Filing Confirmation"
-      );
+      setVal(editOceanServiceTypeModalSelect, serviceData.oceanServiceType);
+      setVal(editOceanServiceModalSelect, serviceData.oceanService);
+      setVal(editHblModalInput, serviceData.hbl);
+
+      const isfDoc = serviceData.documents?.find(doc => doc.doc_type === "ISF Filing Confirmation");
       if (isfDoc) {
-        currentIsfFileDisplay.textContent = `Current ISF: ${isfDoc.file_name} (manage in Docs).`;
+        if (currentIsfFileDisplay) currentIsfFileDisplay.textContent = `Current ISF: ${isfDoc.file_name} (manage in Docs).`;
         if (editIsfFileModalInput) editIsfFileModalInput.style.display = "none";
-        if (editAddIsfLaterModalCheckbox)
-          editAddIsfLaterModalCheckbox.disabled = true;
+        if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.disabled = true;
       } else {
-        currentIsfFileDisplay.textContent =
-          "No ISF on file. Upload new or check 'Add Later'.";
-        if (editIsfFileModalInput)
-          editIsfFileModalInput.style.display = "block";
-        if (editAddIsfLaterModalCheckbox)
-          editAddIsfLaterModalCheckbox.disabled = false;
+        if (currentIsfFileDisplay) currentIsfFileDisplay.textContent = "No ISF on file. Upload new or check 'Add Later'.";
+        if (editIsfFileModalInput) editIsfFileModalInput.style.display = "block";
+        if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.disabled = false;
       }
-      if (editAddIsfLaterModalCheckbox)
-        editAddIsfLaterModalCheckbox.checked =
-          serviceData.isfFiledLater || false;
-      editContainerNumberModalInput.value =
-        serviceData.containerNumber !== "N/A"
-          ? serviceData.containerNumber
-          : "";
-      editContainerTypeModalInput.value =
-        serviceData.containerType !== "N/A" ? serviceData.containerType : "";
-      editSealNumberModalInput.value =
-        serviceData.sealNumber !== "N/A" ? serviceData.sealNumber : "";
+      if (editAddIsfLaterModalCheckbox) editAddIsfLaterModalCheckbox.checked = serviceData.isfFiledLater || false;
+      setVal(editContainerNumberModalInput, serviceData.containerNumber);
+      setVal(editContainerTypeModalInput, serviceData.containerType);
+      setVal(editSealNumberModalInput, serviceData.sealNumber);
     } else if (serviceData.serviceCategoryInternal === "air") {
-      editFlightNumberModalInput.value =
-        serviceData.flightNumber !== "N/A" ? serviceData.flightNumber : "";
-      editHblModalInput.value =
-        serviceData.hawb !== "N/A" ? serviceData.hawb : "";
-      editDimensionsModalInput.value =
-        serviceData.dimensions !== "N/A" ? serviceData.dimensions : "";
+      setVal(editFlightNumberModalInput, serviceData.flightNumber);
+      setVal(editHblModalInput, serviceData.hawb);
+      setVal(editDimensionsModalInput, serviceData.dimensions);
     } else if (serviceData.serviceCategoryInternal === "truck") {
-      editTruckServiceTypeModalSelect.value =
-        serviceData.truckServiceType !== "N/A"
-          ? serviceData.truckServiceType
-          : "";
-      editCbmModalInput.value =
-        serviceData.cbm !== "N/A" ? serviceData.cbm : "";
-      editDimensionsModalInput.value =
-        serviceData.dimensions !== "N/A" ? serviceData.dimensions : "";
+      setVal(editTruckServiceTypeModalSelect, serviceData.truckServiceType);
+      setVal(editCbmModalInput, serviceData.cbm);
+      setVal(editDimensionsModalInput, serviceData.dimensions);
     }
     populateChargesUI(
       chargesContainerEdit,
@@ -2544,7 +2506,7 @@
       render: function (data, type, row) {
         let completeButtonDisabled =
           COMPLETED_STATUSES.includes(row.status) ||
-          row.status === CANCELLED_STATUS
+            row.status === CANCELLED_STATUS
             ? "disabled"
             : "";
         return `<div class="st-table-actions">
@@ -2800,11 +2762,9 @@
     return { startDate, displayEndDate, todayUTC };
   }
   function filterServicesForCurrentMonthDisplay(services) {
-    // Obtiene el rango de fechas para el mes actual (ej. 1 de julio - 31 de julio)
     const { startDate, displayEndDate, todayUTC } = getCurrentMonthRange();
 
     return services.filter((service) => {
-      // Primero, nos aseguramos de no procesar servicios que ya están finalizados.
       if (
         COMPLETED_STATUSES.includes(service.status) ||
         service.status === CANCELLED_STATUS
@@ -2812,49 +2772,37 @@
         return false;
       }
 
-      // Parseamos las fechas del servicio para poder compararlas.
       const etdDate =
         service.etd && service.etd !== "N/A"
           ? new Date(
-              service.etd.includes("T") || service.etd.includes("Z")
-                ? service.etd
-                : service.etd + "T00:00:00Z"
-            )
+            service.etd.includes("T") || service.etd.includes("Z")
+              ? service.etd
+              : service.etd + "T00:00:00Z"
+          )
           : null;
       const etaDate =
         service.eta && service.eta !== "N/A"
           ? new Date(
-              service.eta.includes("T") || service.eta.includes("Z")
-                ? service.eta
-                : service.eta + "T00:00:00Z"
-            )
+            service.eta.includes("T") || service.eta.includes("Z")
+              ? service.eta
+              : service.eta + "T00:00:00Z"
+          )
           : null;
 
-      // --- INICIO DE LA LÓGICA MODIFICADA ---
-
-      // REGLA 1 (Lógica Original): El servicio es relevante para el mes actual.
-      // Se mostrará si su ETD o ETA caen dentro del rango de fechas del mes en curso.
       const isRelevantToCurrentMonth =
         (etdDate && etdDate >= startDate && etdDate <= displayEndDate) ||
         (etaDate && etaDate >= startDate && etaDate <= displayEndDate);
 
       if (isRelevantToCurrentMonth) {
-        return true; // Mostrar el servicio.
+        return true;
       }
 
-      // REGLA 2 (Nueva Lógica): El servicio está "atrasado" pero sigue activo.
-      // Si la fecha de ETA del servicio ya pasó (es anterior a hoy) y el servicio
-      // aún no ha sido marcado como "Completed" o "Cancelled" (lo cual ya verificamos
-      // al principio), entonces debe seguir mostrándose.
       const isOverdueAndActive = etaDate && etaDate < todayUTC;
 
       if (isOverdueAndActive) {
-        return true; // Mostrar el servicio atrasado.
+        return true;
       }
 
-      // --- FIN DE LA LÓGICA MODIFICADA ---
-
-      // Si el servicio no cumple ninguna de las dos reglas, no se muestra en la tabla principal.
       return false;
     });
   }
@@ -2911,18 +2859,18 @@
         const etd =
           s.etd && s.etd !== "N/A"
             ? new Date(
-                s.etd.includes("T") || s.etd.includes("Z")
-                  ? s.etd
-                  : s.etd + "T00:00:00Z"
-              )
+              s.etd.includes("T") || s.etd.includes("Z")
+                ? s.etd
+                : s.etd + "T00:00:00Z"
+            )
             : null;
         const eta =
           s.eta && s.eta !== "N/A"
             ? new Date(
-                s.eta.includes("T") || s.eta.includes("Z")
-                  ? s.eta
-                  : s.eta + "T00:00:00Z"
-              )
+              s.eta.includes("T") || s.eta.includes("Z")
+                ? s.eta
+                : s.eta + "T00:00:00Z"
+            )
             : null;
         let relevantDate = null;
         let dateType = "";
@@ -2962,13 +2910,10 @@
       let categoryEmoji = getCategoryTextAndClass(
         service.serviceCategoryInternal
       ).text.split(" ")[0];
-      li.innerHTML = `<span class="service-id">${categoryEmoji} ${
-        service.service_display_id
-      }</span><span class="service-customer">${
-        service.customer || "N/A"
-      }</span><span class="service-date"><strong>${
-        service.dateType
-      }:</strong> ${dateString}</span>`;
+      li.innerHTML = `<span class="service-id">${categoryEmoji} ${service.service_display_id
+        }</span><span class="service-customer">${service.customer || "N/A"
+        }</span><span class="service-date"><strong>${service.dateType
+        }:</strong> ${dateString}</span>`;
       dbUpcomingListEl.appendChild(li);
     });
   }
@@ -3094,15 +3039,15 @@
       orderByIdx !== null
         ? orderByIdx
         : newColumnsDefinition.findIndex(
-            (c) =>
-              c.data === "service_display_id" ||
-              c.data === "etd" ||
-              c.data === "created_at"
-          );
+          (c) =>
+            c.data === "service_display_id" ||
+            c.data === "etd" ||
+            c.data === "created_at"
+        );
     const orderDirection =
       newColumnsDefinition[defaultOrderIdx]?.data === "etd" &&
-      viewType === "all" &&
-      isMainServicesTable
+        viewType === "all" &&
+        isMainServicesTable
         ? "asc"
         : "desc";
 
@@ -3153,9 +3098,15 @@
         dtInstance = $(tableElement).DataTable({
           data: tableDataForInit,
           columns: newColumnsDefinition,
-          scrollX: true,
-          autoWidth: false,
-          responsive: true,
+          // --- CONFIGURACIÓN FLEXIBLE "V2.0" (IGUAL A LIST OF ENTRIES) ---
+          dom: '<"st-dt-header"lf>rt<"st-dt-footer"ip>',
+          scrollY: true,       // Scroll vertical activado (altura controlada por CSS Flex)
+          scrollCollapse: true,// Permite encoger si hay pocos datos
+          scrollX: true,       // Scroll horizontal activado
+          autoWidth: false,    // Desactiva cálculo automático de ancho JS
+          responsive: false,   // Importante: False para scroll horizontal real (como en LE)
+          deferRender: true,   // Mejora de rendimiento
+          // ---------------------------------------------------------------
           language: {
             search: "Search:",
             lengthMenu: "Show _MENU_ entries",
@@ -3168,11 +3119,9 @@
               next: "<i class='bx bx-chevron-right'></i>",
               previous: "<i class='bx bx-chevron-left'></i>",
             },
-            emptyTable: `No ${
-              viewType !== "all" ? viewType : ""
-            } services found${
-              isMainServicesTable ? " for the current month" : ""
-            }.`,
+            emptyTable: `No ${viewType !== "all" ? viewType : ""
+              } services found${isMainServicesTable ? " for the current month" : ""
+              }.`,
           },
           order: [[defaultOrderIdx >= 0 ? defaultOrderIdx : 0, orderDirection]],
           createdRow: function (row, data, dataIndex) {
@@ -3181,13 +3130,24 @@
                 getCategoryTextAndClass(data.serviceCategoryInternal).rowClass
               );
           },
-          drawCallback: function (settings) {
-            var api = new $.fn.dataTable.Api(settings);
-            if (api.responsive) {
-              api.responsive.recalc();
-            }
+          // --- INIT COMPLETE (IGUAL A LIST OF ENTRIES) ---
+          initComplete: function (settings, json) {
+            const api = this.api();
+            const wrapper = $(api.table().container());
+
+            // Ajuste inicial de columnas
             api.columns.adjust();
-          },
+
+            // Segundo ajuste con delay para asegurar renderizado visual
+            setTimeout(() => {
+              api.columns.adjust().draw();
+            }, 250);
+
+            // Ajuste en resize de ventana
+            $(window).on('resize', function () {
+              api.columns.adjust();
+            });
+          }
         });
       } else {
         showCustomNotification(
@@ -3316,18 +3276,18 @@
       const etdDate =
         service.etd && service.etd !== "N/A"
           ? new Date(
-              service.etd.includes("T") || service.etd.includes("Z")
-                ? service.etd
-                : service.etd + "T00:00:00Z"
-            )
+            service.etd.includes("T") || service.etd.includes("Z")
+              ? service.etd
+              : service.etd + "T00:00:00Z"
+          )
           : null;
       const etaDate =
         service.eta && service.eta !== "N/A"
           ? new Date(
-              service.eta.includes("T") || service.eta.includes("Z")
-                ? service.eta
-                : service.eta + "T00:00:00Z"
-            )
+            service.eta.includes("T") || service.eta.includes("Z")
+              ? service.eta
+              : service.eta + "T00:00:00Z"
+          )
           : null;
 
       const dateMatchesSelection = (date) =>
@@ -3729,6 +3689,13 @@
           if (!archiveYearsPopulated) populateArchiveYearSelect();
           handleFilterArchive();
           openModal(archiveServiceModal);
+
+          // --- FIX: Ajuste de columnas después de abrir el modal ---
+          setTimeout(() => {
+            if (archiveServicesDataTable) {
+              archiveServicesDataTable.columns.adjust().draw();
+            }
+          }, 300); // 300ms espera a que termine la transición CSS
         }
       });
     }
@@ -3952,8 +3919,42 @@
     }
     handleTableActions(event, archiveServicesDataTable, allServicesData);
   }
+  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING
 
-  // SECTION 13: MODULE INITIALIZATION AND AUTH STATE HANDLING (OPTIMIZED AND CORRECTED)
+  // Helper to move elements to body to fix Stacking Context issues (Modals & Notifications)
+  function teleportElementsToBody() {
+    // 1. Teleport Modals
+    const modals = document.querySelectorAll('.st-modal');
+    modals.forEach(modal => {
+      if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
+    });
+
+    // 2. Teleport Notification Container (CRITICAL FIX)
+    const notifContainer = document.getElementById('customNotificationContainerST');
+    if (notifContainer && notifContainer.parentElement !== document.body) {
+      document.body.appendChild(notifContainer);
+    }
+  }
+
+  // Helper to remove elements from body when module unloads
+  function removeTeleportedElements() {
+    // Remove Modals
+    const modals = document.querySelectorAll('.st-modal');
+    modals.forEach(modal => {
+      if (modal.parentElement === document.body) {
+        modal.remove();
+      }
+    });
+
+    // Remove Notification Container
+    const notifContainer = document.getElementById('customNotificationContainerST');
+    if (notifContainer && notifContainer.parentElement === document.body) {
+      notifContainer.remove();
+    }
+  }
+
   async function handleServiceTrackingAuthChange(sessionUser) {
     console.log(
       "ST Module: handleServiceTrackingAuthChange called with user:",
@@ -4008,27 +4009,17 @@
           if (archiveYearSelect) populateArchiveYearSelect();
         }
       } else if (sessionUser) {
-        console.log(
-          `ST Module: Auth change - User session confirmed (SAME user: ${currentUserST.id}). Ensuring subscriptions are healthy.`
-        );
+        // User session confirmed (SAME user). Ensuring subscriptions are healthy.
         if (
           serviceChannels.length === 0 ||
           serviceChannels.some((ch) => ch.state !== "joined")
         ) {
-          console.warn(
-            "ST Module: Subscriptions not healthy or not present for current user. Re-subscribing."
-          );
+          console.warn("ST Module: Re-subscribing channels.");
           await unsubscribeAllServiceChanges();
           await subscribeToServiceChanges();
-        } else {
-          console.log(
-            "ST Module: Subscriptions appear healthy for the current user."
-          );
         }
       } else {
-        console.log(
-          "ST Module: No active session and no previous user. Ensuring no subscriptions are active."
-        );
+        // No active session
         await unsubscribeAllServiceChanges();
         updateDashboard([]);
       }
@@ -4039,22 +4030,15 @@
       );
     } finally {
       isSubscribingST = false;
-      console.log("ST Module: handleServiceTrackingAuthChange finished.");
     }
   }
 
   window.moduleAuthChangeHandler = async function (event) {
-    console.log(
-      "ST Module: Detected global supabaseAuthStateChange event. Source:",
-      event.detail?.source
-    );
     const sessionUser = event.detail?.user;
     const accessDenied = event.detail?.accessDenied || false;
 
     if (accessDenied) {
-      console.warn(
-        "ST Module: Access denied. Module will reflect no user state."
-      );
+      console.warn("ST Module: Access denied.");
       await handleServiceTrackingAuthChange(null);
     } else {
       await handleServiceTrackingAuthChange(sessionUser);
@@ -4065,13 +4049,20 @@
     console.log("ST Module: Initializing module...");
     if (!isServiceTrackingInitialized) {
       console.log("ST Module: Performing one-time DOM setup...");
+
+      // 1. Helper Function ensures creating container if missing
+      createNotificationContainer();
+
+      // 2. Move Modals AND Notifications to Body (Fixes Backdrop & Z-Index issues)
+      teleportElementsToBody();
+
       initModalListeners();
       getConfirmModalElements();
-      // ... (el resto de tu setup inicial)
       updateDashboard([]);
       isServiceTrackingInitialized = true;
     }
-    // --- INICIO DE LA LÓGICA DE LIMPIEZA ---
+
+    // --- CLEANUP LOGIC ---
     cleanupServiceModule = async () => {
       console.log(">>>> ST Module: Cleaning up before unload... <<<<");
       document.removeEventListener(
@@ -4079,12 +4070,15 @@
         window.moduleAuthChangeHandler
       );
       document.removeEventListener("moduleWillUnload", cleanupServiceModule);
-      await unsubscribeAllServiceChanges(); // Tu función para cancelar todas las suscripciones
+
+      await unsubscribeAllServiceChanges();
       isServiceTrackingInitialized = false;
+
       scheduledNotificationTimeouts.forEach((timeoutId) =>
         clearTimeout(timeoutId)
-      ); // Limpia los temporizadores
+      );
       scheduledNotificationTimeouts = [];
+
       if (servicesDataTable) {
         servicesDataTable.destroy();
         servicesDataTable = null;
@@ -4093,17 +4087,17 @@
         archiveServicesDataTable.destroy();
         archiveServicesDataTable = null;
       }
+
+      // 3. Clean up elements from body to avoid duplicates on reload
+      removeTeleportedElements();
+
       console.log(">>>> ST Module: Cleanup complete. <<<<");
     };
 
-    // Limpia cualquier oyente de descarga anterior y añade el nuevo
     document.removeEventListener("moduleWillUnload", window.cleanupHandler);
-    window.cleanupHandler = cleanupServiceModule; // Asigna la función actual a una referencia global
+    window.cleanupHandler = cleanupServiceModule;
     document.addEventListener("moduleWillUnload", window.cleanupHandler);
 
-    // --- FIN DE LA LÓGICA DE LIMPIEZA ---
-
-    // Esta rutina asegura que solo el oyente de este módulo esté activo.
     document.removeEventListener(
       "supabaseAuthStateChange",
       window.moduleAuthChangeHandler
@@ -4113,7 +4107,6 @@
       window.moduleAuthChangeHandler
     );
 
-    // Simula un evento de cambio de autenticación en la carga del módulo para obtener el estado inicial
     if (supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         const detail = {
@@ -4126,7 +4119,6 @@
       });
     }
 
-    // Add resize handlers for DataTables responsiveness
     $(window).off("resize.serviceTrackingST layoutChange.serviceTrackingST");
     $(window).on(
       "resize.serviceTrackingST layoutChange.serviceTrackingST",
