@@ -5,14 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice Tracking - Goldmex WMS</title>
-    
-    </head>
+</head>
 
 <body>
-    <!-- Invoice Tracking Module Container -->
     <div class="invoice-tracking-container">
 
-        <!-- Module Header -->
         <div class="it-header">
             <h2><i class='bx bx-receipt'></i> Invoice Tracking</h2>
             <button id="createManualInvoiceBtn" class="btn-goldmex-base btn-goldmex-primary">
@@ -20,7 +17,6 @@
             </button>
         </div>
 
-        <!-- Dashboard Summary Section -->
         <div class="it-dashboard-summary">
             <div class="it-scorecard">
                 <div class="it-scorecard-icon total"><i class='bx bx-file-blank'></i></div>
@@ -52,7 +48,6 @@
             </div>
         </div>
 
-        <!-- Filters and Actions Bar -->
         <div class="it-controls-bar">
             <div class="it-filters">
                 <div class="it-filter-group">
@@ -72,8 +67,7 @@
                         <option value="Pending">Pending</option>
                         <option value="Paid">Paid</option>
                         <option value="Overdue">Overdue</option>
-                        <!-- <option value="Cancelled">Cancelled</option> Will be shown in History -->
-                    </select>
+                        </select>
                 </div>
                 <div class="it-filter-group">
                     <label for="filterCurrency">Currency:</label>
@@ -87,15 +81,13 @@
                         class='bx bx-filter-alt'></i> Apply Filters</button>
                 <button id="resetFiltersBtn" class="btn-goldmex-base btn-goldmex-neutral"><i class='bx bx-reset'></i>
                     Reset</button>
-                <!-- History button with updated class -->
                 <button id="openInvoiceHistoryModalBtn" class="btn-goldmex-base btn-goldmex-primary"><i
                         class='bx bx-history'></i> History</button>
             </div>
         </div>
 
-        <!-- Invoices Table Container -->
         <div class="it-table-container">
-            <table id="invoicesTable" class="display responsive nowrap" style="width:100%">
+            <table id="invoicesTable" class="display nowrap" style="width:100%">
                 <thead>
                     <tr>
                         <th>Invoice #</th>
@@ -110,13 +102,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Invoice rows will be populated by JavaScript -->
-                </tbody>
+                    </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Modal for Viewing Invoice Details -->
     <div id="viewInvoiceModal" class="it-modal">
         <div class="it-modal-content it-modal-content-invoice-view">
             <div class="it-modal-header">
@@ -137,7 +127,6 @@
         </div>
     </div>
 
-    <!-- Modal for Creating/Editing Manual Invoice -->
     <div id="manualInvoiceModal" class="it-modal">
         <div class="it-modal-content it-modal-content-xlarge">
             <div class="it-modal-header">
@@ -222,8 +211,7 @@
                         <span>Amount</span>
                         <span>Action</span>
                     </div>
-                    <!-- Charge lines will be added here by JavaScript -->
-                </div>
+                    </div>
                 <button type="button" id="itAddChargeLineBtn" class="btn-goldmex-secondary btn-goldmex-small"
                     style="margin-top: 0.5rem;">
                     <i class='bx bx-plus'></i> Add Charge Line
@@ -231,8 +219,7 @@
 
                 <div id="manualTotalsByCurrency" class="it-totals-summary">
                     <p><strong>Totals by Currency:</strong></p>
-                    <!-- Totals will be populated by JavaScript -->
-                </div>
+                    </div>
 
             </form>
             <div class="it-modal-footer">
@@ -244,7 +231,6 @@
         </div>
     </div>
 
-    <!-- Modal for Changing Invoice Status -->
     <div id="changeInvoiceStatusModal" class="it-modal">
         <div class="it-modal-content" style="max-width: 500px;">
             <div class="it-modal-header">
@@ -272,7 +258,6 @@
         </div>
     </div>
 
-    <!-- Custom Confirm Modal -->
     <div id="itCustomConfirmModal" class="it-modal" style="display: none;">
         <div class="it-modal-content" style="max-width: 450px;">
             <div class="it-modal-header">
@@ -290,7 +275,6 @@
         </div>
     </div>
 
-    <!-- Modal for Invoice History -->
     <div id="invoiceHistoryModal" class="it-modal">
         <div class="it-modal-content" style="max-width: 90vw; width: 1200px;">
             <div class="it-modal-header">
@@ -299,7 +283,6 @@
                     aria-label="Close modal">&times;</button>
             </div>
             <div class="it-modal-body">
-                <!-- Updated history controls with it-filters class -->
                 <div class="it-history-controls it-filters">
                     <div class="it-filter-group">
                         <label for="historyFilterCustomer">Customer:</label>
@@ -308,14 +291,12 @@
                     <div class="it-filter-group">
                         <label for="historyFilterMonth">Month:</label>
                         <select id="historyFilterMonth" name="historyFilterMonth">
-                            <!-- Options will be populated by JS -->
-                        </select>
+                            </select>
                     </div>
                     <div class="it-filter-group">
                         <label for="historyFilterYear">Year:</label>
                         <select id="historyFilterYear" name="historyFilterYear">
-                            <!-- Options will be populated by JS -->
-                        </select>
+                            </select>
                     </div>
                     <div class="it-filter-group">
                         <label for="historyFilterStatus">Status:</label>
@@ -329,14 +310,13 @@
                             class='bx bx-filter-alt'></i> Filter History</button>
                 </div>
                 <div id="historyTotalResults" style="margin: 1rem 0; font-weight: 500;">Results: 0</div>
-                <div class="it-table-container" id="historyTableContainer" style="max-height: 60vh; overflow-y: auto;">
-                    <table id="invoiceHistoryTable" class="display responsive nowrap" style="width:100%">
+                
+                <div class="it-table-container" id="historyTableContainer">
+                    <table id="invoiceHistoryTable" class="display nowrap" style="width:100%">
                         <thead>
-                            <!-- Header will be populated by JS, similar to main table -->
-                        </thead>
+                            </thead>
                         <tbody>
-                            <!-- History invoice rows will be populated by JavaScript -->
-                        </tbody>
+                            </tbody>
                     </table>
                     <p id="noHistoryResultsMessage"
                         style="text-align:center; padding: 2rem; display:none; color: var(--color-text-secondary);">No
@@ -351,20 +331,13 @@
     </div>
 
 
-    <!-- Custom Notification Container -->
     <div id="customNotificationContainerIT" class="custom-notification-it-container"></div>
 
-    <!-- PDF Render Area (Kept off-screen for styling purposes during PDF generation) -->
     <div id="pdf-invoice-render-area-container-estilo"
         style="position: absolute; left: -9999px; top: auto; width: 210mm; background-color: #f1f3f6; color: #333; font-family: 'Segoe UI', sans-serif; box-sizing: border-box;">
-        <!-- Content will be injected here by JavaScript for PDF generation -->
-    </div>
+        </div>
 
-    <!-- Ensure path to JavaScript file is correct -->
     <script src="js/invoice-tracking.js"></script>
-    <!-- html2pdf.js is typically loaded globally in index.html or via a module loader -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> -->
-
-</body>
+    </body>
 
 </html>
