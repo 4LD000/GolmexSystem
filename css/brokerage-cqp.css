@@ -1,6 +1,6 @@
 /*
  * ====================================================================
- * == STYLES FOR BROKERAGE CQP (CLIENT PORTAL) MODULE (V7 - NEW DASHBOARD) ==
+ * == STYLES FOR BROKERAGE CQP (CLIENT PORTAL) MODULE (V10 - HYBRID FIX) ==
  * ====================================================================
  */
 
@@ -31,13 +31,18 @@
     animation-delay: 0.15s;
 }
 
-/* Layout General */
+/* Layout General - FULL HEIGHT */
 .cqp-container {
     padding: 1.5rem;
     background-color: var(--color-bg);
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100vh;
+    /* Ocupar toda la ventana */
+    max-height: 100%;
+    overflow: hidden;
+    /* Evitar doble scroll en la página */
+    box-sizing: border-box;
 }
 
 /* Cabecera */
@@ -45,13 +50,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     padding: 1rem 1.5rem;
     border-radius: 0.5rem;
     background: linear-gradient(110deg, var(--goldmex-primary-color) 0%, #2e4975 100%);
     box-shadow: 0 4px 15px rgba(var(--goldmex-primary-color-rgb), 0.2);
     border-bottom: none;
-    /* Remove old border */
+    flex-shrink: 0;
 }
 
 body.dark-mode .cqp-header {
@@ -80,7 +85,6 @@ body.dark-mode .cqp-header {
 /* Dashboard */
 .cqp-dashboard-summary {
     background-color: var(--color-surface);
-    /* White Frame */
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
     padding: 1rem;
@@ -88,12 +92,13 @@ body.dark-mode .cqp-header {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
+    /* Importante: no encoger el dashboard */
 }
 
 .cqp-scorecard {
     background-color: var(--color-bg);
-    /* Gray Card */
     border: 1px solid var(--color-border);
     border-radius: 0.4rem;
     padding: 1rem 1.2rem;
@@ -109,7 +114,6 @@ body.dark-mode .cqp-header {
     box-shadow: 0 4px 12px var(--shadow-border);
 }
 
-/* NEW: Style for Action Required card */
 .cqp-scorecard.action-required {
     border-top-color: #fd7e14;
 }
@@ -123,7 +127,6 @@ body.dark-mode .cqp-scorecard.action-required .cqp-scorecard-icon {
     color: #ff922b;
     background-color: rgba(255, 146, 43, 0.15);
 }
-
 
 .cqp-scorecard-content {
     display: flex;
@@ -206,12 +209,13 @@ body.dark-mode .cqp-scorecard-icon.completed {
     text-align: center;
 }
 
-/* Pestañas y Tabla */
+/* Pestañas */
 .cqp-tabs {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     border-bottom: 2px solid var(--color-border);
+    flex-shrink: 0;
 }
 
 .cqp-tab-button {
@@ -243,26 +247,117 @@ body.dark-mode .cqp-scorecard-icon.completed {
 
 .cqp-tab-content {
     display: none;
+    /* Base style setup for flex growth */
+    flex: 1;
+    min-height: 0;
 }
 
-.cqp-tab-content.active {
-    display: block;
-}
-
+/* === CORE FIX: ESTRUCTURA HÍBRIDA === 
+   1. Reglas generales para contenedores de tabla (Historial y General)
+*/
 .cqp-table-container {
-    background-color: var(--color-bg);
-    /* Gray background for table area */
+    display: block;
+    /* Default block para Historial (Modal) */
+    width: 100%;
+    overflow: hidden;
     padding: 1rem;
     border-radius: 0.5rem;
-    box-shadow: 0 2px 10px var(--shadow-border);
-    overflow-x: auto;
+    background: var(--color-bg);
     border: 1px solid var(--color-border);
+}
+
+/* 2. OVERRIDE ESPECÍFICO PARA TABLA PRINCIPAL (ACTIVE REQUESTS) 
+Esto replica exactamente la lógica "Universal Flex" del módulo CQ 
+solo en la vista principal para que llene la pantalla.
+*/
+#active-requests-content.cqp-tab-content.active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* Forzar altura */
+}
+
+#active-requests-content .cqp-table-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    /* Crecer para ocupar el espacio */
+    min-height: 0;
+    padding: 0;
+    /* Reset de padding para limpieza */
+    border: none;
+    /* Borde opcional en modo full screen */
+}
+
+/* Forzar wrapper de DataTables a usar Flex */
+#active-requests-content .dataTables_wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Estructura interna del scroll */
+#active-requests-content .dataTables_scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#active-requests-content .dataTables_scrollHead {
+    flex-shrink: 0;
+}
+
+/* LA CLAVE: Ignorar altura JS y llenar espacio con Flex */
+#active-requests-content .dataTables_scrollBody {
+    flex: 1 1 auto;
+    height: 10px !important;
+    /* Ignorar altura calculada por JS */
+    max-height: none !important;
+}
+
+/* Estructura del DOM de DataTables Correcto (Buscador y Paginación) */
+.dt-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0 1rem;
+    /* Padding extra si se quitó del contenedor */
+}
+
+#active-requests-content .dt-top {
+    padding-top: 1rem;
+    /* Espacio arriba en vista principal */
+}
+
+.dt-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0 1rem 1rem 1rem;
 }
 
 /* Color for Table Headers */
 .cqp-container .dataTables_wrapper thead th {
     background-color: var(--goldmex-primary-color);
     color: var(--goldmex-white-color);
+    white-space: nowrap;
+}
+
+/* Fix for search input and length select */
+.dataTables_length select,
+.dataTables_filter input {
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    padding: 0.4rem;
+    border-radius: 0.3rem;
 }
 
 /* Modales */
@@ -292,8 +387,7 @@ body.dark-mode .cqp-scorecard-icon.completed {
 }
 
 .cqp-modal-content {
-    background-color: rgba(var(--color-surface-rgb), 0.85);
-    -webkit-backdrop-filter: blur(10px);
+    background-color: rgba(var(--color-surface-rgb), 0.98);
     backdrop-filter: blur(10px);
     border: 1px solid var(--color-border);
     border-radius: 0.6rem;
@@ -312,6 +406,28 @@ body.dark-mode .cqp-scorecard-icon.completed {
     max-width: 1000px;
 }
 
+/* History Modal Specifics - MANTENIENDO LO QUE FUNCIONA */
+#cqpHistoryModal .cqp-modal-content {
+    width: 95%;
+    max-width: 1400px;
+    height: 85vh;
+    /* Fixed height */
+    display: flex;
+    flex-direction: column;
+}
+
+#cqpHistoryModal .cqp-modal-body {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    /* Permitir scroll normal del cuerpo */
+}
+
+/* El contenedor de historial usa display: block por defecto (definido arriba),
+   lo cual es correcto para este modal */
+
 .cqp-modal.cqp-modal-open .cqp-modal-content {
     transform: scale(1);
 }
@@ -324,9 +440,7 @@ body.dark-mode .cqp-scorecard-icon.completed {
     align-items: center;
     flex-shrink: 0;
     background: var(--goldmex-primary-color);
-    /* Added Color */
     color: var(--goldmex-white-color);
-    /* Added Color */
 }
 
 .cqp-modal-header h3 {
@@ -334,7 +448,6 @@ body.dark-mode .cqp-scorecard-icon.completed {
     font-size: 1.4rem;
     font-weight: 600;
     color: var(--goldmex-white-color);
-    /* Matched Color */
 }
 
 .cqp-close-button {
@@ -342,7 +455,6 @@ body.dark-mode .cqp-scorecard-icon.completed {
     border: none;
     font-size: 1.9rem;
     color: var(--goldmex-light-color);
-    /* Adjusted for dark background */
     cursor: pointer;
     transition: color 0.2s ease, transform 0.2s ease;
 }
@@ -374,11 +486,10 @@ body.dark-mode .cqp-scorecard-icon.completed {
     justify-content: space-around;
     margin-bottom: 2rem;
     background-color: var(--color-bg);
-    /* Added subtle background */
     border-radius: 0.4rem;
     padding: 1rem;
     border: 1px solid var(--color-border);
-    /* Changed from border-bottom */
+    flex-shrink: 0;
 }
 
 .cqp-step {
@@ -595,12 +706,12 @@ body.dark-mode .cqp-step.active span {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
     align-items: end;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     padding: 1rem;
     background-color: var(--color-bg);
-    /* Gray background */
     border: 1px solid var(--color-border);
     border-radius: 0.4rem;
+    flex-shrink: 0;
 }
 
 .cqp-history-filters .cqp-form-group {
@@ -620,7 +731,7 @@ body.dark-mode .cqp-step.active span {
     z-index: 2150;
 }
 
-/* === INICIO: ESTILOS PARA EDICIÓN Y VISTA MEJORADA === */
+/* === EDICIÓN Y VISTA MEJORADA === */
 hr.cqp-divider {
     border: none;
     border-top: 1px solid var(--color-border);
@@ -641,7 +752,6 @@ hr.cqp-divider {
     background-color: var(--color-bg);
 }
 
-/* Stepper clickeable en modo edición */
 .cqp-form-stepper.editable .cqp-step {
     cursor: pointer;
     opacity: 0.7;
@@ -655,12 +765,10 @@ hr.cqp-divider {
     opacity: 1;
 }
 
-/* Nuevo layout de 2 columnas para el modal de Ver Detalles */
 .cqp-view-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 2.5rem;
-    /* Sin gap vertical, 2.5rem horizontal */
 }
 
 .cqp-view-columns .le-detail-section {
@@ -675,19 +783,13 @@ hr.cqp-divider {
 
 .le-detail-grid {
     grid-template-columns: 1fr;
-    /* Forzar una sola columna dentro de cada sección */
 }
 
-/* === FIN: ESTILOS PARA EDICIÓN Y VISTA MEJORADA === */
-
-
-/*
- * ====================================================================
- * == SECCION: Estilos de Botones en Tabla (V9 - Corregido y con Archive) ==
+/* ====================================================================
+ * == SECCION: Estilos de Botones en Tabla ==
  * ====================================================================
  */
 
-/* Contenedor para grupos de botones (AHORA ESPECIFICO) */
 .cqp-table-actions {
     display: flex;
     justify-content: center;
@@ -695,19 +797,16 @@ hr.cqp-divider {
     gap: 0.5rem;
 }
 
-/* Ancho de columnas de acción */
 .dt-actions-col {
     width: 1%;
     white-space: nowrap;
     text-align: center !important;
 }
 
-/* --- Botones con solo icono (View, Edit, Delete, Archive) --- */
 .cqp-table-actions button[data-action="view"],
 .cqp-table-actions button[data-action="edit"],
 .cqp-table-actions button[data-action="delete"],
 .cqp-table-actions .btn-cqp-archive {
-    /* Base style for icon buttons */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -729,7 +828,6 @@ hr.cqp-divider {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Colores específicos por acción */
 .cqp-table-actions button[data-action="view"] {
     color: var(--goldmex-primary-color);
     border-color: var(--goldmex-primary-color);
@@ -745,16 +843,12 @@ hr.cqp-divider {
     border-color: var(--goldmex-accent-color);
 }
 
-/* UPDATED STYLE FOR ARCHIVE BUTTON */
 .cqp-table-actions .btn-cqp-archive {
-    /* Remove fixed width to accommodate text */
     width: auto;
     padding: 0 0.8rem;
     gap: 0.4rem;
     font-size: 0.8rem;
     font-weight: 500;
-    
-    /* Apply new color scheme */
     background-color: transparent;
     border-color: #2a9d8f;
     color: #2a9d8f;
@@ -782,9 +876,6 @@ hr.cqp-divider {
     color: white;
 }
 
-/* --- Botones con texto e icono --- */
-
-/* Botón de Alerta (Review Info) */
 .btn-cqp-alert {
     display: inline-flex;
     align-items: center;
@@ -809,7 +900,6 @@ hr.cqp-divider {
     box-shadow: 0 4px 10px rgba(253, 126, 20, 0.6);
     transform: translateY(-2px);
     animation: none;
-    /* Pausar animación en hover */
 }
 
 @keyframes pulse-orange {
@@ -826,7 +916,6 @@ hr.cqp-divider {
     }
 }
 
-/* Botón de Docs */
 .btn-cqp-docs {
     display: inline-flex;
     align-items: center;
@@ -851,7 +940,6 @@ hr.cqp-divider {
     transform: translateY(-2px);
 }
 
-/* Botones de Quote/Results */
 .btn-cqp-view-results,
 .btn-cqp-download-quote {
     display: inline-flex;
@@ -890,8 +978,7 @@ hr.cqp-divider {
     transform: translateY(-2px);
 }
 
-
-/* SECCION: Modal de Informacion Faltante */
+/* Modal de Informacion Faltante */
 .cqp-missing-info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -950,7 +1037,7 @@ hr.cqp-divider {
     align-items: center;
 }
 
-/* SECCION: Modal de Gestion de Documentos (Adaptado de client-management) */
+/* Modal de Gestion de Documentos */
 .cqp-doc-upload-section,
 .cqp-doc-list-section {
     margin-bottom: 2rem;
@@ -1079,18 +1166,13 @@ body.dark-mode .cqp-doc-card-icon {
     color: var(--goldmex-accent-color);
 }
 
-/* Esta regla asegura que los botones 'View' y 'Edit' tengan
-    un borde visible y contrastante cuando el tema oscuro está activo.
-*/
 body.dark-mode .cqp-table-actions button[data-action="view"] {
     border-color: var(--goldmex-secondary-color);
-    /* Color Dorado */
     color: var(--goldmex-secondary-color);
 }
 
 body.dark-mode .cqp-table-actions button[data-action="edit"] {
     border-color: var(--goldmex-white-color);
-    /* Color Blanco */
     color: var(--goldmex-white-color);
 }
 
@@ -1102,4 +1184,26 @@ body.dark-mode .cqp-table-actions .btn-cqp-archive {
 body.dark-mode .cqp-table-actions .btn-cqp-archive:hover {
     background-color: #6c757d;
     color: white;
+}
+
+/* * ====================================================================
+ * == FIX VISUAL DE CARGA DE TABLAS (CORREGIDO) ==
+ * ====================================================================
+ */
+/* REGLA DE ORO: La tabla debe nacer INVISIBLE. 
+Usamos opacity: 0 en el wrapper directamente.
+*/
+.cqp-container .dataTables_wrapper {
+    visibility: hidden;
+    /* Seguridad extra */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Solo cuando JS agregue esta clase (después de ajustar las columnas),
+la tabla se hará visible suavemente.
+*/
+.cqp-container .dataTables_wrapper.cqp-ready {
+    visibility: visible;
+    opacity: 1;
 }
