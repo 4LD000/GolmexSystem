@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap");
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
     font-family: "Poppins", sans-serif;
-
-
 }
 
 /* css/style.css */
@@ -190,11 +188,9 @@ body.dark-mode .menu-btn {
     transition: height 0.3s ease;
 }
 
-
 .sidebar.minimize .brand img {
     max-width: 100%;
     height: 42px;
-
 }
 
 .sidebar.minimize .brand {
@@ -206,7 +202,6 @@ body.dark-mode .menu-btn {
 .sidebar.minimize .brand span {
     display: none;
 }
-
 
 .brand span {
     font-size: 1.05rem;
@@ -309,7 +304,6 @@ body.dark-mode .menu-btn {
     color: var(--active-hover-text);
 }
 
-
 /* Estilo para el enlace del módulo actualmente activo */
 .menu .menu-link.link-active,
 .sub-menu .sub-menu-link.link-active {
@@ -321,7 +315,7 @@ body.dark-mode .menu-btn {
 
 .menu .menu-link.link-active:hover,
 .sub-menu .sub-menu-link.link-active:hover {
-    background-color: rgba(var(--goldmex-secondary-color-rgb), 0.20);
+    background-color: rgba(var(--goldmex-secondary-color-rgb), 0.2);
     color: var(--goldmex-secondary-color);
 }
 
@@ -330,7 +324,6 @@ body.dark-mode .menu-btn {
 .sub-menu .sub-menu-link.link-active>i:first-child {
     color: var(--goldmex-secondary-color);
 }
-
 
 /* Estilo para el elemento de menú desplegable padre cuando un hijo está activo */
 .menu-item-dropdown.parent-active>.menu-link {
@@ -358,7 +351,6 @@ body.dark-mode .menu-item-dropdown.parent-active>.menu-link {
 body.dark-mode .menu-item-dropdown.sub-menu-toggle.parent-active>.menu-link {
     background-color: rgba(var(--goldmex-white-color-rgb), 0.05);
 }
-
 
 .menu-link i {
     font-size: 1.35rem;
@@ -444,7 +436,7 @@ body.dark-mode .sub-menu {
 }
 
 .menu-item-dropdown .sub-menu::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0.2rem;
     height: calc(100% - 0.4rem);
@@ -680,7 +672,6 @@ body.dark-mode .brand-light {
     /* Keeps the state of the last keyframe */
 }
 
-
 /* Responsive */
 @media (max-height: 683px) {
     .footer {
@@ -702,7 +693,7 @@ body.dark-mode .brand-light {
     }
 }
 
-@media (max-width:768px) {
+@media (max-width: 768px) {
     #menu-btn {
         display: none;
     }
@@ -736,4 +727,28 @@ body.dark-mode .brand-light {
         right: 1rem;
         bottom: 1rem;
     }
+}
+
+
+/* --- FIX ANTI-PARPADEO (FLASH OF CONTENT) --- */
+
+/* Mientras carga permisos, ocultar items del menú */
+body.loading-permissions .sidebar .menu-item {
+    display: none !important;
+}
+
+/* Opcional: Mostrar un loader en el sidebar mientras carga */
+body.loading-permissions .sidebar .menu-container::after {
+    content: "Loading access...";
+    display: block;
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    padding-top: 2rem;
+    opacity: 0.7;
+}
+
+/* Asegurar que el usuario y footer sigan ocultos o visibles según prefieras */
+body.loading-permissions .sidebar .footer {
+    opacity: 0; 
 }
