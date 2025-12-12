@@ -92,17 +92,22 @@ body.dark-mode:root {
   --color-border-very-soft: rgba(var(--color-border-rgb), 0.15);
 }
 
+/* ====================================================================
+ * == LAYOUT GENERAL - UNIVERSAL FLEX (MODIFICADO PARA FULL HEIGHT) ==
+ * ====================================================================
+ */
 /* Main container for the invoice tracking module */
 .invoice-tracking-container {
   padding: 1.5rem;
   background-color: var(--color-bg);
-
-  /* ELIMINA O CAMBIA ESTO: min-height: calc(100vh - 4rem); */
-  /* Al quitar el zoom, esto ya no es necesario y puede causar problemas */
-  min-height: 100%;
-
-  /* Agrega padding extra abajo para asegurar que la tabla respire */
-  padding-bottom: 3rem;
+  /* Flexbox setup for full height */
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Ocupar toda la ventana */
+  max-height: 100%;
+  overflow: hidden; /* Evitar doble scroll en la página */
+  box-sizing: border-box;
+  padding-bottom: 0; /* Padding inferior controlado por flex */
 }
 
 body.dark-mode .invoice-tracking-container {
@@ -124,14 +129,17 @@ body.dark-mode .invoice-tracking-container {
 /* Staggered animation delays for a smoother entrance */
 .invoice-tracking-container>.it-header {
   animation-delay: 0s;
+  flex-shrink: 0; /* No encoger header */
 }
 
 .invoice-tracking-container>.it-dashboard-summary {
   animation-delay: 0.05s;
+  flex-shrink: 0; /* No encoger dashboard */
 }
 
 .invoice-tracking-container>.it-controls-bar {
   animation-delay: 0.1s;
+  flex-shrink: 0; /* No encoger controles */
 }
 
 .invoice-tracking-container>.it-table-container {
@@ -514,16 +522,128 @@ body.dark-mode .btn-goldmex-neutral:hover {
 }
 
 
-/* Table container styles */
+/* ====================================================================
+ * == TABLAS: ESTRUCTURA HÍBRIDA (CORE FIX) ==
+ * ====================================================================
+ */
+
+/* 1. Contenedor Flexible Principal para la Tabla */
 .it-table-container {
   background-color: var(--color-surface);
-  padding: 1rem;
   border-radius: 0.5rem;
-  box-shadow: 0 2px 10px var(--shadow-border);
-  overflow-x: auto;
-  /* Ensures table is scrollable horizontally if needed */
-  width: 100%;
   border: 1px solid var(--color-border);
+  box-shadow: 0 2px 10px var(--shadow-border);
+  
+  /* LÓGICA FLEX PARA LLENAR PANTALLA */
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Ocupar todo el espacio restante vertical */
+  min-height: 0; /* Crítico para scroll interno */
+  padding: 0; /* El padding lo maneja DataTables wrapper */
+  overflow: hidden; /* Evitar scroll externo */
+}
+
+/* 2. Forzar wrapper de DataTables a usar Flex */
+.it-table-container .dataTables_wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+/* 3. Estructura interna del scroll de DataTables */
+.it-table-container .dataTables_scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.it-table-container .dataTables_scrollHead {
+  flex-shrink: 0;
+  width: 100% !important; /* Fix alineación header */
+}
+
+.it-table-container .dataTables_scrollHeadInner {
+  width: 100% !important; /* Fix alineación header */
+}
+
+.it-table-container .dataTables_scrollHeadInner table {
+  width: 100% !important; /* Fix alineación header */
+}
+
+/* 4. LA CLAVE: Cuerpo de tabla expansible */
+.it-table-container .dataTables_scrollBody {
+  flex: 1 1 auto;
+  height: 10px !important; /* Ignorar altura calculada por JS, usar Flex */
+  max-height: none !important;
+  width: 100% !important;
+}
+
+/* ====================================================================
+ * == MODAL FLEX FIX (REPLACED PREVIOUS RESET) ==
+ * ====================================================================
+ * MODIFIED: Instead of resetting to block, we enforce flex structure 
+ * for modal tables to allow internal scrolling with sticky headers.
+ */
+
+/* 1. The table container inside the modal must fill available space */
+.it-modal .it-table-container {
+    flex: 1;              /* Grow to fill space inside modal body */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;        /* CRITICAL for internal scroll */
+    height: 100% !important; /* Force full height */
+}
+
+/* 2. Force DataTables wrapper to use flex inside modal */
+.it-modal .dataTables_wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* 3. Ensure the scroll area takes up remaining space */
+.it-modal .dataTables_scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 4. The scroll body should grow automatically */
+.it-modal .dataTables_scrollBody {
+    flex: 1;
+    height: auto !important; /* Let Flex control height */
+    max-height: none !important;
+}
+
+/* ==================================================================== */
+
+
+/* 5. Estructura del DOM de DataTables (Top y Bottom) */
+.dt-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 1rem 1rem 0 1rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.dt-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0 1rem 1rem 1rem;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface);
 }
 
 #invoicesTable {
@@ -534,8 +654,8 @@ body.dark-mode .btn-goldmex-neutral:hover {
 }
 
 /* DataTables specific styling for search and length controls */
-#invoicesTable_wrapper .dataTables_length select,
-#invoicesTable_wrapper .dataTables_filter input {
+.dataTables_length select,
+.dataTables_filter input {
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: 0.3rem;
@@ -545,23 +665,60 @@ body.dark-mode .btn-goldmex-neutral:hover {
   font-size: 0.85rem;
 }
 
-body.dark-mode #invoicesTable_wrapper .dataTables_length select,
-body.dark-mode #invoicesTable_wrapper .dataTables_filter input {
+body.dark-mode .dataTables_length select,
+body.dark-mode .dataTables_filter input {
   background-color: var(--color-bg);
   border-color: var(--color-border);
   color: var(--color-text-primary);
 }
 
-#invoicesTable_wrapper .dataTables_length label,
-#invoicesTable_wrapper .dataTables_filter label {
+.dataTables_length label,
+.dataTables_filter label {
   color: var(--color-text-secondary);
   font-size: 0.9rem;
   font-weight: 500;
 }
 
-body.dark-mode #invoicesTable_wrapper .dataTables_length label,
-body.dark-mode #invoicesTable_wrapper .dataTables_filter label {
+body.dark-mode .dataTables_length label,
+body.dark-mode .dataTables_filter label {
   color: var(--color-text-secondary);
+}
+
+/* Estilos de Headers de Tabla - Igual que CQP */
+.it-table-container thead th {
+  background-color: var(--goldmex-primary-color);
+  color: var(--goldmex-white-color);
+  white-space: nowrap;
+  padding: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+body.dark-mode .it-table-container thead th {
+  background-color: #25426c;
+}
+
+.it-table-container tbody td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+/* ====================================================================
+ * == FIX VISUAL DE CARGA DE TABLAS (Evitar Saltos) ==
+ * ====================================================================
+ */
+/* La tabla nace INVISIBLE */
+.it-table-container .dataTables_wrapper {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* JS agrega esta clase cuando termina de ajustar columnas */
+.it-table-container .dataTables_wrapper.it-ready {
+  visibility: visible;
+  opacity: 1;
 }
 
 /* Status badge styling for invoices */
@@ -860,6 +1017,7 @@ body.dark-mode #invoicesTable tbody tr.row-type-truck td {
   opacity: 1;
 }
 
+/* --- MODIFIED: Modal Content now uses fixed height and Flexbox --- */
 .it-modal-content {
   background-color: rgba(var(--color-surface-rgb), 0.9);
   /* Semi-transparent surface */
@@ -877,16 +1035,20 @@ body.dark-mode #invoicesTable tbody tr.row-type-truck td {
   max-width: 700px;
   /* Default max width */
   box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
+  
+  /* --- MODIFIED: Flex properties to force full height --- */
   display: flex;
   flex-direction: column;
   /* Stack header, body, footer vertically */
   max-height: 90vh;
   /* Limit height to 90% of viewport */
+  height: 90vh; /* Force height to take available space for table */
+  
   transform: scale(0.95);
   /* Start slightly smaller for scale-in effect */
   transition: transform 0.3s ease-in-out;
   overflow: hidden;
-  /* Prevent content from spilling, body will scroll */
+  /* Prevent content from spilling */
 }
 
 body.dark-mode .it-modal-content {
@@ -972,12 +1134,15 @@ body.dark-mode .it-close-button {
   color: var(--color-text-secondary);
 }
 
+/* --- MODIFIED: Modal Body uses Flexbox to handle internal scroll --- */
 .it-modal-body {
   padding: 1.8rem;
-  flex-grow: 1;
-  /* Allow body to take available space */
-  overflow-y: auto;
-  /* Enable vertical scroll if content exceeds max-height */
+  flex: 1; /* Allow body to take available space */
+  display: flex; /* Flex container */
+  flex-direction: column;
+  overflow: hidden; /* Scroll handled by table, not body (unless content overflows) */
+  min-height: 0; /* CRITICAL for Flexbox scrolling */
+  overflow-y: auto; /* Fallback for non-table content */
 }
 
 /* Custom scrollbar for modal body */
