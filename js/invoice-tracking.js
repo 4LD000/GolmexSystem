@@ -157,6 +157,15 @@
     modalElement.style.display = "flex";
     setTimeout(() => modalElement.classList.add("it-modal-open"), 10);
     document.body.style.overflow = "hidden";
+    
+    // Trigger realignment for tables inside modals when opening
+    const table = modalElement.querySelector('table.dataTable');
+    if (table) {
+        setTimeout(() => {
+            const dt = $(table).DataTable();
+            dt.columns.adjust();
+        }, 200);
+    }
   }
 
   function closeItModal(modalElement) {
@@ -443,10 +452,13 @@
   }
 
   // SECTION 4: INVOICE TABLE INITIALIZATION AND RENDERING (MAIN TABLE)
+  // === MODIFIED: APPLIED UNIVERSAL FLEX CONFIGURATIONS FROM BROKERAGE CQP ===
   function initializeInvoicesTable(invoicesData = []) {
     if ($.fn.DataTable.isDataTable(invoicesTableHtmlElement)) {
-      invoicesDataTable.clear().destroy();
+      invoicesDataTable.destroy();
+      $(invoicesTableHtmlElement).empty(); // Clean DOM to rebuild header properly
     }
+    
     const activeInvoices = invoicesData.filter(
       (inv) =>
         inv.status !== INVOICE_STATUS_PAID &&
@@ -455,17 +467,29 @@
 
     invoicesDataTable = $(invoicesTableHtmlElement).DataTable({
       data: activeInvoices,
+      // CUSTOM DOM STRUCTURE FOR FLEX
+      dom: '<"dt-top"l f>rt<"dt-bottom"ip>',
+      // FIXED SCROLL CONFIGURATION
+      responsive: false, // Strict control
+      scrollX: true,
+      scrollY: '50vh', // Calculated height
+      scrollCollapse: true,
+      autoWidth: false,
+      deferRender: true,
+      
       columns: [
-        { data: "invoice_number", title: "Invoice #" },
+        { data: "invoice_number", title: "Invoice #", className: "dt-center" },
         {
           data: "service_display_id",
           title: "Service ID",
           defaultContent: "N/A",
+          className: "dt-center"
         },
         { data: "customer_name", title: "Customer", defaultContent: "N/A" },
         {
           data: "invoice_date",
           title: "Invoice Date",
+          className: "dt-center",
           render: (data, type) =>
             type === "display" && data !== "N/A"
               ? new Date(data + "T00:00:00Z").toLocaleDateString()
@@ -474,6 +498,7 @@
         {
           data: "due_date",
           title: "Due Date",
+          className: "dt-center",
           render: (data, type) =>
             type === "display" && data !== "N/A"
               ? new Date(data + "T00:00:00Z").toLocaleDateString()
@@ -482,7 +507,7 @@
         {
           data: "totals_by_currency",
           title: "Total Amount",
-          className: "text-right",
+          className: "dt-right",
           render: function (data, type, row) {
             if (type === "display" || type === "filter") {
               if (
@@ -514,6 +539,7 @@
         {
           data: "totals_by_currency",
           title: "Currency",
+          className: "dt-center",
           render: function (data) {
             if (data && typeof data === "object") {
               if (data.hasOwnProperty("USD")) return "USD";
@@ -527,6 +553,7 @@
         {
           data: "status",
           title: "Status",
+          className: "dt-center",
           render: (data) =>
             `<span class="it-status-badge status-${(data || "unknown")
               .toLowerCase()
@@ -537,7 +564,7 @@
           title: "Actions",
           orderable: false,
           searchable: false,
-          className: "it-table-actions",
+          className: "it-table-actions dt-center",
           render: function (data, type, row) {
             let buttonsHtml = `
               <button data-action="view" data-id="${row.id}" title="View Invoice"><i class='bx bx-show'></i></button>
@@ -551,15 +578,12 @@
         },
       ],
 
-      responsive: true,
-      scrollX: true,
-      autoWidth: false,
       language: {
-        search: "Search Invoices:",
-        lengthMenu: "Show _MENU_ invoices",
-        info: "Showing _START_ to _END_ of _TOTAL_ active invoices",
-        infoEmpty: "No active invoices to display",
-        infoFiltered: "(filtered from _MAX_ total active invoices)",
+        search: "Search:",
+        lengthMenu: "Show _MENU_",
+        info: "Showing _START_ to _END_ of _TOTAL_",
+        infoEmpty: "No invoices",
+        infoFiltered: "(filtered from _MAX_)",
         paginate: {
           first: "<i class='bx bx-chevrons-left'></i>",
           last: "<i class='bx bx-chevrons-right'></i>",
@@ -569,11 +593,28 @@
         emptyTable: "No active invoices found.",
       },
       order: [[3, "desc"]],
-      drawCallback: function (settings) {
-        var api = new $.fn.dataTable.Api(settings);
-        if ($.fn.dataTable.Responsive && api.responsive)
-          api.responsive.recalc();
-      },
+      // === CRITICAL FIX: INIT COMPLETE LOGIC FOR VISUAL STABILITY ===
+      initComplete: function(settings, json) {
+        const api = this.api();
+        const wrapper = $(api.table().container()); // Get the DT wrapper
+
+        // 1. Adjust columns silently (table is hidden by CSS opacity:0)
+        api.columns.adjust();
+        
+        // 2. Wait for rendering to stabilize
+        setTimeout(() => {
+            api.columns.adjust().draw();
+            
+            // 3. Add class to trigger CSS Fade-In (defined in CSS as .it-ready)
+            wrapper.addClass('it-ready');
+        }, 250); 
+
+        // 4. Safety resize backup
+        setTimeout(() => {
+            $(window).trigger('resize');
+            api.columns.adjust();
+        }, 500);
+      }
     });
   }
 
@@ -581,8 +622,27 @@
   function openHistoryModal() {
     if (!invoiceHistoryModal) return;
     populateHistoryFilterDropdowns();
+    // Force clear and redraw logic will happen in handleFilter
     handleFilterHistoryInvoices();
     openItModal(invoiceHistoryModal);
+
+    // === NEW FIX: RECALCULATE DATATABLES LAYOUT ON MODAL OPEN ===
+    // This ensures header/footer/body render correctly inside the Flexbox container
+    setTimeout(() => {
+        if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
+            const table = $(invoiceHistoryTableHtmlElement).DataTable();
+            
+            // 1. Adjust columns
+            table.columns.adjust();
+            
+            // 2. Force removal of inline height styles on the scroll body
+            // This allows CSS 'flex: 1' to control the height instead of DataTables' calc
+            $(invoiceHistoryTableHtmlElement).closest('.dataTables_scrollBody').css('height', '');
+            
+            // 3. Redraw
+            table.draw();
+        }
+    }, 250);
   }
 
   function closeHistoryModal() {
@@ -671,23 +731,34 @@
     }
   }
 
+  // === MODIFIED: APPLIED UNIVERSAL FLEX CONFIGURATIONS TO HISTORY TABLE ===
   function initializeInvoiceHistoryTable(historyData = []) {
     if ($.fn.DataTable.isDataTable(invoiceHistoryTableHtmlElement)) {
-      invoiceHistoryDataTable.clear().destroy();
+      invoiceHistoryDataTable.destroy();
+      $(invoiceHistoryTableHtmlElement).empty();
     }
     invoiceHistoryDataTable = $(invoiceHistoryTableHtmlElement).DataTable({
       data: historyData,
+      dom: '<"dt-top"l f>rt<"dt-bottom"ip>',
+      responsive: false,
+      scrollX: true,
+      scrollY: '50vh', // Changed from 45vh to match main table and allow flex to clip it
+      scrollCollapse: true,
+      autoWidth: false,
+      deferRender: true,
       columns: [
-        { data: "invoice_number", title: "Invoice #" },
+        { data: "invoice_number", title: "Invoice #", className: "dt-center" },
         {
           data: "service_display_id",
           title: "Service ID",
           defaultContent: "N/A",
+          className: "dt-center"
         },
         { data: "customer_name", title: "Customer", defaultContent: "N/A" },
         {
           data: "invoice_date",
           title: "Invoice Date",
+          className: "dt-center",
           render: (data, type) =>
             type === "display" && data !== "N/A"
               ? new Date(data + "T00:00:00Z").toLocaleDateString()
@@ -696,6 +767,7 @@
         {
           data: "due_date",
           title: "Due Date",
+          className: "dt-center",
           render: (data, type) =>
             type === "display" && data !== "N/A"
               ? new Date(data + "T00:00:00Z").toLocaleDateString()
@@ -704,7 +776,7 @@
         {
           data: "totals_by_currency",
           title: "Total Amount",
-          className: "text-right",
+          className: "dt-right",
           render: function (data) {
             if (
               data &&
@@ -722,6 +794,7 @@
         {
           data: "totals_by_currency",
           title: "Currency",
+          className: "dt-center",
           render: function (data) {
             if (data && typeof data === "object") {
               if (data.hasOwnProperty("USD")) return "USD";
@@ -735,6 +808,7 @@
         {
           data: "status",
           title: "Status",
+          className: "dt-center",
           render: (data) =>
             `<span class="it-status-badge status-${(data || "unknown")
               .toLowerCase()
@@ -745,7 +819,7 @@
           title: "Actions",
           orderable: false,
           searchable: false,
-          className: "it-table-actions",
+          className: "it-table-actions dt-center",
           render: function (data, type, row) {
             return `
                         <button data-action="view" data-id="${row.id}" title="View Invoice"><i class='bx bx-show'></i></button>
@@ -754,29 +828,40 @@
           },
         },
       ],
-      responsive: true,
-      scrollX: true,
-      autoWidth: false,
       language: {
-        search: "Search History:",
-        lengthMenu: "Show _MENU_ entries",
-        info: "Showing _START_ to _END_ of _TOTAL_ historical invoices",
-        infoEmpty: "No historical invoices to display",
-        infoFiltered: "(filtered from _MAX_ total historical invoices)",
+        search: "Search:",
+        lengthMenu: "Show _MENU_",
+        info: "Showing _START_ to _END_ of _TOTAL_",
+        infoEmpty: "No history",
+        infoFiltered: "(filtered from _MAX_)",
         paginate: {
           first: "<i class='bx bx-chevrons-left'></i>",
           last: "<i class='bx bx-chevrons-right'></i>",
           next: "<i class='bx bx-chevron-right'></i>",
           previous: "<i class='bx bx-chevron-left'></i>",
         },
-        emptyTable: "No historical invoices found for the selected criteria.",
+        emptyTable: "No historical invoices found.",
       },
       order: [[3, "desc"]],
-      drawCallback: function (settings) {
-        var api = new $.fn.dataTable.Api(settings);
-        if ($.fn.dataTable.Responsive && api.responsive)
-          api.responsive.recalc();
-      },
+      // === CRITICAL FIX: INIT COMPLETE FOR MODAL TABLES ===
+      initComplete: function(settings, json) {
+        const api = this.api();
+        const wrapper = $(api.table().container()); // Get the DT wrapper
+
+        // 1. Adjust columns silently (table is hidden by CSS opacity:0)
+        api.columns.adjust();
+        
+        // 2. Wait for rendering to stabilize
+        setTimeout(() => {
+            api.columns.adjust().draw();
+            wrapper.addClass('it-ready');
+        }, 250); 
+
+        // 4. Safety resize backup
+        setTimeout(() => {
+            api.columns.adjust();
+        }, 500);
+      }
     });
   }
 
