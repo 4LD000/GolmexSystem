@@ -1,12 +1,9 @@
-<!-- Módulo de Client Management (Versión Actualizada) -->
 <div class="client-management-container">
 
-    <!-- 1. Encabezado del Módulo -->
     <div class="cm-header">
         <div class="cm-header-left">
             <h1><i class='bx bxs-group'></i> Client Management</h1>
         </div>
-        <!-- Grupo de botones de acción -->
         <div class="cm-header-actions">
             <button class="btn-goldmex-secondary" id="import-csv-btn">
                 <i class='bx bxs-file-import'></i>
@@ -19,7 +16,6 @@
         </div>
     </div>
 
-    <!-- 2. Dashboard con 5 tarjetas -->
     <div class="cm-dashboard-summary">
         <div class="cm-scorecard">
             <div class="cm-scorecard-icon total">
@@ -68,7 +64,6 @@
         </div>
     </div>
 
-    <!-- 3. Contenedor de la Tabla de Datos -->
     <div class="cm-table-container">
         <table id="clientsTable" class="display responsive nowrap" style="width:100%">
             <thead>
@@ -81,17 +76,15 @@
                     <th>Client Type</th>
                     <th>Nationality</th>
                     <th>Actions</th>
-                    <th>Docs</th> <!-- NUEVA COLUMNA -->
+                    <th>Docs</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- Datos poblados por JavaScript -->
-            </tbody>
+                </tbody>
         </table>
     </div>
 </div>
 
-<!-- 4. Modal para Añadir/Editar Cliente (Existente) -->
 <div id="addClientModal" class="cm-modal">
     <div class="cm-modal-content">
         <div class="cm-modal-header">
@@ -150,9 +143,8 @@
     </div>
 </div>
 
-<!-- 5. Modal de Confirmación (Existente) -->
 <div id="cmConfirmModal" class="cm-modal">
-    <div class="cm-modal-content" style="max-width: 450px;">
+    <div class="cm-modal-content" style="max-width: 450px; height: auto;">
         <div class="cm-modal-header">
             <h2 id="cmConfirmTitle">Confirm Action</h2>
             <span class="cm-close-btn" id="cmConfirmCloseBtn">&times;</span>
@@ -167,9 +159,8 @@
     </div>
 </div>
 
-<!-- 6. NUEVO: Modal para Importar Clientes desde CSV -->
 <div id="importCsvModal" class="cm-modal">
-    <div class="cm-modal-content">
+    <div class="cm-modal-content" style="height: auto;">
         <div class="cm-modal-header">
             <h2><i class='bx bxs-file-import'></i> Import Clients from CSV</h2>
             <span class="cm-close-btn">&times;</span>
@@ -194,7 +185,6 @@
     </div>
 </div>
 
-<!-- 7. NUEVO: Modal para Gestión de Documentos -->
 <div id="docManagementModal" class="cm-modal">
     <div class="cm-modal-content" style="max-width: 800px;">
         <div class="cm-modal-header">
@@ -218,16 +208,13 @@
                 <h4><i class='bx bx-list-ul'></i> Uploaded Documents</h4>
                 <div id="docListContainer" class="cm-doc-list-container">
                     <p id="noDocsMessage" class="cm-no-docs-message" style="display:none;">No documents uploaded for this client yet.</p>
-                    <!-- Las tarjetas de documentos se insertarán aquí -->
-                </div>
+                    </div>
             </div>
         </div>
         <div class="cm-modal-footer">
-            <button type="button" class="btn-goldmex-secondary" id="closeDocModalBtn">Close</button>
+            <button type="button" class="btn-goldmex-secondary" id="closeDocModalFooterBtn">Close</button>
         </div>
     </div>
 </div>
 
-
-<!-- Script del módulo -->
 <script src="js/client-management.js"></script>
