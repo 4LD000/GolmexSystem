@@ -167,34 +167,32 @@
             <button class="iop-close-button" id="iop-close-ledger-btn">&times;</button>
         </div>
         <div class="iop-modal-body">
-            <div class="iop-ledger-controls">
-                <div class="iop-form-group">
-                    <label for="iop-client-select-ledger">Select Client:</label>
+            <div class="iop-ledger-toolbar">
+                <div class="iop-form-group iop-ledger-client-group">
+                    <label for="iop-client-select-ledger">
+                        Client <small class="iop-balance-badge">(Bal: <span id="iop-ledger-current-balance">$0.00</span>)</small>
+                    </label>
                     <select id="iop-client-select-ledger">
                         <option value="">Loading clients...</option>
                     </select>
                 </div>
-                <div class="iop-ledger-balance-display">
-                    Current Balance: <span id="iop-ledger-current-balance">$0.00</span>
-                </div>
-            </div>
-            <hr class="iop-divider">
-            <div class="iop-ledger-actions">
-                <h4>Register New Deposit</h4>
-                <form id="iop-add-deposit-form" class="iop-form-inline">
-                    <div class="iop-form-group">
-                        <label for="iop-deposit-amount">Amount (USD):</label>
-                        <input type="number" id="iop-deposit-amount" step="0.01" required placeholder="e.g., 1000.00">
+
+                <form id="iop-add-deposit-form" class="iop-ledger-form-inline">
+                    <div class="iop-form-group iop-ledger-amount-group">
+                        <label for="iop-deposit-amount">Amount (USD)</label>
+                        <input type="number" id="iop-deposit-amount" step="0.01" required placeholder="0.00">
                     </div>
-                    <div class="iop-form-group">
-                        <label for="iop-deposit-reference">Reference / Note:</label>
-                        <input type="text" id="iop-deposit-reference" placeholder="e.g., Bank Transfer #12345">
+                    <div class="iop-form-group iop-ledger-ref-group">
+                        <label for="iop-deposit-reference">Reference / Note</label>
+                        <input type="text" id="iop-deposit-reference" placeholder="e.g. Transfer #123">
                     </div>
-                    <button type="submit" class="btn-goldmex-primary"><i class='bx bx-plus'></i> Add Deposit</button>
+                    <button type="submit" class="btn-goldmex-primary iop-ledger-add-btn">
+                        <i class='bx bx-plus'></i> Add
+                    </button>
                 </form>
             </div>
-            <div class="iop-table-container" style="margin-top: 2rem;">
-                <h4>Transaction History</h4>
+
+            <div class="iop-table-container">
                 <table id="iop-transaction-history-table" class="display responsive nowrap" style="width: 100%"></table>
             </div>
         </div>
@@ -205,7 +203,7 @@
 </div>
 
 <div id="iop-history-modal" class="iop-modal">
-    <div class="iop-modal-content" style="max-width: 90vw; width: 1400px;">
+    <div class="iop-modal-content iop-modal-xlarge">
         <div class="iop-modal-header">
             <h3><i class='bx bx-history'></i> Shipments History</h3>
             <button class="iop-close-button" id="iop-close-history-modal-btn">&times;</button>
@@ -324,6 +322,5 @@
         </div>
     </div>
 </div>
-
 
 <script src="js/import-operations.js"></script>
