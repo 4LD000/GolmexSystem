@@ -1,28 +1,45 @@
-/* Estilos para el Módulo List of Entries */
+/* Estilos para el Módulo List of Entries (V2.0 - Clean Flex Implementation) */
 
-/* Contenedor Principal */
+/* --- 1. CONTENEDOR PRINCIPAL --- */
 .list-of-entries-container {
   padding: 1.5rem;
   background-color: var(--color-bg);
+  height: 100vh;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-bottom: 0;
 }
 
-.list-of-entries-container > .le-header,
-.list-of-entries-container > .le-dashboard-summary,
-.list-of-entries-container > .le-table-container {
+.list-of-entries-container>.le-header,
+.list-of-entries-container>.le-dashboard-summary,
+.list-of-entries-container>.le-table-container {
   animation-name: fadeInSlideUp;
-  animation-duration: var(--animation-duration-normal);
-  animation-timing-function: var(--animation-timing-function);
+  animation-duration: var(--animation-duration-normal, 0.5s);
+  animation-timing-function: var(--animation-timing-function, ease-out);
   animation-fill-mode: both;
 }
 
-.list-of-entries-container > .le-header {
+.list-of-entries-container>.le-header {
   animation-delay: 0s;
+  flex-shrink: 0;
 }
-.list-of-entries-container > .le-dashboard-summary {
+
+.list-of-entries-container>.le-dashboard-summary {
   animation-delay: 0.05s;
+  flex-shrink: 0;
 }
-.list-of-entries-container > .le-table-container {
+
+.list-of-entries-container>.le-table-container {
   animation-delay: 0.1s;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Cabecera */
@@ -30,10 +47,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--color-border);
 }
+
 .le-header h2 {
   color: var(--color-text-primary);
   font-size: 1.8rem;
@@ -42,21 +60,24 @@
   align-items: center;
   gap: 0.6rem;
 }
+
 .le-header h2 .bx {
   color: var(--goldmex-secondary-color);
 }
+
 .le-header-actions {
   display: flex;
   gap: 0.8rem;
 }
 
-/* Dashboard NUEVO */
+/* Dashboard */
 .le-dashboard-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
+
 .le-scorecard {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -68,10 +89,12 @@
   box-shadow: 0 2px 5px rgba(var(--shadow-border-rgb, 26, 54, 93), 0.05);
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
+
 .le-scorecard:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(var(--shadow-border-rgb, 26, 54, 93), 0.1);
 }
+
 .le-scorecard-icon {
   font-size: 2.2rem;
   padding: 0.5rem;
@@ -83,44 +106,54 @@
   height: 55px;
   flex-shrink: 0;
 }
+
 .le-scorecard-icon.total {
   color: var(--goldmex-primary-color);
   background-color: rgba(var(--goldmex-primary-color-rgb), 0.1);
 }
+
 body.dark-mode .le-scorecard-icon.total {
-    color: var(--goldmex-secondary-color);
-    background-color: rgba(var(--goldmex-secondary-color-rgb), 0.15);
+  color: var(--goldmex-secondary-color);
+  background-color: rgba(var(--goldmex-secondary-color-rgb), 0.15);
 }
+
 .le-scorecard-icon.in-progress {
   color: var(--goldmex-info-color, #17a2b8);
   background-color: rgba(23, 162, 184, 0.1);
 }
+
 body.dark-mode .le-scorecard-icon.in-progress {
-    color: #63d3e4;
-    background-color: rgba(99, 211, 228, 0.15);
+  color: #63d3e4;
+  background-color: rgba(99, 211, 228, 0.15);
 }
+
 .le-scorecard-icon.completed {
   color: var(--goldmex-success-color, #28a745);
   background-color: rgba(40, 167, 69, 0.1);
 }
+
 body.dark-mode .le-scorecard-icon.completed {
-    color: #51cf66;
-    background-color: rgba(81, 207, 102, 0.15);
+  color: #51cf66;
+  background-color: rgba(81, 207, 102, 0.15);
 }
+
 .le-scorecard-icon.cancelled {
   color: var(--goldmex-neutral-color, #6c757d);
   background-color: rgba(108, 117, 125, 0.1);
 }
+
 body.dark-mode .le-scorecard-icon.cancelled {
-    color: #adb5bd;
-    background-color: rgba(173, 181, 189, 0.15);
+  color: #adb5bd;
+  background-color: rgba(173, 181, 189, 0.15);
 }
+
 .le-scorecard-info h4 {
   margin: 0 0 0.2rem 0;
   font-size: 0.9rem;
   color: var(--color-text-secondary);
   font-weight: 500;
 }
+
 .le-scorecard-info p {
   margin: 0;
   font-size: 1.6rem;
@@ -129,23 +162,115 @@ body.dark-mode .le-scorecard-icon.cancelled {
   line-height: 1.2;
 }
 
-/* Contenedor de Tabla */
+/* ====================================================================
+ * == TABLAS: ARQUITECTURA FLEX (REPLICA EXACTA DE INVOICE TRACKING) ==
+ * ==================================================================== */
+
+/* 1. Contenedor Flexible Principal */
 .le-table-container {
   background-color: var(--color-surface);
-  padding: 1rem;
   border-radius: 0.5rem;
-  box-shadow: 0 2px 10px var(--shadow-border);
-  overflow-x: auto;
   border: 1px solid var(--color-border);
+  box-shadow: 0 2px 10px var(--shadow-border);
+  
+  /* LÓGICA CRÍTICA DE FLEXBOX */
+  display: flex;
+  flex-direction: column;
+  flex: 1;             /* Ocupa todo el espacio vertical disponible */
+  min-height: 0;       /* OBLIGATORIO para que el scroll funcione dentro de flex */
+  padding: 0;
+  overflow: hidden;    /* Evita que la tabla rompa el contenedor */
 }
 
-/* Estilos para los botones de acción en la tabla */
+/* 2. Wrapper de DataTables */
+.le-table-container .dataTables_wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  
+  /* Animación de entrada para evitar saltos visuales */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Clase que JS agrega cuando la tabla está lista */
+.le-table-container .dataTables_wrapper.le-ready {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 3. Área de Scroll */
+.le-table-container .dataTables_scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.le-table-container .dataTables_scrollHead {
+  flex-shrink: 0;
+  width: 100% !important;
+}
+
+.le-table-container .dataTables_scrollHeadInner,
+.le-table-container .dataTables_scrollHeadInner table {
+  width: 100% !important;
+}
+
+/* 4. EL SECRETO: Cuerpo de la tabla */
+.le-table-container .dataTables_scrollBody {
+  flex: 1 1 0px; /* CAMBIO RECOMENDADO: Usa 0px como base flex para evitar desbordes */
+  height: 10px !important; /* El hack para forzar el recálculo */
+  max-height: none !important; /* Anula cualquier max-height que JS intente poner */
+  width: 100% !important;
+  overflow-y: auto !important;
+}
+
+/* ====================================================================
+ * == MODALES: FLEX FIX PARA HISTORIAL (REPLICA DE INVOICE TRACKING) ==
+ * ==================================================================== */
+
+.le-modal .le-table-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100% !important;
+}
+
+.le-modal .dataTables_wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.le-modal .dataTables_scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.le-modal .dataTables_scrollBody {
+    flex: 1;
+    height: auto !important; 
+    max-height: none !important;
+}
+
+/* Resto de estilos del módulo (Botones, Badges, Formularios) sin cambios estructurales */
+
+/* Botones de acción */
 .le-table-actions {
   display: flex;
   gap: 0.4rem;
   justify-content: center;
   align-items: center;
 }
+
 .le-table-actions button {
   background: none;
   border: 1px solid transparent;
@@ -161,67 +286,74 @@ body.dark-mode .le-scorecard-icon.cancelled {
   min-width: 28px;
   height: 28px;
 }
+
 .le-table-actions button i {
   font-size: 1.1rem;
   vertical-align: middle;
 }
 
-/* Botón View */
+/* Colores de botones */
 .le-table-actions button[data-action="view"] {
   color: var(--goldmex-primary-color);
   border-color: var(--goldmex-primary-color);
 }
+
 .le-table-actions button[data-action="view"]:hover {
   background-color: var(--goldmex-primary-color);
   color: var(--goldmex-white-color);
 }
+
 body.dark-mode .le-table-actions button[data-action="view"] {
   color: var(--goldmex-secondary-color);
   border-color: var(--goldmex-secondary-color);
 }
+
 body.dark-mode .le-table-actions button[data-action="view"]:hover {
   background-color: var(--goldmex-secondary-color);
   color: var(--goldmex-primary-color);
 }
 
-/* Botón Edit */
 .le-table-actions button[data-action="edit"] {
   color: var(--goldmex-secondary-color);
   border-color: var(--goldmex-secondary-color);
 }
+
 .le-table-actions button[data-action="edit"]:hover {
   background-color: var(--goldmex-secondary-color);
   color: var(--goldmex-primary-color);
 }
+
 body.dark-mode .le-table-actions button[data-action="edit"] {
   color: var(--goldmex-light-color);
   border-color: var(--goldmex-light-color);
 }
+
 body.dark-mode .le-table-actions button[data-action="edit"]:hover {
   background-color: var(--goldmex-light-color);
   color: var(--goldmex-primary-color);
 }
 
-/* Botón Docs */
 .le-table-actions button[data-action="docs"] {
   color: var(--goldmex-info, #17a2b8);
   border-color: var(--goldmex-info, #17a2b8);
   padding: 0.25rem 0.5rem;
 }
+
 .le-table-actions button[data-action="docs"]:hover {
   background-color: var(--goldmex-info, #17a2b8);
   color: var(--goldmex-white-color);
 }
 
-/* Botón Complete */
 .le-table-actions button[data-action="complete"] {
   color: var(--goldmex-success, #28a745);
   border-color: var(--goldmex-success, #28a745);
 }
+
 .le-table-actions button[data-action="complete"]:hover {
   background-color: var(--goldmex-success, #28a745);
   color: var(--goldmex-white-color);
 }
+
 .le-table-actions button[data-action="complete"]:disabled {
   color: var(--color-text-secondary);
   border-color: var(--color-border);
@@ -229,22 +361,22 @@ body.dark-mode .le-table-actions button[data-action="edit"]:hover {
   opacity: 0.6;
 }
 
-/* Botón Delete */
 .le-table-actions button[data-action="delete"] {
   color: var(--goldmex-accent-color);
   border-color: var(--goldmex-accent-color);
 }
+
 .le-table-actions button[data-action="delete"]:hover {
-  background-color:#e31837;;
+  background-color: #e31837;
   color: var(--goldmex-white-color);
 }
+
 body.dark-mode .le-table-actions button[data-action="delete"]:hover {
-    background-color:#e31837;
-    color: var(--goldmex-white-color);
+  background-color: #e31837;
+  color: var(--goldmex-white-color);
 }
 
-
-/* Estilos para las insignias de estado */
+/* Badges */
 .le-status-badge {
   display: inline-block;
   padding: 0.3em 0.7em;
@@ -258,143 +390,36 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   min-width: 90px;
   color: white;
 }
+
 .le-status-badge.status-in-progress {
   background-color: var(--goldmex-info-color, #17a2b8);
 }
+
 .le-status-badge.status-completed {
   background-color: var(--goldmex-success-color, #28a745);
 }
+
 .le-status-badge.status-cancelled {
   background-color: #6c757d;
 }
 
-/* Estilos para los detalles en el modal de vista */
-.le-detail-section {
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
-}
-.le-detail-section:last-child {
-  border-bottom: none;
-}
-.le-detail-section h4 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 0.8rem;
-}
-.le-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 0.8rem 1.5rem;
-}
-.le-detail-group {
-  display: flex;
-  flex-direction: column;
-}
-.le-detail-label {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  font-size: 0.8rem;
-  margin-bottom: 0.2rem;
-  text-transform: uppercase;
-}
-.le-detail-value {
-  word-break: break-word;
-}
-.le-detail-full-width {
-  grid-column: 1 / -1;
-}
-.le-duties-view-container {
-  list-style: none;
-  padding: 0;
-}
-.le-duties-view-container li {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.4rem 0.2rem;
-  border-bottom: 1px dashed var(--color-border-soft);
-}
-.le-duties-view-container li:last-child {
-  border-bottom: none;
-}
-.le-duty-name {
-  color: var(--color-text-primary);
-}
-.le-duty-value {
-  font-weight: 600;
-  color: var(--goldmex-success-color);
+.le-status-badge.status-may-proceed {
+  background-color: var(--goldmex-success-color, #28a745);
 }
 
-/* Estilos para el modal de documentos */
-.le-doc-upload-section,
-.le-doc-list-section {
-  margin-bottom: 2rem;
-}
-.le-doc-list-section {
-  margin-bottom: 0;
-}
-.le-doc-upload-section h4,
-.le-doc-list-section h4 {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: 1rem;
-}
-.le-form-grid {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1rem;
-  align-items: end;
-}
-.le-doc-list-container {
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  background-color: var(--color-bg);
-  border-radius: 0.3rem;
-}
-.le-doc-card {
-  display: flex;
-  align-items: center;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0.3rem;
-  padding: 0.8rem 1rem;
-  margin-bottom: 0.8rem;
-}
-.le-doc-card-icon {
-  font-size: 2rem;
-  color: var(--goldmex-primary-color);
-  margin-right: 1rem;
-}
-.le-doc-card-info {
-  flex-grow: 1;
-  overflow: hidden;
-}
-.le-doc-card-name {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.le-doc-card-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: 1rem;
-}
-.le-doc-card-actions button {
-  background: none;
-  border: 1px solid transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 0.4rem;
-  font-size: 1.1rem;
-}
-.le-doc-card-actions button:hover {
-  color: var(--active-hover-text);
+.le-status-badge.status-hold {
+  background-color: #fd7e14;
 }
 
-/* Estilos Generales de Modales y Formularios (existentes) */
+.le-status-badge.status-pending {
+  background-color: #6c757d;
+}
+
+.le-status-badge.status-released {
+  background-color: var(--goldmex-secondary-color, #007bff);
+}
+
+/* Modales y Formularios */
 .le-modal {
   display: none;
   position: fixed;
@@ -414,14 +439,16 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
 #viewEntryModal,
 #leDocManagementModal,
 #entryFormModal,
-#leCustomConfirmModal {
-    z-index: 1300;
+#leCustomConfirmModal,
+#historyModal {
+  z-index: 1300;
 }
 
 .le-modal.le-modal-open {
   display: flex;
   opacity: 1;
 }
+
 .le-modal-content {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -432,16 +459,20 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  height: auto;
   transform: scale(0.95);
   transition: transform 0.3s ease-in-out;
   overflow: hidden;
 }
+
 .le-modal-content-xlarge {
   max-width: 1200px;
 }
+
 .le-modal.le-modal-open .le-modal-content {
   transform: scale(1);
 }
+
 .le-modal-header {
   padding: 1.2rem 1.8rem;
   border-bottom: 1px solid var(--color-border);
@@ -450,6 +481,7 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   align-items: center;
   flex-shrink: 0;
 }
+
 .le-modal-header h3 {
   margin: 0;
   font-size: 1.4rem;
@@ -459,9 +491,11 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   gap: 0.6rem;
   color: var(--color-text-primary);
 }
+
 .le-modal-header h3 .bx {
   color: var(--goldmex-secondary-color);
 }
+
 .le-close-button {
   background: none;
   border: none;
@@ -470,15 +504,22 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
 }
+
 .le-close-button:hover {
   color: var(--goldmex-accent-color);
   transform: rotate(90deg);
 }
+
 .le-modal-body {
   padding: 1.8rem;
-  flex-grow: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
   overflow-y: auto;
 }
+
 .le-modal-footer {
   padding: 1.2rem 1.8rem;
   border-top: 1px solid var(--color-border);
@@ -487,15 +528,19 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   gap: 0.8rem;
   flex-shrink: 0;
 }
+
+/* Estilos de formulario (sin cambios) */
 .le-form-step {
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px dashed var(--color-border);
 }
+
 .le-form-step:last-child {
   border-bottom: none;
   margin-bottom: 0;
 }
+
 .le-form-step h4 {
   font-size: 1.1rem;
   font-weight: 600;
@@ -505,6 +550,7 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   align-items: center;
   gap: 0.7rem;
 }
+
 .le-step-number {
   display: inline-flex;
   align-items: center;
@@ -516,25 +562,30 @@ body.dark-mode .le-table-actions button[data-action="delete"]:hover {
   color: var(--goldmex-white-color);
   font-size: 0.9rem;
 }
+
 body.dark-mode .le-step-number {
   background-color: var(--goldmex-secondary-color);
   color: var(--goldmex-primary-color);
 }
+
 .le-form-grid-3 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
+
 .le-form-group {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
+
 .le-form-group label {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--color-text-secondary);
 }
+
 .le-form-group input,
 .le-form-group select,
 .le-form-group textarea {
@@ -547,10 +598,12 @@ body.dark-mode .le-step-number {
   font-size: 0.9rem;
   box-sizing: border-box;
 }
+
 .le-form-group select:disabled {
   background-color: var(--color-border);
   cursor: not-allowed;
 }
+
 .le-entry-details-section {
   padding-top: 1rem;
   transition: opacity 0.4s ease, max-height 0.5s ease;
@@ -558,19 +611,23 @@ body.dark-mode .le-step-number {
   max-height: 0;
   overflow: hidden;
 }
+
 .le-entry-details-section.visible {
   opacity: 1;
   max-height: 1000px;
 }
+
 .le-details-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 2rem;
 }
+
 .le-duties-column h4,
 .le-other-details-column h4 {
   margin-top: 0;
 }
+
 .le-duties-container {
   max-height: 250px;
   overflow-y: auto;
@@ -579,6 +636,7 @@ body.dark-mode .le-step-number {
   border-radius: 0.4rem;
   margin-bottom: 1rem;
 }
+
 .le-duty-line {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 40px;
@@ -587,9 +645,11 @@ body.dark-mode .le-step-number {
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--color-border-soft);
 }
+
 .le-duty-line:last-child {
   border-bottom: none;
 }
+
 .le-remove-duty-btn {
   padding: 0.3rem;
   font-size: 1rem;
@@ -604,15 +664,18 @@ body.dark-mode .le-step-number {
   justify-content: center;
   cursor: pointer;
 }
+
 .le-remove-duty-btn:hover {
   background-color: var(--goldmex-accent-color);
   color: var(--goldmex-white-color);
 }
+
 .le-bond-options {
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
 }
+
 .le-bond-options label {
   display: flex;
   align-items: center;
@@ -620,14 +683,17 @@ body.dark-mode .le-step-number {
   font-size: 0.9rem;
   cursor: pointer;
 }
+
 .le-required {
   color: var(--goldmex-accent-color);
 }
+
 .le-validation-error {
   font-size: 0.8rem;
   color: var(--goldmex-accent-color);
   margin-top: 0.3rem;
 }
+
 .le-modal-instructions {
   font-size: 0.9rem;
   color: var(--color-text-secondary);
@@ -638,12 +704,14 @@ body.dark-mode .le-step-number {
   border-left: 3px solid var(--goldmex-secondary-color);
   border-radius: 0.3rem;
 }
+
 .le-csv-results {
   margin-top: 1rem;
   padding: 0.8rem;
   background-color: var(--color-bg);
   border-radius: 0.3rem;
 }
+
 .custom-notification-le-container {
   position: fixed;
   top: 20px;
@@ -651,59 +719,418 @@ body.dark-mode .le-step-number {
   z-index: 2100;
 }
 
-/* Estilos para el modal de historial */
+/* Doc cards */
+.le-doc-upload-section,
+.le-doc-list-section {
+  margin-bottom: 2rem;
+}
+
+.le-doc-list-section {
+  margin-bottom: 0;
+}
+
+.le-doc-upload-section h4,
+.le-doc-list-section h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
+}
+
+.le-form-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.le-doc-list-container {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: var(--color-bg);
+  border-radius: 0.3rem;
+}
+
+.le-doc-card {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.le-doc-card-icon {
+  font-size: 2rem;
+  color: var(--goldmex-primary-color);
+  margin-right: 1rem;
+}
+
+.le-doc-card-info {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.le-doc-card-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.le-doc-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.le-doc-card-actions button {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.4rem;
+  font-size: 1.1rem;
+}
+
+.le-doc-card-actions button:hover {
+  color: var(--active-hover-text);
+}
+
+/* Details modal view */
+.le-detail-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.le-detail-section:last-child {
+  border-bottom: none;
+}
+
+.le-detail-section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+
+.le-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.8rem 1.5rem;
+}
+
+.le-detail-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.le-detail-label {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+}
+
+.le-detail-value {
+  word-break: break-word;
+}
+
+.le-detail-full-width {
+  grid-column: 1 / -1;
+}
+
+.le-duties-view-container {
+  list-style: none;
+  padding: 0;
+}
+
+.le-duties-view-container li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.2rem;
+  border-bottom: 1px dashed var(--color-border-soft);
+}
+
+.le-duties-view-container li:last-child {
+  border-bottom: none;
+}
+
+.le-duty-name {
+  color: var(--color-text-primary);
+}
+
+.le-duty-value {
+  font-weight: 600;
+  color: var(--goldmex-success-color);
+}
+
+/* Modal Historial */
+#historyModal .le-modal-content {
+  height: 85vh;
+}
+
 .le-history-controls {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-    align-items: end;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+#historyTableContainer {
+  max-height: none !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 #historyTable th,
 #historyTable td {
-    text-align: center;
-    vertical-align: middle;
+  text-align: center;
+  vertical-align: middle;
 }
 
-/* Estilos para nuevos Status Badges */
-.le-status-badge.status-may-proceed {
-  background-color: var(--goldmex-success-color, #28a745);
-}
-
-.le-status-badge.status-hold {
-  background-color: #fd7e14; /* Naranja para "Hold" */
-}
-
-.le-status-badge.status-pending {
-  background-color: #6c757d; /* Gris neutral para "Pending" */
-}
-
-.le-status-badge.status-released {
-  background-color: var(--goldmex-secondary-color, #007bff); /* Azul para "Released" */
-}
-
-.le-status-badge.status-in-progress {
-  background-color: var(--goldmex-info-color, #17a2b8);
-}
-
-/* START: New Styles for Notification Modals */
+/* Notification Modals */
 #manualEmailModal .le-modal-header {
-    background-color: rgba(253, 126, 20, 0.1);
-    border-bottom-color: rgba(253, 126, 20, 0.4);
+  background-color: rgba(253, 126, 20, 0.1);
+  border-bottom-color: rgba(253, 126, 20, 0.4);
 }
 
 #manualEmailModal h3 .bx {
-    color: #fd7e14;
+  color: #fd7e14;
 }
 
 #sendingNotificationModal .le-modal-content {
-    background-color: transparent;
-    border: none;
-    box-shadow: none;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================
+   NUEVO DISEÑO MODAL "VIEW DETAILS" (V2)
+   ========================================= */
+
+/* 1. Hero / Header Section */
+.le-view-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to right, rgba(var(--goldmex-primary-color-rgb), 0.05), transparent);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border-left: 5px solid var(--goldmex-primary-color);
+    margin-bottom: 1.5rem;
+}
+
+.le-hero-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.2rem;
+}
+
+.le-hero-title {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--color-text-primary);
+    font-weight: 700;
+}
+
+.le-view-hero-meta {
+    display: flex;
+    gap: 1.5rem;
+    text-align: right;
+}
+
+.le-meta-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.le-meta-item i {
+    font-size: 1.2rem;
+    margin-bottom: 0.2rem;
+    color: var(--goldmex-secondary-color);
+}
+
+/* 2. Status Row */
+.le-view-status-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.le-status-card {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
 }
-/* END: New Styles for Notification Modals */
+
+.le-card-label {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.le-status-badge.large-badge {
+    font-size: 0.9rem;
+    padding: 0.4em 1.2em;
+    width: 100%;
+    max-width: 140px;
+}
+
+/* 3. Main Info Grid */
+.le-view-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.le-view-section {
+    margin-bottom: 1rem;
+}
+
+.le-view-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.le-section-title {
+    font-size: 1rem;
+    color: var(--goldmex-primary-color);
+    margin: 0 0 0.8rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.5rem;
+}
+
+.le-info-box {
+    background-color: var(--color-bg);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border-soft);
+}
+
+.le-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px dashed var(--color-border);
+}
+
+.le-info-row:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.le-info-label {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.le-info-value {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-align: right;
+}
+
+.le-info-value.highlight {
+    color: var(--goldmex-secondary-color);
+    font-size: 1rem;
+}
+
+/* 4. Duties Grid */
+.le-view-duties-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.le-view-duty-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+}
+
+.le-duty-icon {
+    width: 40px;
+    height: 40px;
+    background-color: rgba(var(--goldmex-success-rgb, 40, 167, 69), 0.1);
+    color: var(--goldmex-success-color, #28a745);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.le-duty-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.le-duty-type {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.le-duty-amount {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+}
+
+/* 5. Notes Box */
+.le-notes-box {
+    background-color: #fff9db; /* Nota amarilla suave, ajusta si tienes modo oscuro */
+    color: #555;
+    padding: 1rem;
+    border-radius: 0.4rem;
+    border-left: 4px solid #fcc419;
+    font-style: italic;
+    line-height: 1.5;
+}
+
+body.dark-mode .le-notes-box {
+    background-color: rgba(252, 196, 25, 0.1);
+    color: #ddd;
+}
+
+.text-muted {
+    font-style: normal;
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+}
