@@ -1,13 +1,21 @@
 /*
  * ====================================================================
- * == STYLES FOR CLASSIFICATION & QUOTING (CQ) MODULE (V12 - ROOT FIX) ==
+ * == STYLES FOR CLASSIFICATION & QUOTING (CQ) MODULE (V14 - UNIVERSAL FIX) ==
  * ====================================================================
  */
 
 /* Main Container & Animations */
 .cq-container {
-    padding: 1.5rem;
+    padding: 1rem;
     background-color: var(--color-bg);
+    /* --- FULL HEIGHT LAYOUT --- */
+    height: 100vh;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .cq-container>.cq-header,
@@ -24,11 +32,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     background: linear-gradient(110deg, var(--goldmex-primary-color) 0%, #2e4975 100%);
     box-shadow: 0 4px 15px rgba(var(--goldmex-primary-color-rgb), 0.2);
+    flex-shrink: 0;
 }
 
 body.dark-mode .cq-header {
@@ -38,18 +46,19 @@ body.dark-mode .cq-header {
 
 .cq-header h2 {
     color: var(--goldmex-white-color);
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.8rem;
+    margin: 0;
 }
 
 .cq-header h2 .bx {
     color: var(--goldmex-secondary-color);
 }
 
-/* --- 1A. BUTTONS: "History" Button --- */
+/* --- BUTTONS --- */
 #cq-history-btn {
     background-color: var(--goldmex-secondary-color);
     border-color: var(--goldmex-secondary-color);
@@ -60,7 +69,6 @@ body.dark-mode .cq-header {
 
 #cq-history-btn:hover {
     background-color: #c5a030;
-    /* Slightly darker gold */
     border-color: #c5a030;
     transform: translateY(-2px);
 }
@@ -71,31 +79,9 @@ body.dark-mode #cq-history-btn {
     color: var(--goldmex-primary-color);
 }
 
-
-/* --- 1B. DATATABLE: Scoped Styles --- */
-.cq-container .dataTables_wrapper thead th {
-    background-color: var(--goldmex-primary-color);
-    color: var(--goldmex-white-color);
-}
-
-/* NEW RULE FOR CENTERING */
-.cq-container .dataTables_wrapper .dt-center,
-.cq-container .dataTables_wrapper .dt-center th {
-    text-align: center;
-    vertical-align: middle;
-}
-
-.cq-container .dataTables_wrapper .dataTables_length select {
-    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
-    font-size: 0.85rem;
-    height: auto;
-    width: auto;
-}
-
-/* --- 1C. DATATABLE: Action Buttons --- */
+/* --- DATATABLE ACTIONS --- */
 .cq-container .btn-cq-process {
     background-color: #28a745;
-    /* Green as main color */
     color: var(--goldmex-white-color);
     border: 1px solid #28a745;
     font-weight: 500;
@@ -111,7 +97,6 @@ body.dark-mode #cq-history-btn {
 
 .cq-container .btn-cq-process:hover {
     background-color: var(--goldmex-secondary-color);
-    /* Gold on hover */
     border-color: var(--goldmex-secondary-color);
     color: var(--goldmex-primary-color);
     transform: translateY(-2px);
@@ -184,18 +169,11 @@ body.dark-mode #cq-history-btn {
     cursor: pointer;
     transition: all 0.2s ease;
     background-color: #28a745;
-    /* Solid green background */
     color: white;
-    /* White icon */
     border: 1px solid #28a745;
 }
 
-.btn-cq-view-quote:hover {
-    background-color: var(--active-hover-bg);
-    border-color: var(--active-hover-text);
-    transform: translateY(-2px);
-}
-
+.btn-cq-view-quote:hover,
 .btn-cq-download-pdf:hover {
     background-color: var(--active-hover-bg);
     border-color: var(--active-hover-text);
@@ -204,7 +182,6 @@ body.dark-mode #cq-history-btn {
 
 .btn-cq-complete:hover {
     background-color: #218838;
-    /* Darker green on hover */
     border-color: #1e7e34;
     transform: translateY(-2px);
 }
@@ -219,52 +196,47 @@ body.dark-mode #cq-history-btn {
     transform: none !important;
 }
 
-
-/* --- 2. DASHBOARD CARDS & ICONS --- */
+/* --- DASHBOARD CARDS --- */
 .cq-dashboard-summary {
     background-color: var(--color-surface);
-    /* White Frame */
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    padding: 1rem;
+    padding: 0.8rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-shrink: 0;
 }
 
 .cq-scorecard {
     background-color: var(--color-bg);
-    /* Gray Card */
     border: 1px solid var(--color-border);
     border-radius: 0.4rem;
-    padding: 1.2rem;
+    padding: 1rem;
     display: flex;
-    gap: 1.2rem;
+    gap: 1rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
     transition: all 0.3s ease;
     border-top-width: 3px;
     border-top-style: solid;
 }
 
-
 .cq-scorecard:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
 }
 
 .cq-scorecard-icon {
-    font-size: 2.5rem;
-    width: 60px;
-    height: 60px;
+    font-size: 2.2rem;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     margin-top: 4px;
-    /* Align icon with title */
 }
 
 .cq-scorecard.pending {
@@ -302,24 +274,24 @@ body.dark-mode #cq-history-btn {
 
 .cq-scorecard-info h4 {
     margin: 0 0 0.2rem 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--color-text-secondary);
     font-weight: 500;
 }
 
 .cq-scorecard-info p {
     margin: 0;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     font-weight: 700;
     color: var(--color-text-primary);
 }
 
 .cq-scorecard-subtext {
     display: flex;
-    gap: 1rem;
-    font-size: 0.8rem;
+    gap: 0.8rem;
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
 }
 
 .cq-scorecard-subtext b {
@@ -329,10 +301,9 @@ body.dark-mode #cq-history-btn {
 
 .cq-scorecard-footer {
     margin-top: auto;
-    /* Pushes to the bottom */
     padding-top: 0.5rem;
     border-top: 1px solid var(--color-border);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
     display: flex;
     align-items: center;
@@ -359,19 +330,168 @@ body.dark-mode #cq-history-btn {
     color: var(--color-text-secondary);
 }
 
-
-/* Table Container */
+/* ====================================================================
+ * == MAIN TABLE CONTAINER (UNIVERSAL FLEX FIX) ==
+ * ====================================================================
+ */
 .cq-table-container {
     background-color: var(--color-surface);
-    padding: 1.5rem;
-    border-radius: 0.6rem;
-    box-shadow: 0 4px 15px var(--shadow-border);
     border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem;
+    padding-bottom: 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }
 
-/* --- 3. MODAL & WORKSPACE FIXES --- */
+.cq-table-container h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+    flex-shrink: 0;
+    display: none;
+}
 
-/* Modal General Styles */
+/* --- DATATABLES LAYOUT --- */
+/* Custom Header Wrapper */
+.wst-dt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0 0.8rem 0;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+/* Inputs & Selects */
+.wst-dt-header .dt-length select,
+.wst-dt-header .dt-search input,
+.dataTables_length select,
+.dataTables_filter input {
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    outline: none;
+    font-size: 0.85rem;
+    height: 32px;
+    transition: box-shadow 0.2s;
+}
+
+.wst-dt-header .dt-search input:focus,
+.wst-dt-header .dt-length select:focus,
+.dataTables_filter input:focus,
+.dataTables_length select:focus {
+    border-color: var(--goldmex-secondary-color);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+/* --- THE SCROLLABLE BODY FIX (SUPPORTS V1.x AND V2.x) --- */
+/* Wrapper generated by DataTables */
+.dt-scroll,
+.dataTables_scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 6px 6px 0 0;
+}
+
+/* The Header */
+.dt-scroll-head,
+.dataTables_scrollHead {
+    flex-shrink: 0;
+    background-color: var(--color-bg);
+    overflow: hidden !important;
+    /* Ensure header doesn't cause scrollbars */
+}
+
+/* The Body (This is where the rows were disappearing) */
+.dt-scroll-body,
+.dataTables_scrollBody {
+    flex: 1 1 auto !important;
+    height: 10px !important;
+    /* Force browser to ignore JS calculated height */
+    max-height: none !important;
+    overflow-y: auto !important;
+    background-color: var(--color-surface);
+    width: 100% !important;
+    /* Ensure width fills container */
+}
+
+/* Custom Footer Wrapper */
+.wst-dt-footer {
+    height: 45px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.5rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+/* Ensure dataTables wrapper fills height */
+.dt-container,
+.dataTables_wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+/* TABLE STYLING */
+table.dataTable {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 0 !important;
+}
+
+table.dataTable thead th {
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 10px 12px !important;
+    border-bottom: 2px solid var(--color-border) !important;
+    white-space: nowrap;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+table.dataTable tbody td {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
+    vertical-align: middle;
+    background-color: var(--color-surface);
+    height: 40px;
+    white-space: nowrap;
+}
+
+table.dataTable tbody tr:hover td {
+    background-color: var(--active-hover-bg);
+}
+
+table.dataTable .dt-center {
+    text-align: center;
+}
+
+/* --- MODAL FIXES --- */
 .cq-modal {
     display: none;
     position: fixed;
@@ -394,9 +514,7 @@ body.dark-mode #cq-history-btn {
 }
 
 .cq-modal-content {
-    background-color: rgba(var(--color-surface-rgb), 0.85);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    background-color: rgba(var(--color-surface-rgb), 0.98);
     border: 1px solid var(--color-border);
     border-radius: 0.6rem;
     width: 95vw;
@@ -405,6 +523,7 @@ body.dark-mode #cq-history-btn {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .cq-modal-header {
@@ -420,7 +539,8 @@ body.dark-mode #cq-history-btn {
 
 .cq-modal-header h3 {
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
+    font-weight: 600;
 }
 
 .cq-close-button {
@@ -431,6 +551,7 @@ body.dark-mode #cq-history-btn {
     cursor: pointer;
 }
 
+/* Workspace Specifics */
 #cqWorkspaceForm.cq-modal-body {
     padding: 0;
     flex-grow: 1;
@@ -474,12 +595,11 @@ body.dark-mode #cq-history-btn {
     background-color: var(--active-hover-bg);
 }
 
-
 .cq-workspace {
     flex-grow: 1;
     min-height: 0;
     overflow: hidden;
-    padding: 1.5rem;
+    padding: 1rem;
 }
 
 .cq-workspace-view {
@@ -500,17 +620,20 @@ body.dark-mode #cq-history-btn {
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
     overflow: hidden;
+    background: var(--color-surface);
 }
 
 .cq-column-header {
     padding: 0.8rem 1rem;
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-bg);
+    flex-shrink: 0;
 }
 
 .cq-column-header h4 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .cq-column-content {
@@ -569,11 +692,9 @@ body.dark-mode #cq-history-btn {
     gap: 1.5rem;
     min-height: 0;
     min-width: 0;
-    /* <-- ESTA ES LA LÍNEA CORRECTA */
 }
 
-/* --- 4. FORM STYLES & FIXES --- */
-
+/* Forms */
 .cq-workspace input,
 .cq-workspace select,
 .cq-workspace textarea:not(#cqTextEditorTextarea) {
@@ -605,7 +726,7 @@ body.dark-mode #cq-history-btn {
 }
 
 .cq-form-section h5 {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     margin-bottom: 1.2rem;
     padding-bottom: 0.6rem;
@@ -613,7 +734,7 @@ body.dark-mode #cq-history-btn {
 }
 
 .cq-form-section h6 {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--goldmex-primary-color);
     margin: -1.2rem -1.5rem 1.2rem -1.5rem;
@@ -688,12 +809,10 @@ body.dark-mode #cq-history-btn {
     border-radius: 0.3rem;
     padding: 0.55rem 2.5rem 0.55rem 0.75rem;
     height: 38px;
-    /* Fixed height */
     cursor: pointer;
     display: flex;
     align-items: center;
     overflow: hidden;
-    /* Hide overflow */
 }
 
 .text-editor-trigger:hover {
@@ -704,17 +823,11 @@ body.dark-mode #cq-history-btn {
     margin: 0;
     font-size: 0.9rem;
     white-space: nowrap;
-    /* 1. No permitir que el texto salte a otra línea */
     overflow: hidden;
-    /* 2. Ocultar cualquier texto que se desborde */
     text-overflow: ellipsis;
-    /* 3. Mostrar "..." cuando el texto se corta */
     flex-grow: 1;
-    /* Ocupar el espacio disponible */
     min-width: 0;
-    /* MUY IMPORTANTE: Permite que el elemento se encoja y que text-overflow funcione en un contenedor flex */
     word-break: break-all;
-    /* CLAVE: Permite romper palabras largas para evitar que expandan el contenedor */
 }
 
 .text-editor-trigger .btn-edit-text {
@@ -726,7 +839,6 @@ body.dark-mode #cq-history-btn {
     border: none;
     font-size: 1.2rem;
     flex-shrink: 0;
-    /* Prevent the button from shrinking */
 }
 
 /* Modal Footer */
@@ -762,7 +874,7 @@ body.dark-mode #cq-history-btn {
     gap: 0.5rem;
 }
 
-/* --- 5. QUOTATION FORM & DYNAMIC DUTY STYLES --- */
+/* Quotation Grid */
 #cq-quotation-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -839,8 +951,7 @@ body.dark-mode .cq-summary-line.grand-total {
     color: white;
 }
 
-
-/* --- Status Badges --- */
+/* Status Badges */
 .cqp-status-badge {
     display: inline-block;
     padding: 0.3em 0.8em;
@@ -874,20 +985,37 @@ body.dark-mode .cq-summary-line.grand-total {
     background-color: #495057;
 }
 
-/* Styles for History Modal (re-using from CQP module for consistency) */
+/* --- HISTORY MODAL SPECIFICS (FLEX FIX) --- */
+#cqHistoryModal .cq-modal-content {
+    display: flex;
+    flex-direction: column;
+}
+
+#cqHistoryModal .cq-modal-body {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .cqp-history-filters {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
     align-items: end;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     padding: 0.8rem 1rem;
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 0.4rem;
+    flex-shrink: 0;
 }
 
 .cqp-history-filters .cqp-form-group {
+    display: flex;
+    flex-direction: column;
     gap: 0.4rem;
 }
 
@@ -898,15 +1026,24 @@ body.dark-mode .cq-summary-line.grand-total {
 
 .cqp-table-container {
     background-color: var(--color-surface);
-    padding: 1rem;
+    padding: 0;
     border-radius: 0.5rem;
-    box-shadow: 0 2px 10px var(--shadow-border);
-    overflow-x: auto;
+    border: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.cqp-table-container .dt-scroll,
+.cqp-table-container .dataTables_scroll {
     border: 1px solid var(--color-border);
+    border-radius: 6px 6px 0 0;
 }
 
 .cqp-modal-footer {
-    padding: 1.2rem 1.8rem;
+    padding: 1rem;
     border-top: 1px solid var(--color-border);
     display: flex;
     justify-content: flex-end;
@@ -915,7 +1052,7 @@ body.dark-mode .cq-summary-line.grand-total {
     background-color: var(--color-bg);
 }
 
-/* --- 6. REPORT MODAL STYLES --- */
+/* --- REPORT MODAL --- */
 .cq-report-modal-content {
     background-color: #f8f9fa;
     color: #333;
@@ -1009,12 +1146,9 @@ body.dark-mode .cq-summary-line.grand-total {
     color: var(--goldmex-secondary-color);
 }
 
-/* --- NUEVAS REGLAS PARA AJUSTAR LISTAS --- */
 .cq-report-section ul {
     list-style-type: disc;
-    /* Asegura que los puntos sean visibles */
     margin-left: 1.5rem;
-    /* Aumenta el margen izquierdo para el texto y los puntos */
     padding-left: 0;
     margin-top: 0.5rem;
     margin-bottom: 0.5rem;
@@ -1044,7 +1178,6 @@ body.dark-mode .cq-summary-line.grand-total {
 
 .cq-report-quote-table td:first-child {
     text-align: left;
-    /* Alineación a la izquierda para la primera columna */
     font-weight: 500;
 }
 
@@ -1059,7 +1192,6 @@ body.dark-mode .cq-summary-line.grand-total {
     grid-column: 1 / -1;
 }
 
-/* --- REGLAS ACTUALIZADAS PARA cq-report-notes --- */
 .cq-report-notes {
     white-space: pre-wrap;
     background-color: #f8f9fa;
@@ -1069,22 +1201,16 @@ body.dark-mode .cq-summary-line.grand-total {
     color: #495057;
     text-align: left;
     margin-top: 0.5rem;
-    /* --- Borde sutil para resaltar el área de texto --- */
     border: 1px solid #e0e0e0;
-    /* Un gris claro para el borde */
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    /* Sombra ligera para profundidad */
 }
 
-/* --- START: Read-only mode styles for History view --- */
-
-/* Hide footer action buttons and status select container */
+/* --- READ-ONLY & PDF --- */
 .read-only-mode .cq-modal-footer .cq-footer-left,
 .read-only-mode .cq-modal-footer .cq-footer-right {
     display: none;
 }
 
-/* Disable pointer events on all form elements to prevent interaction */
 .read-only-mode .cq-workspace input,
 .read-only-mode .cq-workspace select,
 .read-only-mode .cq-workspace textarea,
@@ -1093,101 +1219,64 @@ body.dark-mode .cq-summary-line.grand-total {
     cursor: default;
 }
 
-/* ESTA ES LA REGLA CORREGIDA */
 .read-only-mode .cq-workspace input:not([type="checkbox"]),
 .read-only-mode .cq-workspace select {
     background-color: transparent;
     border-color: transparent;
     -webkit-appearance: none;
-    -moz-appearance: none;
     appearance: none;
     padding-left: 0;
     color: var(--color-text-primary);
 }
 
-/* Special styling for checkboxes in read-only mode */
 .read-only-mode .cq-workspace input[type="checkbox"] {
     opacity: 0.7;
     border-color: var(--color-border);
 }
 
-/* Make text editor triggers appear disabled */
 .read-only-mode .text-editor-trigger {
     background-color: var(--color-bg);
 }
 
-/* Hide interactive elements like edit/add/remove buttons */
 .read-only-mode .btn-edit-text,
 .read-only-mode #cq-add-duty-btn,
 .read-only-mode .btn-cq-remove-duty {
     display: none;
 }
 
-/* --- END: Read-only mode styles --- */
-
-/*
- * ====================================================================
- * == STYLES FOR PDF RENDERING (ADDED FOR PDF FIX)                 ==
- * ====================================================================
- */
-
-/*
-This new class wraps the report content specifically for PDF generation.
-It ensures a consistent background and font settings for the html2pdf library,
-preventing potential rendering issues with transparent backgrounds or
-inherited styles not suitable for print.
-*/
 .cq-report-printable-area {
     background-color: #ffffff;
     color: #333;
     font-family: 'Arial', sans-serif;
 }
 
-/*
- * ====================================================================
- * == NUEVAS REGLAS PARA REFINAR LA APARIENCIA DEL PDF             ==
- * ====================================================================
- */
-
-/*
- * Estas reglas se aplican SOLAMENTE al contenido que se va a convertir en PDF.
- * Reducen el tamaño de las fuentes y el espaciado para que coincida
- * con la apariencia compacta y "fina" de la vista previa del modal.
- */
-
 .pdf-render-mode .cq-report-printable-area {
     font-size: 9pt;
-    /* Establece el tamaño de fuente base para el documento */
     line-height: 1.4;
 }
 
 .pdf-render-mode .cq-report-header h3 {
     font-size: 18pt;
-    /* Reduce el tamaño del título principal */
     margin-bottom: 4px;
 }
 
 .pdf-render-mode .cq-report-header p {
     font-size: 9pt;
-    /* Reduce el tamaño del subtítulo */
 }
 
 .pdf-render-mode .cq-report-section {
     padding: 0.8rem;
-    /* Reduce el espaciado interno de las secciones */
     margin-bottom: 1rem;
 }
 
 .pdf-render-mode .cq-report-section h4 {
     font-size: 11pt;
-    /* Reduce el tamaño de los encabezados de sección */
     padding-bottom: 0.4rem;
     margin-bottom: 0.6rem;
 }
 
 .pdf-render-mode .cq-report-item {
     padding: 0.25rem 0;
-    /* Reduce el espaciado entre líneas de detalles */
     font-size: 9pt;
 }
 
@@ -1199,30 +1288,9 @@ inherited styles not suitable for print.
 .pdf-render-mode .cq-report-quote-table th,
 .pdf-render-mode .cq-report-quote-table td {
     padding: 0.35rem;
-    /* Hace la tabla mucho más compacta */
     font-size: 8.5pt;
 }
 
 .pdf-render-mode .cq-report-quote-table .grand-total td {
     font-size: 10pt;
-}
-
-.cq-report-section ul {
-    margin-left: 1.2rem;
-    padding-left: 0;
-}
-
-/* ====================================================================
- * == FIX DEFINITIVO PARA SCROLL HORIZONTAL CORTADO EN DATATABLES ==
- * ====================================================================
- */
-
-/* 1. Habilita el scroll en el contenedor directo de la tabla */
-.cq-table-container {
-    overflow-x: auto;
-}
-
-/* 2. (Opcional pero recomendado) Asegura que el texto no se parta en líneas */
-#cqPendingTable td, #cqPendingTable th {
-    white-space: nowrap;
 }
