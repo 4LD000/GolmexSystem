@@ -9,7 +9,7 @@
     if (!moduleContainer) return;
 
     // --- CONSTANTS & STATE ---
-    const SESSION_KEY = 'gmx_wst_session_v5_cloud'; 
+    const SESSION_KEY = 'gmx_wst_session_v5_cloud';
 
     // Application State
     let state = {
@@ -25,6 +25,8 @@
     // Realtime Subscriptions
     let lineSubscription = null;
     let selectionSubscription = null;
+    // --- NEW: Pallet Subscription for In-Dashboard Realtime ---
+    let palletSubscription = null;
 
     // Temporary state for Modals
     let currentTeamList = []; // For Login
@@ -161,7 +163,7 @@
     // =========================================================================
 
     async function init() {
-        console.log("WST V5 Full: Initializing...");
+        console.log("WST V5 Full (With Realtime Dashboard): Initializing...");
 
         setupEventListeners();
 
@@ -224,7 +226,7 @@
         // CASE B: Line exists, but OWNER IS NOT ME
         if (currentUserEmail && lineData.owner_email &&
             lineData.owner_email.toLowerCase() !== currentUserEmail.toLowerCase()) {
-            
+
             console.error("SECURITY ALERT: Local session belongs to another user.");
             localStorage.removeItem(SESSION_KEY);
             await checkCloudForActiveSession();
@@ -278,14 +280,14 @@
         };
 
         state.product = logEntry.production_products;
-        
+
         // Use the Dynamic Target if available, else calculate base
-        if(state.product) {
-            if(logEntry.current_target_seconds) {
-                 updateScorecardsWithNewTarget(logEntry.current_target_seconds);
+        if (state.product) {
+            if (logEntry.current_target_seconds) {
+                updateScorecardsWithNewTarget(logEntry.current_target_seconds);
             } else {
-                 const logWorkerCount = logEntry.worker_count || state.line.worker_count;
-                 updateScorecardsBase(state.product, logWorkerCount);
+                const logWorkerCount = logEntry.worker_count || state.line.worker_count;
+                updateScorecardsBase(state.product, logWorkerCount);
             }
         }
 
@@ -344,6 +346,76 @@
             .subscribe();
     }
 
+    // --- NEW: REALTIME PALLET SYNC (FOR DASHBOARD) ---
+    function setupPalletRealtime(lineId) {
+        if (palletSubscription) {
+            supabase.removeChannel(palletSubscription);
+        }
+
+        palletSubscription = supabase.channel(`pallet-sync-dashboard-${lineId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'production_log', filter: `line_id=eq.${lineId}` },
+                async (payload) => {
+                    const { eventType, new: newRecord } = payload;
+
+                    // 1. REMOTE START DETECTED
+                    if (eventType === 'INSERT' && newRecord.status === 'in_progress') {
+                        if (!state.pallet) {
+                            console.log("Remote Start Detected!");
+                            // Fetch full relation (product)
+                            const { data: fullLog } = await supabase
+                                .from('production_log')
+                                .select('*, production_products(*)')
+                                .eq('id', newRecord.id)
+                                .single();
+                            if (fullLog) {
+                                showToast("Process started on another device.", "success");
+                                restoreActivePallet(fullLog);
+                            }
+                        }
+                    }
+
+                    // 2. UPDATE DETECTED (PAUSE / RESUME / FINISH)
+                    if (eventType === 'UPDATE' && state.pallet && state.pallet.id === newRecord.id) {
+
+                        // Case A: Remote Finish
+                        if (newRecord.status !== 'in_progress') {
+                            showToast("Pallet finished/scanned remotely.", "info");
+                            resetDashboardState();
+                            loadHistoryTimeline();
+                            return;
+                        }
+
+                        // Case B: Sync Pause State
+                        const isNowPaused = newRecord.is_paused;
+                        state.pallet.is_paused = isNowPaused;
+                        state.pallet.total_pause_seconds = newRecord.total_pause_seconds;
+
+                        // Case C: Sync Crew/Target Changes
+                        if (newRecord.current_target_seconds &&
+                            newRecord.current_target_seconds !== state.pallet.current_target_seconds) {
+                            updateScorecardsWithNewTarget(newRecord.current_target_seconds);
+                        }
+
+                        // Update Dashboard UI
+                        if (isNowPaused) {
+                            updateActionButtonsState('paused');
+                            statusMsg.innerHTML = `<span style="color:var(--wst-warning)"><i class='bx bx-pause'></i> PAUSED</span> - Remote Pause.`;
+                            cardRealTime.textContent = "PAUSED";
+                            stopTimer();
+                        } else {
+                            updateActionButtonsState('running');
+                            statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Pallet in progress...`;
+                            // Restart timer with fresh pause data from DB
+                            startRealTimeTimer(new Date(newRecord.start_time), newRecord.total_pause_seconds);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+    }
+
     function showSelectionView() {
         loadingOverlay.style.display = 'none';
 
@@ -355,6 +427,12 @@
         if (lineSubscription) {
             supabase.removeChannel(lineSubscription);
             lineSubscription = null;
+        }
+
+        // Cleanup Pallet Subscription
+        if (palletSubscription) {
+            supabase.removeChannel(palletSubscription);
+            palletSubscription = null;
         }
 
         loadLinesGrid();
@@ -378,6 +456,8 @@
 
         if (state.line && state.line.id) {
             setupLineRealtime(state.line.id);
+            // Activate Pallet Sync
+            setupPalletRealtime(state.line.id);
         }
     }
 
@@ -412,7 +492,7 @@
         renderTeamList();
     }
 
-    window.wstRemoveWorker = function(index) {
+    window.wstRemoveWorker = function (index) {
         currentTeamList.splice(index, 1);
         renderTeamList();
     }
@@ -456,7 +536,7 @@
 
     // --- LIVE CREW MODAL LOGIC (New Feature) ---
     function openLiveCrewModal() {
-        if(!state.pallet) {
+        if (!state.pallet) {
             showToast("Start a process first to edit crew.", "info");
             return;
         }
@@ -480,18 +560,18 @@
         renderLiveTeamList();
     }
 
-    window.wstRemoveLiveWorker = function(index) {
+    window.wstRemoveLiveWorker = function (index) {
         currentLiveTeamList.splice(index, 1);
         renderLiveTeamList();
     }
 
     function renderLiveTeamList() {
         liveCrewListContainer.innerHTML = '';
-        
+
         const ul = document.createElement('ul');
         ul.style.listStyle = 'none';
         ul.style.padding = '0';
-        
+
         currentLiveTeamList.forEach((worker, index) => {
             const li = document.createElement('li');
             li.style.padding = '10px 15px';
@@ -499,7 +579,7 @@
             li.style.display = 'flex';
             li.style.justifyContent = 'space-between';
             li.style.alignItems = 'center';
-            
+
             li.innerHTML = `
                 <span>${worker}</span>
                 <i class='bx bx-trash' style="cursor:pointer; color:var(--wst-danger);" onclick="wstRemoveLiveWorker(${index})"></i>
@@ -534,7 +614,7 @@
         showToast("Crew updated & Target Recalculated!", "success");
         state.line.team = [...currentLiveTeamList];
         state.line.worker_count = newCount;
-        
+
         updateHeaderUI();
         updateScorecardsWithNewTarget(data.new_target); // data.new_target comes from RPC
     }
@@ -695,7 +775,7 @@
         cardRealTime.parentElement.classList.remove('active-pulse');
         statusMsg.innerHTML = "Idle - Select Product";
         statusMsg.style.color = "var(--wst-text-light)";
-        
+
         updateActionButtonsState('idle'); // Enable Start
         selectBtn.disabled = false;
         printBtn.disabled = true;
@@ -704,20 +784,20 @@
     // --- BUTTON STATE MANAGEMENT ---
     function updateActionButtonsState(status) {
         // status: 'idle', 'running', 'paused'
-        
+
         const btn = startBtn;
-        
+
         // Reset classes
-        btn.className = 'wst-action-btn'; 
-        
+        btn.className = 'wst-action-btn';
+
         if (status === 'idle') {
             btn.innerHTML = `<i class='bx bx-play-circle'></i> Start Process`;
-            btn.classList.add('btn-start'); 
+            btn.classList.add('btn-start');
             btn.disabled = false;
             btn.onclick = handleStart;
             finishBtn.disabled = true;
             document.body.classList.remove('is-paused-mode');
-        } 
+        }
         else if (status === 'running') {
             btn.innerHTML = `<i class='bx bx-pause-circle'></i> Pause`;
             btn.classList.add('btn-warning'); // CSS class defined in wst-workstation.css
@@ -725,10 +805,10 @@
             btn.onclick = () => handlePauseToggle('pause');
             finishBtn.disabled = false;
             document.body.classList.remove('is-paused-mode');
-        } 
+        }
         else if (status === 'paused') {
             btn.innerHTML = `<i class='bx bx-play-circle'></i> Resume`;
-            btn.classList.add('btn-success'); 
+            btn.classList.add('btn-success');
             btn.disabled = false;
             btn.onclick = () => handlePauseToggle('resume');
             finishBtn.disabled = true; // Cannot finish while paused
@@ -762,7 +842,7 @@
         state.product = product;
         updateScorecardsBase(product, state.line.worker_count);
         modal.classList.add('hidden');
-        
+
         updateActionButtonsState('idle'); // Ready to start
         statusMsg.innerHTML = `<span style="color:var(--wst-primary)">Ready:</span> Click Start to begin.`;
     }
@@ -779,7 +859,7 @@
 
     function updateScorecardsWithNewTarget(newTargetSeconds) {
         // Force refresh name/config in case they were missing
-        if(state.product) {
+        if (state.product) {
             cardName.textContent = state.product.name;
             cardConfig.textContent = `${state.product.units_per_case} U / ${state.product.cases_per_pallet} Cases`;
         }
@@ -793,6 +873,8 @@
         cardStdTime.innerHTML = timeText;
     }
 
+    // --- MODIFIED: RACE CONDITION FIX (V5) ---
+    // Replaces direct insert with RPC 'start_production_safe'
     async function handleStart() {
         if (!state.product) return;
         if (isLoadingAction) return; // Prevent double click
@@ -800,7 +882,7 @@
         isLoadingAction = true;
         selectBtn.disabled = true;
         startBtn.disabled = true;
-        
+
         const qrId = `PLT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const now = new Date();
         statusMsg.innerHTML = "Starting process...";
@@ -810,45 +892,47 @@
         const initialCrew = state.line.worker_count;
         const initialTarget = Math.ceil(baseSeconds / initialCrew);
 
-        const { data, error } = await supabase
-            .from('production_log')
-            .insert([{
-                pallet_qr_id: qrId,
-                line_id: state.line.id,
-                product_id: state.product.id,
-                operator_name: state.line.team[0] || "Unknown",
-                team_members: state.line.team,
-                worker_count: initialCrew,
-                start_time: now.toISOString(),
-                status: 'in_progress',
-                // New Fields Initialization
-                accumulated_target_seconds: 0,
-                last_change_time: now.toISOString(),
-                current_target_seconds: initialTarget
-            }])
-            .select()
-            .single();
+        // --- CHANGE START: Use RPC instead of INSERT ---
+        const { data, error } = await supabase.rpc('start_production_safe', {
+            p_line_id: state.line.id,
+            p_product_id: state.product.id,
+            p_operator_name: state.line.team[0] || "Unknown",
+            p_team_members: state.line.team,
+            p_worker_count: initialCrew,
+            p_qr_id: qrId,
+            p_target_seconds: initialTarget
+        });
 
         isLoadingAction = false;
         startBtn.disabled = false;
 
         if (error) {
-            showToast("Error starting process.", 'error');
+            console.error("Start Error:", error);
+            // Check for Race Condition (Database Constraint or RPC Exception)
+            if (error.message.includes("Line is busy") || error.code === '23505') {
+                showToast("⚠️ Sync Error: Another device already started this line.", 'error');
+                // Auto-refresh to sync state with server
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast("Error starting process: " + error.message, 'error');
+            }
             selectBtn.disabled = false;
             return;
         }
+        // --- CHANGE END ---
 
+        // Success: RPC returns the new record object
         state.pallet = {
             id: data.id,
             qr_id: qrId,
-            start_time: now,
+            start_time: new Date(data.start_time), // Server time
             is_paused: false,
             total_pause_seconds: 0
         };
         statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Pallet in progress...`;
-        
+
         updateActionButtonsState('running');
-        startRealTimeTimer(now, 0);
+        startRealTimeTimer(new Date(data.start_time), 0);
     }
 
     async function handlePauseToggle(action) { // action = 'pause' or 'resume'
@@ -862,9 +946,9 @@
         loadingOverlay.style.display = 'flex';
 
         const { data, error } = await supabase
-            .rpc('toggle_pause', { 
-                p_log_id: state.pallet.id, 
-                p_action: action 
+            .rpc('toggle_pause', {
+                p_log_id: state.pallet.id,
+                p_action: action
             });
 
         // Unlock UI
@@ -881,7 +965,7 @@
 
         if (action === 'pause') {
             state.pallet.is_paused = true;
-            stopTimer(); 
+            stopTimer();
             updateActionButtonsState('paused');
             statusMsg.innerHTML = `<span style="color:var(--wst-warning)"><i class='bx bx-pause'></i> PAUSED</span> - Resume to continue.`;
             cardRealTime.textContent = "PAUSED";
@@ -891,10 +975,10 @@
             const { data: freshLog } = await supabase.from('production_log').select('total_pause_seconds').eq('id', state.pallet.id).single();
             const pauseTotal = freshLog ? freshLog.total_pause_seconds : 0;
             state.pallet.total_pause_seconds = pauseTotal;
-            
+
             updateActionButtonsState('running');
             statusMsg.innerHTML = `<span style="color:var(--wst-success)">Running:</span> Pallet in progress...`;
-            startRealTimeTimer(state.pallet.start_time, pauseTotal); 
+            startRealTimeTimer(state.pallet.start_time, pauseTotal);
         }
     }
 
@@ -908,7 +992,7 @@
         finishBtn.disabled = true;
         stopTimer();
         const now = new Date();
-        
+
         // Calculate Real Duration: (Now - Start) - TotalPauses
         const durationSec = Math.floor((now - state.pallet.start_time) / 1000) - state.pallet.total_pause_seconds;
 
@@ -1040,13 +1124,13 @@
     function startRealTimeTimer(startTimeObj, totalPauseSeconds = 0) {
         stopTimer();
         cardRealTime.parentElement.classList.add('highlight-card');
-        
+
         state.timerInterval = setInterval(() => {
             const now = new Date();
             // Important: Subtract total pauses from elapsed time
             const diff = now - startTimeObj;
             const totalSecs = Math.floor(diff / 1000) - totalPauseSeconds;
-            
+
             const validSecs = totalSecs > 0 ? totalSecs : 0;
 
             const hrs = Math.floor(validSecs / 3600);
@@ -1147,7 +1231,7 @@
         searchInput.oninput = (e) => loadProducts(e.target.value);
 
         // Start button onclick is handled dynamically by updateActionButtonsState
-        
+
         finishBtn.onclick = handleFinishRequest;
         printBtn.onclick = handlePrint;
 
@@ -1158,7 +1242,7 @@
         endShiftNoBtn.onclick = () => endShiftModal.classList.add('hidden');
 
         // NEW Live Edit
-        if(editTeamTrigger) editTeamTrigger.onclick = openLiveCrewModal;
+        if (editTeamTrigger) editTeamTrigger.onclick = openLiveCrewModal;
         liveCrewAddBtn.onclick = addLiveWorker;
         liveCrewInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addLiveWorker(); });
         liveCrewCancelBtn.onclick = () => liveCrewModal.classList.add('hidden');
