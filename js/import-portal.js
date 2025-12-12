@@ -6,7 +6,7 @@
     }
     document.body.dataset.impModuleInitialized = "true";
     console.log(
-        "Import Management Portal (IMP) Module Initialized - v15 (Auto-Account Creation)"
+        "Import Management Portal (IMP) Module Initialized - v16 (Trinity Layout Fix)"
     );
 
     if (typeof supabase === "undefined" || !supabase) {
@@ -32,7 +32,7 @@
     let allSharedResources = [];
     let currentShipmentIdForDocs = null;
     let currentShipmentDataForModals = null;
-    let currentStep = 1; // Moved step counter to a persistent scope
+    let currentStep = 1;
 
     // --- DOM Element Caching ---
     const newShipmentBtn = document.getElementById("imp-new-shipment-btn");
@@ -161,7 +161,7 @@
         if (window.showCustomNotificationST) {
             window.showCustomNotificationST(message, type, duration);
         } else {
-            alert(`(${type}): ${message}`);
+            console.log(`IMP Notification (${type}): ${message}`);
         }
     }
 
@@ -169,6 +169,14 @@
         if (modalElement) {
             modalElement.style.display = "flex";
             setTimeout(() => modalElement.classList.add("imp-modal-open"), 10);
+            
+            // Adjust tables when opening modals
+            if (modalElement.id === 'imp-history-modal' && historyTable) {
+                historyTable.columns.adjust();
+            }
+            if (modalElement.id === 'imp-ledger-modal' && ledgerTable) {
+                ledgerTable.columns.adjust();
+            }
         }
     }
 
@@ -187,7 +195,11 @@
             await fetchClientData();
         } else {
             clientAccount = null;
-            if (activeShipmentsTable) activeShipmentsTable.clear().draw();
+            if (activeShipmentsTable) {
+                activeShipmentsTable.destroy();
+                $(activeShipmentsTableEl).empty();
+                activeShipmentsTable = null;
+            }
             if (shipmentSubscription) {
                 supabase.removeChannel(shipmentSubscription);
                 shipmentSubscription = null;
@@ -219,9 +231,8 @@
     async function fetchClientData(skipAccountCheck = false) {
         if (!currentUserIMP) return;
 
-        // --- MODIFIED SECTION: AUTO-CREATE CLIENT ACCOUNT ---
+        // Auto-Account Creation Logic
         if (!skipAccountCheck) {
-            // 1. Check if a client account already exists for the user's email
             const {
                 data: existingAccount,
                 error: fetchError
@@ -231,16 +242,14 @@
                 .eq("contact_email", currentUserIMP.email)
                 .single();
 
-            if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+            if (fetchError && fetchError.code !== 'PGRST116') {
                 showIMPNotification("Error: Could not verify client account.", "error");
                 return;
             }
 
             if (existingAccount) {
-                // 2a. If account exists, use it
                 clientAccount = existingAccount;
             } else {
-                // 2b. If not, create a new one automatically
                 const accountName = currentUserIMP.email.split('@')[0];
                 const {
                     data: newAccount,
@@ -250,7 +259,7 @@
                     .insert({
                         contact_email: currentUserIMP.email,
                         account_name: accountName,
-                        contact_name: accountName, // Use email prefix as default contact name
+                        contact_name: accountName,
                     })
                     .select()
                     .single();
@@ -265,7 +274,6 @@
             }
             subscribeToShipmentChanges();
         }
-        // --- END OF MODIFIED SECTION ---
 
         if (!clientAccount) {
             showIMPNotification("Could not retrieve client account information.", "error");
@@ -333,25 +341,41 @@
             completedLast30Days;
     }
 
+    // --- REFACTORED DATA TABLE INITIALIZATION (The Trinity Fix) ---
     function initializeDataTable(tableSelector, data, columnsConfig) {
         const table = $(tableSelector);
+        
+        // Always destroy and clear to allow DOM re-injection
         if ($.fn.DataTable.isDataTable(table)) {
-            table
-                .DataTable()
-                .clear()
-                .rows.add(data || [])
-                .draw();
-            return table.DataTable();
+            table.DataTable().destroy();
+            table.empty();
         }
+        
         return table.DataTable({
             data: data || [],
             responsive: true,
             columns: columnsConfig,
-            order: [
-                [1, "desc"]
-            ],
+            order: [[1, "desc"]],
+            // Trinity DOM Injection
+            dom: '<"imp-dt-header"lf>rt<"imp-dt-footer"ip>',
+            // Trigger internal scrolling (CSS controls height)
+            scrollY: '50vh',
+            scrollCollapse: true,
+            paging: true,
+            pageLength: 15,
+            lengthMenu: [10, 15, 25, 50],
             language: {
-                emptyTable: "No data available."
+                search: "",
+                searchPlaceholder: "Search...",
+                lengthMenu: "_MENU_ per page",
+                info: "Showing _START_ to _END_ of _TOTAL_",
+                emptyTable: "No data available.",
+                paginate: {
+                    first: "<i class='bx bx-chevrons-left'></i>",
+                    last: "<i class='bx bx-chevrons-right'></i>",
+                    next: "<i class='bx bx-chevron-right'></i>",
+                    previous: "<i class='bx bx-chevron-left'></i>"
+                }
             },
         });
     }
@@ -1825,16 +1849,20 @@
         document.addEventListener("supabaseAuthStateChange", handleAuthChange);
         const cleanup = () => {
             console.log("Cleaning up Import Portal (IMP) module...");
+            // Correctly destroy and empty tables
             if (activeShipmentsTable) {
                 $(activeShipmentsTableEl).DataTable().destroy();
+                $(activeShipmentsTableEl).empty();
                 activeShipmentsTable = null;
             }
             if (historyTable) {
                 $(historyTableEl).DataTable().destroy();
+                $(historyTableEl).empty();
                 historyTable = null;
             }
             if (ledgerTable) {
                 $(ledgerTableEl).DataTable().destroy();
+                $(ledgerTableEl).empty();
                 ledgerTable = null;
             }
             if (shipmentSubscription) {
