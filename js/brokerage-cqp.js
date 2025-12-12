@@ -292,33 +292,67 @@
             clientCqpHistoryTable :
             clientCqpActiveTable;
 
-        if ($.fn.DataTable.isDataTable(tableId)) {
-            dataTableInstance.clear().rows.add(data).draw();
-            return;
+        const tableElement = $(tableId);
+
+        // --- REMOVED VISIBILITY HACK ---
+        // tableElement.css('visibility', 'hidden'); 
+
+        // 1. Destroy and Empty
+        if ($.fn.DataTable.isDataTable(tableElement)) {
+            dataTableInstance.destroy();
+            tableElement.empty();
         }
 
-        dataTableInstance = $(tableId).DataTable({
+        // 2. Initialize DataTables
+        dataTableInstance = tableElement.DataTable({
             data: data,
-            responsive: true,
+            dom: '<"dt-top"l f>rt<"dt-bottom"ip>',
+            
+            // CONFIGURACION ESTABLE
+            responsive: false,      
+            scrollX: true,          
+            scrollY: '50vh',        
+            scrollCollapse: true,   
+            autoWidth: false,       
+            deferRender: true,      
+            
+            paging: true,
+            pageLength: 15,
+            lengthMenu: [10, 15, 25, 50],
+            language: {
+                search: "",
+                searchPlaceholder: "Search requests...",
+                lengthMenu: "_MENU_ per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                paginate: {
+                    first: "<i class='bx bx-chevrons-left'></i>",
+                    last: "<i class='bx bx-chevrons-right'></i>",
+                    next: "<i class='bx bx-chevron-right'></i>",
+                    previous: "<i class='bx bx-chevron-left'></i>"
+                }
+            },
             columns: [{
                     data: "id",
                     title: "Request ID",
+                    className: "dt-center", 
                     render: (d) => (d ? d.toString().substr(-6).toUpperCase() : ""),
                 },
                 {
                     data: "product_info.description",
                     title: "Product Description",
                     defaultContent: "",
-                    className: "dt-left",
+                    className: "dt-left", 
                 },
                 {
                     data: "created_at",
                     title: "Date Submitted",
+                    className: "dt-center", 
                     render: (d) => (d ? new Date(d).toLocaleDateString() : ""),
                 },
                 {
                     data: "status",
                     title: "Status",
+                    className: "dt-center", 
                     render: (d) =>
                         `<span class="cqp-status-badge status-${(d || "Pending")
                             .toLowerCase()
@@ -328,7 +362,7 @@
                     title: "Review",
                     orderable: false,
                     searchable: false,
-                    className: "dt-center dt-actions-col",
+                    className: "dt-center dt-actions-col", 
                     render: function (data, type, row) {
                         if (row.status === "Awaiting Documents") {
                             return `<button data-action="review-info" class="btn-cqp-alert" title="Action Required on your Request">
@@ -342,7 +376,7 @@
                     title: "View / Edit",
                     orderable: false,
                     searchable: false,
-                    className: "dt-center dt-actions-col",
+                    className: "dt-center dt-actions-col", 
                     render: function (data, type, row) {
                         const viewButton = `<button data-action="view" title="View Details"><i class='bx bx-show'></i></button>`;
                         const canEdit =
@@ -356,7 +390,7 @@
                     title: "Docs",
                     orderable: false,
                     searchable: false,
-                    className: "dt-center dt-actions-col",
+                    className: "dt-center dt-actions-col", 
                     render: (data, type, row) =>
                         `<button class="btn-cqp-docs" data-action="docs" title="Manage Documents"><i class='bx bx-folder-open'></i> Docs</button>`,
                 },
@@ -364,7 +398,7 @@
                     title: "Quote / Results",
                     orderable: false,
                     searchable: false,
-                    className: "dt-center dt-actions-col",
+                    className: "dt-center dt-actions-col", 
                     render: function (data, type, row) {
                         const isCompleted = row.status === "Completed";
                         const viewResultsButton = `<button class="btn-cqp-view-results" data-action="view-results" title="View Quote Results" ${isCompleted ? "" : "disabled"
@@ -378,7 +412,7 @@
                     title: "Actions",
                     orderable: false,
                     searchable: false,
-                    className: "dt-center dt-actions-col",
+                    className: "dt-center dt-actions-col", 
                     render: function (data, type, row) {
                         if (row.status === "Completed" && !isHistoryTable) {
                             return `<div class="cqp-table-actions"><button data-action="archive-client" class="btn-cqp-archive" title="Archive Request"><i class='bx bx-archive-in'></i> Archive</button></div>`;
@@ -393,6 +427,28 @@
             order: [
                 [2, "desc"]
             ],
+            // FIXED: Logic to Reveal Table (Fade-In) AFTER Adjustment
+            initComplete: function(settings, json) {
+                const api = this.api();
+                const wrapper = $(api.table().container()); // Get the DT wrapper
+
+                // 1. Adjust columns silently (table is hidden by CSS opacity:0)
+                api.columns.adjust();
+                
+                // 2. Wait for rendering to stabilize
+                setTimeout(() => {
+                    api.columns.adjust().draw();
+                    
+                    // 3. Add class to trigger CSS Fade-In
+                    wrapper.addClass('cqp-ready');
+                }, 250); 
+
+                // 4. Safety resize backup
+                setTimeout(() => {
+                    $(window).trigger('resize');
+                    api.columns.adjust();
+                }, 500);
+            }
         });
 
         if (isHistoryTable) {
@@ -407,6 +463,15 @@
         if (modalElement) {
             modalElement.style.display = "flex";
             setTimeout(() => modalElement.classList.add("cqp-modal-open"), 10);
+            
+            // Standard re-alignment trigger for all modales
+            const table = modalElement.querySelector('table.dataTable');
+            if (table) {
+                setTimeout(() => {
+                    const dt = $(table).DataTable();
+                    dt.columns.adjust(); 
+                }, 200); 
+            }
         }
     }
 
@@ -438,10 +503,24 @@
     function closeRequestModal() {
         closeLeModal(requestModal);
     }
+
+    // FIX: OPTIMIZED HISTORY MODAL OPENING
     async function openHistoryModal() {
-        populateHistoryFilters();
-        await applyHistoryFilters(); // Now an async function
         openLeModal(historyModal);
+        populateHistoryFilters();
+        
+        if(clientCqpHistoryTable) {
+            clientCqpHistoryTable.clear().draw();
+        }
+
+        await applyHistoryFilters();
+        
+        // Force adjustment specifically for History table after data load
+        setTimeout(() => {
+            if (clientCqpHistoryTable) {
+                clientCqpHistoryTable.columns.adjust();
+            }
+        }, 300);
     }
 
     function closeHistoryModal() {
