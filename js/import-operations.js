@@ -6,7 +6,7 @@
     }
     document.body.dataset.iopModuleInitialized = "true";
     console.log(
-        "Import Operations (IOP) Module Initialized - v13 (RPC Payment Fix)"
+        "Import Operations (IOP) Module Initialized - v15 (Full Height Fix)"
     );
 
     if (typeof supabase === "undefined" || !supabase) {
@@ -163,6 +163,14 @@
         if (modalElement) {
             modalElement.style.display = "flex";
             setTimeout(() => modalElement.classList.add("iop-modal-open"), 10);
+            
+            // Adjust DataTables columns if present inside the modal
+            if (modalElement.id === 'iop-history-modal' && historyTable) {
+                historyTable.columns.adjust();
+            }
+            if (modalElement.id === 'iop-ledger-modal' && transactionHistoryTable) {
+                transactionHistoryTable.columns.adjust();
+            }
         }
     }
 
@@ -344,16 +352,16 @@
         }
     }
 
+    // --- REFACTORED INITIALIZATION FOR FULL HEIGHT LAYOUT ---
     function initializeDataTable(tableSelector, data, columnsConfig) {
         const table = $(tableSelector);
+        
+        // Destroy existing table to allow DOM structure changes
         if ($.fn.DataTable.isDataTable(table)) {
-            table
-                .DataTable()
-                .clear()
-                .rows.add(data || [])
-                .draw();
-            return table.DataTable();
+            table.DataTable().destroy();
+            table.empty(); // Clear HTML
         }
+        
         return table.DataTable({
             data: data || [],
             responsive: true,
@@ -361,6 +369,26 @@
             order: [
                 [2, "desc"]
             ],
+            // DOM Injection for Flexbox Layout
+            dom: '<"iop-dt-header"lf>rt<"iop-dt-footer"ip>',
+            // Trigger internal scrolling
+            scrollY: '50vh', 
+            scrollCollapse: true,
+            paging: true,
+            pageLength: 15,
+            lengthMenu: [10, 15, 25, 50],
+            language: {
+                search: "",
+                searchPlaceholder: "Search...",
+                lengthMenu: "_MENU_ per page",
+                info: "Showing _START_ to _END_ of _TOTAL_",
+                paginate: {
+                    first: "<i class='bx bx-chevrons-left'></i>",
+                    last: "<i class='bx bx-chevrons-right'></i>",
+                    next: "<i class='bx bx-chevron-right'></i>",
+                    previous: "<i class='bx bx-chevron-left'></i>"
+                }
+            }
         });
     }
 
@@ -870,7 +898,9 @@
         if (transError) {
             showIOPNotification("Error fetching transaction history.", "error");
         } else if (transactionHistoryTable) {
+            // Need to completely destroy/recreate for column adjustment in modal
             transactionHistoryTable.clear().rows.add(transactions).draw();
+            transactionHistoryTable.columns.adjust();
         }
     }
 
@@ -1597,16 +1627,20 @@
 
         const cleanup = () => {
             console.log("Cleaning up Import Operations module...");
+            // Destroy tables correctly
             if (activeShipmentsTable) {
                 $(activeShipmentsTableEl).DataTable().destroy();
+                $(activeShipmentsTableEl).empty(); // Clean DOM
                 activeShipmentsTable = null;
             }
             if (historyTable) {
                 $(historyTableEl).DataTable().destroy();
+                $(historyTableEl).empty();
                 historyTable = null;
             }
             if (transactionHistoryTable) {
                 $(transactionHistoryTableEl).DataTable().destroy();
+                $(transactionHistoryTableEl).empty();
                 transactionHistoryTable = null;
             }
             if (shipmentSubscriptionIOP) {
