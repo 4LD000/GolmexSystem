@@ -1,34 +1,37 @@
 // js/client-management.js
 (function() {
+    // Prevent double initialization
     if (document.body.dataset.clientManagementInitialized === 'true') {
         return;
     }
     document.body.dataset.clientManagementInitialized = 'true';
 
-    console.log("Client Management Module Initialized with new features");
+    console.log("Client Management Module Initialized - v16 (Close Button Fix)");
 
     if (!window.supabase) {
         console.error("Supabase client not found.");
         return;
     }
 
-    // --- NUEVAS CONSTANTES Y VARIABLES GLOBALES ---
-    const BUCKET_NAME = 'clients-docs'; // Bucket de Supabase para los documentos de clientes
-    let currentUser = null; // Para almacenar el usuario autenticado
-    let currentClientIdForDocs = null; // ID del cliente para gestionar documentos
-    let allClientsData = []; // Caché local de los datos de todos los clientes
+    // --- CONSTANTS & STATE ---
+    const BUCKET_NAME = 'clients-docs';
+    let currentUser = null;
+    let currentClientIdForDocs = null;
+    let allClientsData = [];
+    let tableInstance = null;
 
-    // --- Selectores de Elementos DOM (incluyendo los nuevos) ---
+    // --- DOM Elements ---
     const addClientBtn = document.getElementById('add-client-btn');
     const importCsvBtn = document.getElementById('import-csv-btn');
+    const clientsTableElement = document.getElementById('clientsTable');
 
-    // Modal de Añadir/Editar Cliente
+    // Add/Edit Modal
     const addClientModal = document.getElementById('addClientModal');
     const addClientForm = document.getElementById('addClientForm');
     const modalTitle = document.querySelector('#addClientModal .cm-modal-header h2');
     const closeAddClientModalBtn = document.querySelector('#addClientModal .cm-close-btn');
 
-    // Modal de Confirmación
+    // Confirm Modal
     const confirmModal = document.getElementById('cmConfirmModal');
     const confirmTitle = document.getElementById('cmConfirmTitle');
     const confirmMessage = document.getElementById('cmConfirmMessage');
@@ -37,7 +40,7 @@
     const confirmCloseBtn = document.getElementById('cmConfirmCloseBtn');
     let confirmCallback = null;
 
-    // NUEVO: Modal de Importación CSV
+    // CSV Modal
     const importCsvModal = document.getElementById('importCsvModal');
     const closeCsvModalBtn = document.querySelector('#importCsvModal .cm-close-btn');
     const csvFileInput = document.getElementById('csvFileInput');
@@ -46,49 +49,89 @@
     const csvProcessingResultsDiv = document.getElementById('csv-processing-results');
     const csvResultsMessage = document.getElementById('csvResultsMessage');
 
-    // NUEVO: Modal de Gestión de Documentos
+    // Doc Management Modal
     const docManagementModal = document.getElementById('docManagementModal');
     const docModalTitle = document.getElementById('docModalTitle');
-    const closeDocModalBtn = document.getElementById('closeDocModalBtn');
+    // CORRECCIÓN: Selección de ambos botones de cierre (Header X y Footer Button)
+    const closeDocModalFooterBtn = document.getElementById('closeDocModalBtn'); // Botón 'Close' del footer (ID corregido según HTML anterior)
+    const closeDocModalHeaderBtn = document.querySelector('#docManagementModal .cm-close-btn'); // La 'X' del header
     const docFileInput = document.getElementById('docFileInput');
     const uploadDocBtn = document.getElementById('uploadDocBtn');
     const docListContainer = document.getElementById('docListContainer');
     const noDocsMessage = document.getElementById('noDocsMessage');
-    const closeDocModalFooterBtn = document.getElementById('closeDocModalFooterBtn');
+    // Nota: closeDocModalFooterBtn ya estaba definido arriba, eliminamos duplicado si existía
 
 
-    // --- Inicialización de DataTable (con nueva columna 'Docs') ---
-    const table = $('#clientsTable').DataTable({
-        responsive: true,
-        columns: [
-            { data: 'company_name' }, { data: 'contact_name' },
-            { data: 'contact_position' }, { data: 'email' },
-            { data: 'phone' }, { data: 'client_type' },
-            { data: 'nationality' },
-            {
-                data: null,
-                render: function(data, type, row) {
-                    return `
-                        <div class="cm-actions-btn">
-                            <button class="cm-edit-btn" data-id="${row.id}" title="Edit Client"><i class='bx bxs-edit'></i></button>
-                            <button class="cm-delete-btn" data-id="${row.id}" data-name="${row.company_name}" title="Delete Client"><i class='bx bxs-trash'></i></button>
-                        </div>
-                    `;
-                },
-                orderable: false, className: 'dt-center'
+    // --- DATATABLE INITIALIZATION (The Trinity Implementation) ---
+    function initializeDataTable(data) {
+        if ($.fn.DataTable.isDataTable(clientsTableElement)) {
+            $(clientsTableElement).DataTable().destroy();
+            $(clientsTableElement).empty();
+        }
+
+        tableInstance = $(clientsTableElement).DataTable({
+            data: data,
+            responsive: true,
+            dom: '<"cm-dt-header"lf>rt<"cm-dt-footer"ip>',
+            scrollY: '50vh',
+            scrollCollapse: true,
+            paging: true,
+            pageLength: 15,
+            lengthMenu: [15, 25, 50, 100],
+            language: {
+                search: "",
+                searchPlaceholder: "Search clients...",
+                lengthMenu: "_MENU_ per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ clients",
+                paginate: {
+                    first: "<i class='bx bx-chevrons-left'></i>",
+                    last: "<i class='bx bx-chevrons-right'></i>",
+                    next: "<i class='bx bx-chevron-right'></i>",
+                    previous: "<i class='bx bx-chevron-left'></i>"
+                }
             },
-            // --- NUEVA COLUMNA Y BOTÓN DE DOCUMENTOS ---
-            {
-                data: null,
-                render: function(data, type, row) {
-                    return `<button class="btn-goldmex-secondary btn-small cm-docs-btn" data-id="${row.id}" data-name="${row.company_name}"><i class='bx bx-folder-open'></i> Docs</button>`;
+            columns: [
+                { data: 'company_name', title: 'Company Name' },
+                { data: 'contact_name', title: 'Contact Name' },
+                { data: 'contact_position', title: 'Position' },
+                { data: 'email', title: 'Email' },
+                { data: 'phone', title: 'Phone' },
+                { 
+                    data: 'client_type', 
+                    title: 'Client Type',
+                    render: function(data) {
+                        return `<span class="badge badge-info">${data || 'N/A'}</span>`;
+                    }
                 },
-                orderable: false, className: 'dt-center'
-            }
-        ]
-    });
+                { data: 'nationality', title: 'Nationality' },
+                {
+                    data: null,
+                    title: 'Actions',
+                    orderable: false,
+                    className: 'dt-center',
+                    render: function(data, type, row) {
+                        return `
+                            <div class="cm-actions-btn">
+                                <button class="cm-edit-btn" data-id="${row.id}" title="Edit Client"><i class='bx bxs-edit'></i></button>
+                                <button class="cm-delete-btn" data-id="${row.id}" data-name="${row.company_name}" title="Delete Client"><i class='bx bxs-trash'></i></button>
+                            </div>
+                        `;
+                    }
+                },
+                {
+                    data: null,
+                    title: 'Docs',
+                    orderable: false,
+                    className: 'dt-center',
+                    render: function(data, type, row) {
+                        return `<button class="btn-goldmex-secondary btn-small cm-docs-btn" data-id="${row.id}" data-name="${row.company_name}"><i class='bx bx-folder-open'></i> Docs</button>`;
+                    }
+                }
+            ]
+        });
+    }
 
-    // --- Funciones del Dashboard y Datos ---
+    // --- Dashboard & Data Fetching ---
     function updateDashboardCards(clients) {
         const totalClients = clients.length;
         const regularClients = clients.filter(c => c.client_type === 'Clientes Regulares').length;
@@ -109,8 +152,8 @@
         try {
             const { data, error } = await supabase.from('clients').select('*').order('company_name', { ascending: true });
             if (error) throw error;
-            allClientsData = data; // Guardar en caché local
-            table.clear().rows.add(allClientsData).draw();
+            allClientsData = data;
+            initializeDataTable(allClientsData);
             updateDashboardCards(allClientsData);
         } catch (error) {
             console.error('Error fetching clients:', error.message);
@@ -120,13 +163,23 @@
         }
     }
 
-    // --- Manejo de Modales (Funciones Genéricas) ---
+    // --- Modal Helpers ---
     function openModal(modalElement) {
-        if (modalElement) modalElement.style.display = 'flex';
+        if (modalElement) {
+            modalElement.style.display = 'flex';
+            // Force reflow to ensure transition happens
+            void modalElement.offsetWidth; 
+            modalElement.classList.add('open');
+        }
     }
 
     function closeModal(modalElement) {
-        if (modalElement) modalElement.style.display = 'none';
+        if (modalElement) {
+            modalElement.classList.remove('open');
+            setTimeout(() => {
+                modalElement.style.display = 'none';
+            }, 300); // 300ms matches CSS transition
+        }
     }
 
     function showConfirmModal(title, message, callback) {
@@ -141,7 +194,7 @@
         confirmCallback = null;
     }
 
-    // --- Lógica para Añadir/Editar Cliente (Formulario Manual) ---
+    // --- Add/Edit Client Logic ---
     if(addClientForm) addClientForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         const clientData = {
@@ -163,7 +216,6 @@
             ({ error } = await supabase.from('clients').update(clientData).eq('id', editingId));
             successMessage = 'Client updated successfully!';
         } else {
-            // Al crear un nuevo cliente, inicializamos el campo de documentos
             clientData.documents = []; 
             ({ error } = await supabase.from('clients').insert([clientData]));
             successMessage = 'Client added successfully!';
@@ -179,15 +231,15 @@
         }
     });
 
-    // --- Lógica de Botones de la Tabla (Edit, Delete, y Docs) ---
-    $('#clientsTable tbody').on('click', 'button', async function () {
+    // --- Table Actions ---
+    $('#clientsTable').on('click', 'button', async function (e) {
+        e.preventDefault();
         const button = $(this);
         const clientId = button.data('id');
 
         if (button.hasClass('cm-edit-btn')) {
             const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
             if (error) {
-                console.error('Error fetching client for edit:', error.message);
                 if(window.showCustomNotificationST) window.showCustomNotificationST('Error fetching client data', 'error');
                 return;
             }
@@ -209,23 +261,16 @@
             const clientName = button.data('name');
             showConfirmModal(
                 'Delete Client', 
-                `Are you sure you want to permanently delete the client <strong>${clientName}</strong>? This action will also delete all associated documents and cannot be undone.`,
+                `Are you sure you want to permanently delete the client <strong>${clientName}</strong>? This action will also delete all associated documents.`,
                 async () => {
-                    // Primero, borrar documentos de Storage si existen
                     const clientToDelete = allClientsData.find(c => c.id === clientId);
                     if (clientToDelete && clientToDelete.documents && clientToDelete.documents.length > 0) {
                         const filePaths = clientToDelete.documents.map(doc => doc.file_path);
                         const { error: storageError } = await supabase.storage.from(BUCKET_NAME).remove(filePaths);
-                        if (storageError) {
-                            console.error('Error deleting documents from storage:', storageError.message);
-                            if(window.showCustomNotificationST) window.showCustomNotificationST('Could not delete associated files, but proceeding to delete client record.', 'warning');
-                        }
                     }
 
-                    // Segundo, borrar el registro del cliente
                     const { error } = await supabase.from('clients').delete().eq('id', clientId);
                     if (error) {
-                        console.error('Error deleting client:', error.message);
                         if(window.showCustomNotificationST) window.showCustomNotificationST('Error deleting client', 'error');
                     } else {
                         fetchClients();
@@ -234,16 +279,15 @@
                 }
             );
         } else if (button.hasClass('cm-docs-btn')) {
-            // NUEVA LÓGICA PARA EL BOTÓN DE DOCUMENTOS
             const clientName = button.data('name');
             currentClientIdForDocs = clientId;
-            docModalTitle.innerHTML = `<i class='bx bx-folder-open'></i> Documents for: ${clientName}`;
+            docModalTitle.innerHTML = `<i class='bx bx-folder-open'></i> Documents: ${clientName}`;
             renderClientDocuments();
             openModal(docManagementModal);
         }
     });
 
-    // --- NUEVO: Lógica para Importación Masiva con CSV ---
+    // --- CSV Import ---
     function parseCSV(text) {
         const lines = text.split('\n').filter(line => line.trim() !== '');
         const header = lines[0].split(',').map(h => h.trim().toLowerCase());
@@ -273,14 +317,13 @@
                 const csvText = event.target.result;
                 const clientsFromCsv = parseCSV(csvText);
 
-                // Obtener todos los emails existentes para evitar duplicados
                 const { data: existingClients, error: fetchError } = await supabase.from('clients').select('email');
                 if (fetchError) throw fetchError;
                 const existingEmails = new Set(existingClients.map(c => c.email));
 
                 const newClients = clientsFromCsv.filter(client => {
                     return client.email && !existingEmails.has(client.email);
-                }).map(client => ({ // Asegurarse de que los nuevos clientes tengan el campo de documentos
+                }).map(client => ({
                     ...client,
                     documents: []
                 }));
@@ -301,7 +344,7 @@
                 
                 csvResultsMessage.textContent = message;
                 csvProcessingResultsDiv.style.display = 'block';
-                await fetchClients(); // Recargar la tabla
+                await fetchClients();
 
             } catch (error) {
                 console.error('Error processing CSV:', error);
@@ -316,7 +359,7 @@
         reader.readAsText(file);
     }
 
-    // --- NUEVO: Lógica para Gestión de Documentos ---
+    // --- Document Management ---
     function getFileIconClass(fileName) {
         const extension = fileName.split('.').pop().toLowerCase();
         switch (extension) {
@@ -389,9 +432,9 @@
             if(window.showCustomNotificationST) window.showCustomNotificationST(`Failed to save document record: ${dbError.message}`, 'error');
         } else {
             if(window.showCustomNotificationST) window.showCustomNotificationST('Document uploaded successfully!', 'success');
-            await fetchClients(); // Recargar datos para tener la última versión
-            renderClientDocuments(); // Re-renderizar la lista de documentos
-            docFileInput.value = ''; // Limpiar el input
+            await fetchClients();
+            renderClientDocuments();
+            docFileInput.value = '';
         }
     }
 
@@ -417,7 +460,7 @@
         });
     }
 
-    // --- Event Listeners Generales ---
+    // --- Event Listeners ---
     if(addClientBtn) addClientBtn.onclick = () => {
         addClientForm.reset();
         addClientForm.removeAttribute('data-editing-id');
@@ -433,7 +476,6 @@
     if(confirmCancelBtn) confirmCancelBtn.onclick = closeConfirmModal;
     if(confirmCloseBtn) confirmCloseBtn.onclick = closeConfirmModal;
 
-    // Listeners para CSV
     if(importCsvBtn) importCsvBtn.onclick = () => {
         csvFileInput.value = '';
         csvProcessingResultsDiv.style.display = 'none';
@@ -447,10 +489,15 @@
     };
     if(processCsvBtn) processCsvBtn.onclick = handleProcessCsv;
 
-    // Listeners para Documentos
-    if(closeDocModalBtn) closeDocModalBtn.onclick = () => closeModal(docManagementModal);
+    // --- CORRECCIÓN: Event Listeners para el modal de documentos ---
+    // Cierra con el botón del footer
     if(closeDocModalFooterBtn) closeDocModalFooterBtn.onclick = () => closeModal(docManagementModal);
+    
+    // Cierra con la 'X' del header (NUEVO)
+    if(closeDocModalHeaderBtn) closeDocModalHeaderBtn.onclick = () => closeModal(docManagementModal);
+
     if(uploadDocBtn) uploadDocBtn.onclick = uploadClientDocument;
+    
     if(docListContainer) docListContainer.addEventListener('click', async (event) => {
         const button = event.target.closest('.cm-doc-action-btn');
         if (!button) return;
@@ -480,7 +527,7 @@
         if (event.target == docManagementModal) closeModal(docManagementModal);
     });
 
-    // --- Inicialización del Módulo ---
+    // --- Module Initialization ---
     function initializeModule() {
         const authChangeHandler = (event) => {
             const sessionUser = event.detail?.user;
@@ -489,13 +536,14 @@
                 fetchClients();
             } else {
                 currentUser = null;
-                table.clear().draw();
+                if ($.fn.DataTable.isDataTable(clientsTableElement)) {
+                    $(clientsTableElement).DataTable().clear().draw();
+                }
             }
         };
 
         document.addEventListener('supabaseAuthStateChange', authChangeHandler);
 
-        // Carga inicial de datos si ya hay un usuario
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 currentUser = session.user;
@@ -505,8 +553,9 @@
         
         const cleanup = () => {
             console.log("Client Management Module Unloading");
-            if ($.fn.DataTable.isDataTable('#clientsTable')) {
-                $('#clientsTable').DataTable().destroy();
+            if ($.fn.DataTable.isDataTable(clientsTableElement)) {
+                $(clientsTableElement).DataTable().destroy();
+                $(clientsTableElement).empty();
             }
             document.removeEventListener('supabaseAuthStateChange', authChangeHandler);
             delete document.body.dataset.clientManagementInitialized;
