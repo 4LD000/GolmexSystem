@@ -1,26 +1,37 @@
-/* ====================================================== */
-/* ESTILOS PARA EL MÓDULO DE CLIENT MANAGEMENT (V. FINAL) */
-/* ====================================================== */
+/* ====================================================================
+ * == STYLES FOR CLIENT MANAGEMENT (CM) - v15 FULL HEIGHT FIX        ==
+ * ====================================================================
+ */
 
-/* SECTION: Contenedor Principal y Animación de Entrada */
+/* 1. CONTENEDOR MAESTRO: 100vh y Flex Column */
 .client-management-container {
     padding: 1.5rem;
     background-color: var(--color-bg);
+    /* Full Height Fix */
+    height: 100vh;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
-.client-management-container > .cm-header,
-.client-management-container > .cm-dashboard-summary,
-.client-management-container > .cm-table-container {
-    animation-name: fadeInSlideUp; /* Animación definida en style.css */
-    animation-duration: var(--animation-duration-normal);
-    animation-timing-function: var(--animation-timing-function);
-    animation-fill-mode: both;
+/* Animaciones */
+.client-management-container > * {
+    animation: fadeInSlideUp 0.6s var(--animation-timing-function) both;
 }
 
 /* Retrasos escalonados para la animación */
-.client-management-container > .cm-header { animation-delay: 0s; }
-.client-management-container > .cm-dashboard-summary { animation-delay: 0.05s; }
-.client-management-container > .cm-table-container { animation-delay: 0.1s; }
+.client-management-container > .cm-header { animation-delay: 0s; flex-shrink: 0; }
+.client-management-container > .cm-dashboard-summary { animation-delay: 0.05s; flex-shrink: 0; }
+.client-management-container > .cm-table-container { 
+    animation-delay: 0.1s; 
+    /* Flex Growth for Table */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
 
 /* SECTION: Encabezado del Módulo */
 .cm-header {
@@ -38,6 +49,7 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
+    margin: 0;
 }
 .cm-header-left h1 .bx {
     color: var(--goldmex-secondary-color);
@@ -53,7 +65,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem; /* Reduced margin */
 }
 .cm-scorecard {
     background-color: var(--color-surface);
@@ -120,20 +132,103 @@ body.dark-mode .cm-scorecard-icon.total {
     line-height: 1.2;
 }
 
-/* SECTION: Contenedor y Estilos de la Tabla */
+/* SECTION: Contenedor y Estilos de la Tabla (Flexbox Updated) */
 .cm-table-container {
     background-color: var(--color-surface);
     padding: 1.5rem;
+    padding-bottom: 0; /* Adjust for footer */
     border-radius: 0.5rem;
     box-shadow: 0 2px 10px var(--shadow-border);
     border: 1px solid var(--color-border);
-    overflow-x: auto;
+    overflow: hidden;
 }
-.cm-table-container th,
-.cm-table-container td {
+
+/* ====================================================================
+ * == DATATABLES FLEXBOX HACK (Scoped for CM)                        ==
+ * ====================================================================
+ */
+
+/* Wrapper del Header (Inyectado por JS) */
+.cm-dt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.8rem;
+    flex-shrink: 0;
+}
+
+/* Inputs & Selects dentro del header de tabla */
+.cm-dt-header input,
+.cm-dt-header select {
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    outline: none;
+    height: 32px;
+}
+
+/* Wrapper generado por DataTables */
+.client-management-container .dt-scroll,
+.client-management-container .dataTables_scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 6px 6px 0 0;
+}
+
+/* EL HACK: Forzar body a flex */
+.client-management-container .dataTables_scrollBody {
+    flex: 1 1 auto !important;
+    height: 10px !important;
+    max-height: none !important;
+    width: 100% !important;
+    background-color: var(--color-surface);
+}
+
+/* Footer (Paginación) fijo abajo */
+.cm-dt-footer {
+    height: 45px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.5rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+/* Tablas full width */
+.client-management-container table.dataTable {
+    width: 100% !important;
+    margin: 0 !important;
+    border-collapse: collapse !important;
+}
+
+.client-management-container table.dataTable thead th {
+    background-color: var(--color-bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid var(--color-border);
     text-align: center !important;
-    vertical-align: middle;
 }
+
+.client-management-container table.dataTable tbody td {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle !important;
+    text-align: center !important;
+}
+
 
 /* SECTION: Modal Styles (Generales) */
 .cm-modal {
@@ -151,6 +246,10 @@ body.dark-mode .cm-scorecard-icon.total {
     justify-content: center;
     padding: 2rem;
 }
+.cm-modal.open { /* Use .open class for consistency */
+    display: flex;
+}
+
 .cm-modal-content {
     background-color: var(--color-surface);
     color: var(--color-text-primary);
@@ -162,17 +261,25 @@ body.dark-mode .cm-scorecard-icon.total {
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     animation: cm-animatetop 0.4s;
+    /* Flexbox for Modal Content */
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh; /* Max height for modal */
+    overflow: hidden;
 }
+
 @keyframes cm-animatetop {
     from {transform: translateY(-50px); opacity: 0}
     to {transform: translateY(0); opacity: 1}
 }
+
 .cm-modal-header {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 .cm-modal-header h2 { margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.6rem; }
 .cm-close-btn {
@@ -187,9 +294,13 @@ body.dark-mode .cm-scorecard-icon.total {
     color: var(--goldmex-accent-color);
     text-decoration: none;
 }
+
 .cm-modal-body { 
     padding: 1.5rem;
+    flex: 1; /* Allow body to grow */
+    overflow-y: auto; /* Scroll inside body */
 }
+
 #addClientForm {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -224,17 +335,21 @@ body.dark-mode .cm-scorecard-icon.total {
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 .cm-form-group textarea { resize: vertical; min-height: 80px; }
+
 .cm-modal-footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--color-border);
     display: flex;
     justify-content: flex-end;
     gap: 0.8rem;
+    flex-shrink: 0;
 }
 #addClientForm .cm-modal-footer {
     grid-column: 1 / -1;
     margin-top: 1rem;
     justify-content: right;
+    border-top: none; /* Remove border inside form if footer is used */
+    padding: 0;
 }
 
 /* SECTION: Botones de Acción en la Tabla (CORREGIDO) */
@@ -245,8 +360,8 @@ body.dark-mode .cm-scorecard-icon.total {
 }
 
 /* Estilo base para TODOS los botones de la tabla para evitar conflictos */
-.cm-table-container .cm-actions-btn button, 
-.cm-table-container .cm-docs-btn {
+.client-management-container .cm-actions-btn button, 
+.client-management-container .cm-docs-btn {
     cursor: pointer;
     border-radius: 5px;
     display: inline-flex;
@@ -258,41 +373,41 @@ body.dark-mode .cm-scorecard-icon.total {
     border: 1px solid; /* Se define el borde aquí */
 }
 
-.cm-table-container .cm-actions-btn button:hover, 
-.cm-table-container .cm-docs-btn:hover {
+.client-management-container .cm-actions-btn button:hover, 
+.client-management-container .cm-docs-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 /* Botones pequeños (edit, delete) */
-.cm-table-container .cm-actions-btn button {
+.client-management-container .cm-actions-btn button {
     font-size: 1.1rem;
     width: 34px;
     background-color: var(--goldmex-white-color);
 }
 
 /* Botón Editar */
-.cm-table-container .cm-edit-btn {
+.client-management-container .cm-edit-btn {
     color: #d4af37;
     border-color: #d4af37;
 }
-.cm-table-container .cm-edit-btn:hover {
+.client-management-container .cm-edit-btn:hover {
     background-color: #d4af37;
     color: var(--goldmex-primary-color);
 }
 
 /* Botón Borrar */
-.cm-table-container .cm-delete-btn {
+.client-management-container .cm-delete-btn {
     color: #e31837;
     border-color: #e31837;
 }
-.cm-table-container .cm-delete-btn:hover {
+.client-management-container .cm-delete-btn:hover {
     background-color: #e31837;
     color: var(--goldmex-white-color);
 }
 
 /* Botón de Docs (verde) */
-.cm-table-container .cm-docs-btn {
+.client-management-container .cm-docs-btn {
     font-size: 0.8rem !important;
     padding: 0.4rem 0.6rem;
     gap: 0.4rem;
@@ -300,35 +415,35 @@ body.dark-mode .cm-scorecard-icon.total {
     color: var(--goldmex-white-color); 
     border-color: #28a745; 
 }
-.cm-table-container .cm-docs-btn:hover {
+.client-management-container .cm-docs-btn:hover {
     background-color: #218838; 
     border-color: #1e7e34;
 }
-.cm-table-container .cm-docs-btn .bx {
+.client-management-container .cm-docs-btn .bx {
     font-size: 1rem;
 }
 
 /* --- Estilos para Dark Mode en botones de acción --- */
-body.dark-mode .cm-table-container .cm-actions-btn button, 
-body.dark-mode .cm-table-container .cm-docs-btn {
+body.dark-mode .client-management-container .cm-actions-btn button, 
+body.dark-mode .client-management-container .cm-docs-btn {
     background-color: transparent;
 }
 
-body.dark-mode .cm-table-container .cm-edit-btn:hover {
+body.dark-mode .client-management-container .cm-edit-btn:hover {
     background-color: #d4af37;
     color: var(--goldmex-primary-color);
 }
 
-body.dark-mode .cm-table-container .cm-delete-btn:hover {
+body.dark-mode .client-management-container .cm-delete-btn:hover {
     background-color: #e31837;
     color: var(--goldmex-light-color);
 }
 
-body.dark-mode .cm-table-container .cm-docs-btn {
+body.dark-mode .client-management-container .cm-docs-btn {
     color: #28a745;
     border-color: #28a745;
 }
-body.dark-mode .cm-table-container .cm-docs-btn:hover {
+body.dark-mode .client-management-container .cm-docs-btn:hover {
     background-color: #28a745;
     color: var(--goldmex-light-color);
 }
@@ -376,7 +491,13 @@ body.dark-mode .cm-modal-instructions {
 .cm-doc-list-section {
     margin-bottom: 2rem;
 }
-.cm-doc-list-section { margin-bottom: 0; }
+.cm-doc-list-section { 
+    margin-bottom: 0; 
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
 .cm-doc-upload-section h4,
 .cm-doc-list-section h4 {
     font-size: 1.15rem;
@@ -386,6 +507,7 @@ body.dark-mode .cm-modal-instructions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-shrink: 0;
 }
 .cm-form-grid {
     display: grid;
@@ -394,12 +516,13 @@ body.dark-mode .cm-modal-instructions {
     align-items: end;
 }
 .cm-doc-list-container {
-    max-height: 350px;
     overflow-y: auto;
     padding: 0.5rem;
     background-color: var(--color-bg);
     border-radius: 0.3rem;
     border: 1px solid var(--color-border);
+    flex: 1; /* Allow this container to grow */
+    min-height: 200px; /* Minimum height */
 }
 .cm-doc-card {
     display: flex;
