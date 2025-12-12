@@ -3,124 +3,307 @@
 :root {
   --goldmex-primary: #1a365d;
   --goldmex-secondary: #d4af37;
-  --goldmex-accent: #e31837;
   --goldmex-light: #f8f9fa;
   --goldmex-gray: #e9ecef;
   --goldmex-dark: #212529;
   --goldmex-white: #ffffff;
+  --input-border: #cbd5e1;
 }
 
-/* ===== ESTILOS GENERALES ===== */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* ===== LOGIN PAGE CUSTOM STYLES ===== */
-body.login-page {
-  background-color: var(--goldmex-light);
-  background-image: none;
+body {
+  font-family: 'Montserrat', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--goldmex-white);
+}
+
+/* --- LAYOUT DIVIDIDO --- */
+.split-screen-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+/* --- IZQUIERDA: FORMULARIO --- */
+.left-pane-form {
+  width: 50%;
+  background-color: var(--goldmex-white);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  font-family: 'Montserrat', sans-serif;
-  overflow: hidden;
+  padding: 2rem;
   position: relative;
-}
-
-.login-wrapper {
-  background: var(--goldmex-white);
-  padding: 40px 30px;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  max-width: 420px;
-  width: 90%;
-  border-top: 5px solid var(--goldmex-secondary);
   z-index: 2;
-  position: relative;
 }
 
-.login-logo {
-  width: 130px;
-  margin-bottom: 25px;
+/* HEADER MARCA (Posicionado Absoluto) */
+.brand-header {
+  position: absolute;
+  top: 2rem;
+  left: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  z-index: 10;
 }
 
-.login-wrapper h2 {
+.brand-logo-container {
+  width: 40px;
+  height: 40px;
+  background: var(--goldmex-primary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--goldmex-secondary);
+  font-size: 1.4rem;
+  box-shadow: 0 4px 10px rgba(26, 54, 93, 0.2);
+}
+
+.brand-name {
+  font-weight: 800;
+  font-size: 1.1rem;
   color: var(--goldmex-primary);
-  margin-bottom: 25px;
+  letter-spacing: 0.5px;
+}
+
+/* Contenedor del Formulario */
+.form-content-wrapper {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 3rem;
+}
+
+.welcome-text {
+  margin-bottom: 2rem;
+}
+
+.welcome-text h1 {
+  font-size: 2.2rem;
+  color: var(--goldmex-dark);
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.welcome-text p {
+  color: #64748b;
+  font-size: 1rem;
+}
+
+/* INPUTS ESTILIZADOS */
+.input-group {
+  margin-bottom: 1.2rem;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.85rem;
   font-weight: 600;
-  font-size: 1.5rem;
+  color: var(--goldmex-dark);
+  margin-bottom: 0.5rem;
 }
 
-.g_id_signin {
-  display: inline-block;
-  margin-top: 10px;
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-/* ===== NEW STYLES FOR LOGIN PROVIDER OPTIONS ===== */
+.input-icon {
+  position: absolute;
+  left: 15px;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  z-index: 2;
+}
 
-.login-separator {
+.input-wrapper input {
+  width: 100%;
+  padding: 0.9rem 1rem 0.9rem 2.8rem;
+  /* Espacio para el icono */
+  border: 1.5px solid var(--input-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: 'Roboto', sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+  color: var(--goldmex-dark);
+  background-color: #f8fafc;
+}
+
+.input-wrapper input:focus {
+  border-color: var(--goldmex-primary);
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.1);
+}
+
+.toggle-password {
+  position: absolute;
+  right: 15px;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 1.2rem;
+  z-index: 2;
+  transition: color 0.2s;
+}
+
+.toggle-password:hover {
+  color: var(--goldmex-primary);
+}
+
+/* BOTÓN PRINCIPAL (Sign In) */
+.btn-sign-in-main {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: var(--goldmex-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 0.5rem;
+  box-shadow: 0 4px 6px rgba(26, 54, 93, 0.2);
+}
+
+.btn-sign-in-main:hover {
+  background-color: #2c4a78;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(26, 54, 93, 0.25);
+}
+
+/* SEPARADOR */
+.divider-container {
   display: flex;
   align-items: center;
   text-align: center;
-  color: #aaa;
-  margin: 25px 10px;
+  color: #94a3b8;
+  margin: 1.8rem 0;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
-.login-separator::before,
-.login-separator::after {
+.divider-container::before,
+.divider-container::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.login-separator:not(:empty)::before {
-  margin-right: .5em;
+.divider-container span {
+  padding: 0 15px;
 }
 
-.login-separator:not(:empty)::after {
-  margin-left: .5em;
+/* --- BOTONES SOCIALES (GRID ALINEADA) --- */
+.social-buttons-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* 50% - 50% */
+  gap: 1rem;
+  width: 100%;
+  align-items: center;
+  /* Centrado vertical crucial */
 }
 
-.microsoft-btn {
-  display: inline-flex;
+/* El contenedor del botón de Google */
+.g_id_signin {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  height: 40px;
+  /* Forzar altura para igualar */
+}
+
+/* Botón de Microsoft Custom */
+.btn-social {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 0 10px;
-  height: 42px;
-  /* Adjusted height to better match Google's button */
-  border: 1px solid #747775;
-  border-radius: 4px;
-  background-color: var(--goldmex-white);
-  color: #1f1f1f;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: 'Roboto', sans-serif;
-  cursor: pointer;
-  transition: background-color 0.3s, border-color 0.3s;
+  gap: 10px;
+  height: 40px;
+  /* Altura estándar de Google 'large' */
   width: 100%;
-  max-width: 280px;
-  /* Match Google standard width */
-  margin: 0 auto;
+  padding: 0 1rem;
+  background: white;
+  border: 1px solid #dadce0;
+  /* Color gris Google */
+  border-radius: 4px;
+  /* Radio Google */
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  color: #3c4043;
+  transition: all 0.2s;
+  box-sizing: border-box;
 }
 
-.microsoft-btn:hover {
-  background-color: #f2f2f2;
-  border-color: #747775;
+.btn-social:hover {
+  background-color: #f7fafe;
+  border-color: #d2e3fc;
+  transform: translateY(-1px);
 }
 
-.microsoft-btn .bx {
-  font-size: 20px;
-  /* Slightly increased icon size for better visibility */
-  /* Color is now set directly in login.html for specific icon */
+.btn-social svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
+/* FOOTER */
+.login-footer {
+  margin-top: 2.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
 
-/* ===== BACKGROUND ANIMATION STYLES ===== */
+/* --- DERECHA: ANIMACIÓN Y FONDO --- */
+.right-pane-animated {
+  width: 50%;
+  background-color: var(--goldmex-primary);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-image: linear-gradient(135deg, var(--goldmex-primary) 0%, #0f2444 100%);
+}
+
+.overlay-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 3rem;
+  max-width: 500px;
+}
+
+.overlay-content h2 {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: var(--goldmex-secondary);
+  line-height: 1.1;
+}
+
+.overlay-content p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* --- ANIMACIÓN DE PARTÍCULAS (Original) --- */
 .animated-bg-flow {
   position: absolute;
   top: 0;
@@ -131,7 +314,6 @@ body.login-page {
   z-index: 1;
   padding: 0;
   margin: 0;
-  background-color: var(--goldmex-primary);
 }
 
 .animated-bg-flow li {
@@ -140,273 +322,130 @@ body.login-page {
   list-style: none;
   width: 20px;
   height: 20px;
-  animation: animate_flow 18s linear infinite;
-  bottom: -180px;
+  background: rgba(255, 255, 255, 0.2);
+  animation: animate_flow 25s linear infinite;
+  bottom: -150px;
+  border-radius: 50%;
 }
 
 .animated-bg-flow li:nth-child(odd) {
-  background: rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.4);
 }
 
 .animated-bg-flow li:nth-child(even) {
-  background: rgba(248, 249, 250, 0.4);
+  background: rgba(255, 255, 255, 0.15);
 }
 
-/* Variations */
+/* Variaciones de posición */
 .animated-bg-flow li:nth-child(1) {
   left: 25%;
-  width: 28px;
-  height: 28px;
+  width: 80px;
+  height: 80px;
   animation-delay: 0s;
-  animation-duration: 10s;
-  border-radius: 4px;
 }
 
 .animated-bg-flow li:nth-child(2) {
   left: 10%;
-  width: 18px;
-  height: 18px;
-  animation-delay: 1s;
-  animation-duration: 8s;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation-delay: 2s;
+  animation-duration: 12s;
 }
 
 .animated-bg-flow li:nth-child(3) {
   left: 70%;
-  width: 22px;
-  height: 22px;
-  animation-delay: 2s;
-  animation-duration: 12s;
-  border-radius: 2px;
+  width: 20px;
+  height: 20px;
+  animation-delay: 4s;
 }
 
 .animated-bg-flow li:nth-child(4) {
   left: 40%;
-  width: 32px;
-  height: 32px;
-  animation-delay: 0.5s;
-  animation-duration: 11s;
-  border-radius: 6px;
+  width: 60px;
+  height: 60px;
+  animation-delay: 0s;
+  animation-duration: 18s;
 }
 
 .animated-bg-flow li:nth-child(5) {
   left: 65%;
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   animation-delay: 0s;
-  animation-duration: 9s;
-  border-radius: 50%;
 }
 
 .animated-bg-flow li:nth-child(6) {
   left: 75%;
-  width: 38px;
-  height: 38px;
-  animation-delay: 1.5s;
-  animation-duration: 14s;
-  border-radius: 8px;
+  width: 110px;
+  height: 110px;
+  animation-delay: 3s;
 }
 
 .animated-bg-flow li:nth-child(7) {
   left: 35%;
-  width: 26px;
-  height: 26px;
-  animation-delay: 3.5s;
-  animation-duration: 10s;
-  border-radius: 3px;
+  width: 150px;
+  height: 150px;
+  animation-delay: 7s;
 }
 
 .animated-bg-flow li:nth-child(8) {
   left: 50%;
-  width: 20px;
-  height: 20px;
-  animation-delay: 4s;
-  animation-duration: 15s;
-  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  animation-delay: 15s;
+  animation-duration: 45s;
 }
 
 .animated-bg-flow li:nth-child(9) {
   left: 20%;
-  width: 16px;
-  height: 16px;
-  animation-delay: 1s;
-  animation-duration: 13s;
-  border-radius: 4px;
+  width: 15px;
+  height: 15px;
+  animation-delay: 2s;
+  animation-duration: 35s;
 }
 
 .animated-bg-flow li:nth-child(10) {
   left: 85%;
-  width: 30px;
-  height: 30px;
+  width: 150px;
+  height: 150px;
   animation-delay: 0s;
-  animation-duration: 7s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(11) {
-  left: 5%;
-  width: 24px;
-  height: 24px;
-  animation-delay: 0.2s;
-  animation-duration: 9s;
-  border-radius: 3px;
-}
-
-.animated-bg-flow li:nth-child(12) {
-  left: 15%;
-  width: 19px;
-  height: 19px;
-  animation-delay: 2.5s;
   animation-duration: 11s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(13) {
-  left: 30%;
-  width: 33px;
-  height: 33px;
-  animation-delay: 1.8s;
-  animation-duration: 8s;
-  border-radius: 5px;
-}
-
-.animated-bg-flow li:nth-child(14) {
-  left: 45%;
-  width: 17px;
-  height: 17px;
-  animation-delay: 3s;
-  animation-duration: 14s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(15) {
-  left: 55%;
-  width: 27px;
-  height: 27px;
-  animation-delay: 0.8s;
-  animation-duration: 10s;
-  border-radius: 2px;
-}
-
-.animated-bg-flow li:nth-child(16) {
-  left: 60%;
-  width: 21px;
-  height: 21px;
-  animation-delay: 4.5s;
-  animation-duration: 12s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(17) {
-  left: 80%;
-  width: 29px;
-  height: 29px;
-  animation-delay: 2.2s;
-  animation-duration: 7s;
-  border-radius: 6px;
-}
-
-.animated-bg-flow li:nth-child(18) {
-  left: 90%;
-  width: 15px;
-  height: 15px;
-  animation-delay: 1.2s;
-  animation-duration: 10s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(19) {
-  left: 58%;
-  width: 36px;
-  height: 36px;
-  animation-delay: 3.8s;
-  animation-duration: 13s;
-  border-radius: 4px;
-}
-
-.animated-bg-flow li:nth-child(20) {
-  left: 2%;
-  width: 20px;
-  height: 20px;
-  animation-delay: 0.5s;
-  animation-duration: 9s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(21) {
-  left: 95%;
-  width: 25px;
-  height: 25px;
-  animation-delay: 1.5s;
-  animation-duration: 11s;
-  border-radius: 3px;
-}
-
-.animated-bg-flow li:nth-child(22) {
-  left: 12%;
-  width: 34px;
-  height: 34px;
-  animation-delay: 4.2s;
-  animation-duration: 8s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(23) {
-  left: 38%;
-  width: 18px;
-  height: 18px;
-  animation-delay: 2.8s;
-  animation-duration: 14s;
-  border-radius: 2px;
-}
-
-.animated-bg-flow li:nth-child(24) {
-  left: 72%;
-  width: 31px;
-  height: 31px;
-  animation-delay: 0.3s;
-  animation-duration: 10s;
-  border-radius: 50%;
-}
-
-.animated-bg-flow li:nth-child(25) {
-  left: 52%;
-  width: 23px;
-  height: 23px;
-  animation-delay: 3.2s;
-  animation-duration: 12s;
-  border-radius: 4px;
 }
 
 @keyframes animate_flow {
   0% {
     transform: translateY(0) rotate(0deg);
     opacity: 1;
-    border-radius: 10%;
-  }
-
-  70% {
-    opacity: 0.7;
+    border-radius: 0;
   }
 
   100% {
-    transform: translateY(-105vh) rotate(600deg);
+    transform: translateY(-1000px) rotate(720deg);
     opacity: 0;
     border-radius: 50%;
   }
 }
 
-/* ===== RESPONSIVE ADJUSTMENTS ===== */
-@media (max-width: 480px) {
-  .login-wrapper {
-    padding: 30px 20px;
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .right-pane-animated {
+    display: none;
   }
 
-  .login-logo {
-    width: 100px;
+  .left-pane-form {
+    width: 100%;
+    padding: 1.5rem;
   }
 
-  .login-wrapper h2 {
-    font-size: 1.25rem;
+  .brand-header {
+    position: relative;
+    top: 0;
+    left: 0;
+    margin-bottom: 2rem;
+    justify-content: center;
+  }
+
+  .form-content-wrapper {
+    margin-top: 0;
   }
 }
