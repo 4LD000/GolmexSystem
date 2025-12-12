@@ -50,7 +50,6 @@
     </div>
 
     <div class="imp-table-container">
-        <h3><i class='bx bx-list-ul'></i> Active Shipments</h3>
         <table id="imp-active-shipments-table" class="display responsive nowrap" style="width: 100%"></table>
     </div>
 </div>
@@ -174,17 +173,13 @@
             <button class="imp-close-button" id="imp-close-ledger-btn">&times;</button>
         </div>
         <div class="imp-modal-body">
-            <div class="imp-balance-summary">
-                Current Available Balance: <span id="imp-ledger-current-balance">$0.00</span>
-            </div>
+            
             <div class="imp-ledger-controls">
-                <div class="imp-form-group">
-                    <label for="imp-ledger-start-date">Start Date:</label>
-                    <input type="date" id="imp-ledger-start-date">
-                </div>
-                <div class="imp-form-group">
-                    <label for="imp-ledger-end-date">End Date:</label>
-                    <input type="date" id="imp-ledger-end-date">
+                <div class="imp-form-group" style="flex: 2;">
+                    <label class="imp-balance-summary" style="padding: 0; background: none; border: none; font-size: 0.9rem; margin-bottom: 0;">
+                        Available Balance: <span id="imp-ledger-current-balance">$0.00</span>
+                    </label>
+                    <input type="text" id="imp-ledger-search" placeholder="Search Reference or ID...">
                 </div>
                 <div class="imp-form-group">
                     <label for="imp-ledger-month">Month</label>
@@ -195,16 +190,19 @@
                     <select id="imp-ledger-year"></select>
                 </div>
                 <div class="imp-form-group">
-                    <label for="imp-ledger-search">Shipment ID</label>
-                    <input type="text" id="imp-ledger-search" placeholder="Search...">
+                    <label for="imp-ledger-start-date">Start Date</label>
+                    <input type="date" id="imp-ledger-start-date">
                 </div>
-                <button id="imp-ledger-filter-btn" class="btn-goldmex-primary"><i class='bx bx-filter-alt'></i>
-                    Filter</button>
-                <button id="imp-ledger-download-btn" class="btn-goldmex-secondary"><i class='bx bx-download'></i>
-                    Download CSV</button>
+                <div class="imp-form-group">
+                    <label for="imp-ledger-end-date">End Date</label>
+                    <input type="date" id="imp-ledger-end-date">
+                </div>
+                
+                <button id="imp-ledger-filter-btn" class="btn-goldmex-primary" style="height: 38px;"><i class='bx bx-filter-alt'></i> Filter</button>
+                <button id="imp-ledger-download-btn" class="btn-goldmex-secondary" style="height: 38px;"><i class='bx bx-download'></i> CSV</button>
             </div>
-            <div class="imp-table-container" style="margin-top: 1rem;">
-                <h4>Transaction History</h4>
+
+            <div class="imp-table-container">
                 <table id="imp-ledger-history-table" class="display responsive nowrap" style="width:100%"></table>
             </div>
         </div>
