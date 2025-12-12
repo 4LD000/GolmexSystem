@@ -6,7 +6,7 @@
     }
     document.body.dataset.cqModuleInitialized = "true";
     console.log(
-        "Classification & Quoting Module Initialized (V23 - Final Workflow & Bugfixes)"
+        "Classification & Quoting Module Initialized (V24 - Full Height Layout)"
     );
 
     if (typeof supabase === "undefined" || !supabase) {
@@ -333,12 +333,14 @@
             .subscribe();
     }
 
-    // SECTION 3: DATATABLE INITIALIZATION
+    // SECTION 3: DATATABLE INITIALIZATION (MODIFIED FOR FULL HEIGHT)
     function initializeDataTable(tableSelector, data) {
         let isHistoryTable = tableSelector === "#cqHistoryTable";
         let dataTableInstance = isHistoryTable
             ? historyDataTable
             : pendingDataTable;
+            
+        // Clean up existing instance if any
         if ($.fn.DataTable.isDataTable(tableSelector)) {
             $(tableSelector).DataTable().clear().rows.add(data).draw();
             return;
@@ -468,11 +470,24 @@
                 },
             ];
 
+        // --- NEW CONFIGURATION (Super Admin Style) ---
         dataTableInstance = $(tableSelector).DataTable({
             data: data,
-            rscrollX: true, //
             columns: columnsConfig,
             order: [[3, "desc"]],
+            // Custom DOM layout for Flexbox integration
+            dom: '<"wst-dt-header"lf>rt<"wst-dt-footer"ip>',
+            responsive: true,
+            scrollY: '50vh', // This triggers DataTables scroll mode (CSS will override height)
+            scrollCollapse: true,
+            paging: true,
+            pageLength: 15,
+            lengthMenu: [10, 15, 25, 50, 100],
+            language: {
+                search: "",
+                searchPlaceholder: "Search...",
+                lengthMenu: "_MENU_ rows"
+            }
         });
 
         if (isHistoryTable) {
@@ -487,6 +502,11 @@
         if (modalElement) {
             modalElement.style.display = "flex";
             setTimeout(() => modalElement.classList.add("cq-modal-open"), 10);
+            
+            // Adjust tables if inside modal after animation
+            if(modalElement.id === 'cqHistoryModal' && historyDataTable) {
+                 setTimeout(() => historyDataTable.columns.adjust(), 200);
+            }
         }
     }
 
