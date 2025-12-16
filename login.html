@@ -1,292 +1,407 @@
 <!DOCTYPE html>
 <html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login | GoldMex System</title>
     <link rel="icon" href="assets/favicon.png" type="image/png" />
-    
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-material-ui/material-ui.min.css" rel="stylesheet">
+
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-material-ui/material-ui.min.css"
+      rel="stylesheet"
+    />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
 
-    <link rel="stylesheet" href="css/login-style.css">
-</head>
+    <link rel="stylesheet" href="css/login-style.css" />
+  </head>
 
-<body>
-
-    <div id="g_id_onload" 
-         data-client_id="240983554572-i95nbaai0c04adfdvfnemh99lgei3lps.apps.googleusercontent.com"
-         data-callback="handleCredentialResponse" 
-         data-auto_prompt="false">
-    </div>
+  <body>
+    <div
+      id="g_id_onload"
+      data-client_id="240983554572-i95nbaai0c04adfdvfnemh99lgei3lps.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false"
+    ></div>
 
     <div class="split-screen-container">
-        
-        <div class="left-pane-form">
-            
-            <div class="brand-header">
-                <div class="brand-logo-container">
-                    <i class='bx bxs-package icon-placeholder'></i> 
-                </div>
-                <span class="brand-name">GOLDMEX SYSTEM</span>
-            </div>
-
-            <div class="form-content-wrapper">
-                
-                <div class="welcome-text">
-                    <h1>Welcome back</h1>
-                    <p>Enter your details to access your account.</p>
-                </div>
-
-                <form id="native-login-form">
-                    <div class="input-group">
-                        <label for="email-input">Email or Username</label>
-                        <div class="input-wrapper">
-                            <i class='bx bx-envelope input-icon'></i>
-                            <input type="text" id="email-input" placeholder="user or user@gmxecommerce.com" required autocomplete="username">
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="password-input">Password</label>
-                        <div class="input-wrapper">
-                            <i class='bx bx-lock-alt input-icon'></i>
-                            <input type="password" id="password-input" placeholder="Enter your password" required autocomplete="current-password">
-                            <i class='bx bx-show toggle-password' id="toggle-password-btn"></i>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-sign-in-main" id="native-submit-btn">Sign In</button>
-                </form>
-
-                <div class="divider-container">
-                    <span class="divider-text">Or login with</span>
-                </div>
-
-                <div class="social-buttons-container">
-                    
-                    <div class="g_id_signin"
-                         data-type="standard"
-                         data-shape="rectangular"
-                         data-theme="outline"
-                         data-text="signin_with"
-                         data-size="large"
-                         data-logo_alignment="left"
-                         data-width="185">
-                    </div>
-
-                    <button id="microsoft-signin-btn" class="btn-social btn-microsoft">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21"><title>MS-SymbolLockup</title><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
-                        <span>Microsoft</span>
-                    </button>
-                </div>
-
-                <div class="login-footer">
-                    <p>© 2024 Goldmex International. Internal use only.</p>
-                </div>
-            </div>
+      <div class="left-pane-form">
+        <div class="brand-header">
+          <div class="brand-logo-container">
+            <i class="bx bxs-package icon-placeholder"></i>
+          </div>
+          <span class="brand-name">GOLDMEX SYSTEM</span>
         </div>
 
-        <div class="right-pane-animated">
-            <div class="overlay-content">
-                <h2>Efficiency in Motion</h2>
-                <p>Manage your warehouse operations seamlessly.</p>
+        <div class="form-content-wrapper">
+          <div class="welcome-text">
+            <h1>Welcome back</h1>
+            <p>Enter your details to access your account.</p>
+          </div>
+
+          <form id="native-login-form">
+            <div class="input-group">
+              <label for="email-input">Email or Username</label>
+              <div class="input-wrapper">
+                <i class="bx bx-envelope input-icon"></i>
+                <input
+                  type="text"
+                  id="email-input"
+                  placeholder="user or user@gmxecommerce.com"
+                  required
+                  autocomplete="username"
+                />
+              </div>
             </div>
-            
-            <ul class="animated-bg-flow">
-                <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
-                <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
-                <li></li><li></li><li></li><li></li><li></li>
-            </ul>
+
+            <div class="input-group">
+              <label for="password-input">Password</label>
+              <div class="input-wrapper">
+                <i class="bx bx-lock-alt input-icon"></i>
+                <input
+                  type="password"
+                  id="password-input"
+                  placeholder="Enter your password"
+                  required
+                  autocomplete="current-password"
+                />
+                <i
+                  class="bx bx-show toggle-password"
+                  id="toggle-password-btn"
+                ></i>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn-sign-in-main"
+              id="native-submit-btn"
+            >
+              Sign In
+            </button>
+          </form>
+
+          <div class="divider-container">
+            <span class="divider-text">Or login with</span>
+          </div>
+
+          <div class="social-buttons-container">
+            <div
+              class="g_id_signin"
+              data-type="standard"
+              data-shape="rectangular"
+              data-theme="outline"
+              data-text="signin_with"
+              data-size="large"
+              data-logo_alignment="left"
+              data-width="185"
+            ></div>
+
+            <button id="microsoft-signin-btn" class="btn-social btn-microsoft">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="21"
+                height="21"
+                viewBox="0 0 21 21"
+              >
+                <title>MS-SymbolLockup</title>
+                <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+              </svg>
+              <span>Microsoft</span>
+            </button>
+          </div>
+
+          <div class="login-footer">
+            <p>© 2024 Goldmex International. Internal use only.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-pane-animated">
+        <div class="overlay-content">
+          <h2>Efficiency in Motion</h2>
+          <p>Manage your warehouse operations seamlessly.</p>
         </div>
 
+        <ul class="animated-bg-flow">
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+      </div>
     </div>
 
     <script>
-        // 1. CONFIGURACIÓN
-        const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
-        
-        let supabase;
-        try {
-            if(window.supabase) supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (e) { console.error("Init Error", e); }
+      // 1. CONFIGURACIÓN
+      const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
 
-        // DOMINIOS PARA AUTOCOMPLETAR
-        const CORPORATE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-
-        // LISTAS DE ACCESO (Del Backup)
-        const MANAGER_USERS = ["fulfillment@gmxecommerce.com", "tgarcia@goldmexintl.com", "kmartinez@goldmexintl.com", "anogales@goldmexintl.com", "carlos@flexbpo.com", "alexandermontes@flexbpo.com", "jorge@customscity.com", "jachags@gmail.com", "aesquivez@goldmexintl.com"];
-        const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-        const EMPLOYEE_EXCEPTIONS = ["kikecanfir@gmail.com", "enriqueflores.10@hotmail.com", "jatejix@gmail.com"];
-        const RESTRICTED_VIEW_DOMAINS = ["estafeta.com", "gelalogs.com", "viettelpost.com.vn"];
-        const RESTRICTED_VIEW_USERS = ["kikecanfir5@gmail.com", "quynhanhtruonga8@gmail.com", "quanganhpn2002@gmail.com"];
-
-        function isUserAllowed(email) {
-            if (!email) return false;
-            const lowerEmail = email.toLowerCase();
-            const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
-            return (
-                MANAGER_USERS.includes(lowerEmail) ||
-                EMPLOYEE_DOMAINS.includes(domain) ||
-                EMPLOYEE_EXCEPTIONS.includes(lowerEmail) ||
-                RESTRICTED_VIEW_DOMAINS.includes(domain) ||
-                RESTRICTED_VIEW_USERS.includes(lowerEmail)
-            );
+      // CORRECCIÓN: Usamos 'supabaseClient' para evitar conflicto con la variable global de la librería
+      let supabaseClient;
+      try {
+        if (window.supabase) {
+          supabaseClient = window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+          );
         }
+      } catch (e) {
+        console.error("Init Error", e);
+      }
 
-        // 3. TOGGLE PASSWORD
-        const toggleBtn = document.getElementById('toggle-password-btn');
-        const passInput = document.getElementById('password-input');
-        toggleBtn.addEventListener('click', () => {
-            const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passInput.setAttribute('type', type);
-            toggleBtn.classList.toggle('bx-show');
-            toggleBtn.classList.toggle('bx-hide');
+      // DOMINIOS PARA AUTOCOMPLETAR
+      const CORPORATE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+
+      // LISTAS DE ACCESO (Del Backup)
+      const MANAGER_USERS = [
+        "fulfillment@gmxecommerce.com",
+        "tgarcia@goldmexintl.com",
+        "kmartinez@goldmexintl.com",
+        "anogales@goldmexintl.com",
+        "carlos@flexbpo.com",
+        "alexandermontes@flexbpo.com",
+        "jorge@customscity.com",
+        "jachags@gmail.com",
+        "aesquivez@goldmexintl.com",
+      ];
+      const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+      const EMPLOYEE_EXCEPTIONS = [
+        "kikecanfir@gmail.com",
+        "enriqueflores.10@hotmail.com",
+        "jatejix@gmail.com",
+      ];
+      const RESTRICTED_VIEW_DOMAINS = [
+        "estafeta.com",
+        "gelalogs.com",
+        "viettelpost.com.vn",
+      ];
+      const RESTRICTED_VIEW_USERS = [
+        "kikecanfir5@gmail.com",
+        "quynhanhtruonga8@gmail.com",
+        "quanganhpn2002@gmail.com",
+      ];
+
+      function isUserAllowed(email) {
+        if (!email) return false;
+        const lowerEmail = email.toLowerCase();
+        const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
+        return (
+          MANAGER_USERS.includes(lowerEmail) ||
+          EMPLOYEE_DOMAINS.includes(domain) ||
+          EMPLOYEE_EXCEPTIONS.includes(lowerEmail) ||
+          RESTRICTED_VIEW_DOMAINS.includes(domain) ||
+          RESTRICTED_VIEW_USERS.includes(lowerEmail)
+        );
+      }
+
+      // 3. TOGGLE PASSWORD
+      const toggleBtn = document.getElementById("toggle-password-btn");
+      const passInput = document.getElementById("password-input");
+      if (toggleBtn && passInput) {
+        toggleBtn.addEventListener("click", () => {
+          const type =
+            passInput.getAttribute("type") === "password" ? "text" : "password";
+          passInput.setAttribute("type", type);
+          toggleBtn.classList.toggle("bx-show");
+          toggleBtn.classList.toggle("bx-hide");
         });
+      }
 
-        // --- 4. LOGIN NATIVO ROBUSTO ---
-        const loginForm = document.getElementById('native-login-form');
-        const submitBtn = document.getElementById('native-submit-btn');
+      // --- 4. LOGIN NATIVO ROBUSTO ---
+      const loginForm = document.getElementById("native-login-form");
+      const submitBtn = document.getElementById("native-submit-btn");
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const rawInput = document.getElementById('email-input').value.trim();
-            const password = passInput.value.trim();
+      if (loginForm) {
+        loginForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const rawInput = document.getElementById("email-input").value.trim();
+          const password = passInput.value.trim();
 
-            if (!rawInput || !password) return;
+          if (!rawInput || !password) return;
 
-            submitBtn.disabled = true; 
-            submitBtn.textContent = "Signing in...";
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Signing in...";
 
-            // Generar lista de intentos
-            let emailsToTry = [];
-            
-            if (rawInput.includes('@')) {
-                // Caso: Escribió correo completo
-                emailsToTry.push(rawInput);
-            } else {
-                // Caso: Escribió solo usuario -> Probar ambos dominios
-                emailsToTry.push(rawInput + CORPORATE_DOMAINS[0]); // gmxecommerce
-                emailsToTry.push(rawInput + CORPORATE_DOMAINS[1]); // goldmexintl
+          // Generar lista de intentos
+          let emailsToTry = [];
+
+          if (rawInput.includes("@")) {
+            // Caso: Escribió correo completo
+            emailsToTry.push(rawInput);
+          } else {
+            // Caso: Escribió solo usuario -> Probar ambos dominios
+            emailsToTry.push(rawInput + CORPORATE_DOMAINS[0]); // gmxecommerce
+            emailsToTry.push(rawInput + CORPORATE_DOMAINS[1]); // goldmexintl
+          }
+
+          let successData = null;
+
+          // Intentar login con cada variante
+          for (const emailTry of emailsToTry) {
+            // Verificar lista blanca primero para no gastar intentos
+            if (!isUserAllowed(emailTry)) {
+              console.log(`Skipped ${emailTry} (Not allowed)`);
+              continue;
             }
 
-            let successData = null;
-            let finalMessage = "Invalid credentials.";
-
-            // Intentar login con cada variante
-            for (const emailTry of emailsToTry) {
-                // Verificar lista blanca primero para no gastar intentos
-                if (!isUserAllowed(emailTry)) {
-                    console.log(`Skipped ${emailTry} (Not allowed)`);
-                    continue; 
-                }
-
-                console.log(`Trying login: ${emailTry}`);
-                
-                try {
-                    const { data, error } = await supabase.auth.signInWithPassword({ 
-                        email: emailTry, password: password 
-                    });
-
-                    if (!error && data.user) {
-                        successData = data;
-                        break; // ¡ENTRÓ! Romper ciclo
-                    } else {
-                        console.warn(`Failed ${emailTry}:`, error.message);
-                    }
-                } catch (err) {
-                    console.error("Sys Error:", err);
-                }
-            }
-
-            if (successData) {
-                // --- LOGIN EXITOSO ---
-                const user = successData.user;
-                const emailUsed = user.email;
-                const fallbackName = user.user_metadata?.full_name || emailUsed.split('@')[0];
-                
-                // Actualizar Profiles
-                await supabase.from('profiles').upsert({
-                    id: user.id,
-                    email: emailUsed,
-                    full_name: fallbackName,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'id' });
-
-                window.location.href = "index.html";
-            } else {
-                // --- LOGIN FALLIDO ---
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Authentication Failed',
-                    text: 'Invalid credentials or user does not have a password set.',
-                    confirmButtonColor: '#1a365d'
-                });
-                submitBtn.disabled = false; 
-                submitBtn.textContent = "Sign In";
-            }
-        });
-
-        // 5. LOGIN GOOGLE
-        async function handleCredentialResponse(response) {
-            if (!response.credential) return;
-
-            let decoded;
-            try { decoded = jwt_decode(response.credential); } 
-            catch (e) { return Swal.fire('Error', 'Invalid Google Token', 'error'); }
-
-            const email = decoded.email;
-
-            if (!isUserAllowed(email)) {
-                return Swal.fire('Access Denied', 'Unauthorized email.', 'error');
-            }
+            console.log(`Trying login: ${emailTry}`);
 
             try {
-                const { data, error } = await supabase.auth.signInWithIdToken({
-                    provider: 'google',
-                    token: response.credential,
+              // CORRECCIÓN: Usar supabaseClient
+              const { data, error } =
+                await supabaseClient.auth.signInWithPassword({
+                  email: emailTry,
+                  password: password,
                 });
 
-                if (error) throw error;
-
-                const userId = data.user.id;
-                await supabase.from('profiles').upsert({
-                    id: userId,
-                    full_name: decoded.name,
-                    avatar_url: decoded.picture,
-                    email: email,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'id' });
-
-                window.location.href = "index.html";
-
-            } catch (error) {
-                console.error("Google Login Error:", error);
-                Swal.fire('Error', 'Authentication failed.', 'error');
+              if (!error && data.user) {
+                successData = data;
+                break; // ¡ENTRÓ! Romper ciclo
+              } else {
+                console.warn(`Failed ${emailTry}:`, error.message);
+              }
+            } catch (err) {
+              console.error("Sys Error:", err);
             }
+          }
+
+          if (successData) {
+            // --- LOGIN EXITOSO ---
+            const user = successData.user;
+            const emailUsed = user.email;
+            const fallbackName =
+              user.user_metadata?.full_name || emailUsed.split("@")[0];
+
+            // Actualizar Profiles (CORRECCIÓN: Usar supabaseClient)
+            await supabaseClient.from("profiles").upsert(
+              {
+                id: user.id,
+                email: emailUsed,
+                full_name: fallbackName,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "id" }
+            );
+
+            window.location.href = "index.html";
+          } else {
+            // --- LOGIN FALLIDO ---
+            Swal.fire({
+              icon: "error",
+              title: "Authentication Failed",
+              text: "Invalid credentials or user does not have a password set.",
+              confirmButtonColor: "#1a365d",
+            });
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Sign In";
+          }
+        });
+      }
+
+      // 5. LOGIN GOOGLE
+      // CORRECCIÓN: Asignar a window para que el script de Google lo encuentre inmediatamente
+      window.handleCredentialResponse = async function (response) {
+        if (!response.credential) return;
+
+        let decoded;
+        try {
+          decoded = jwt_decode(response.credential);
+        } catch (e) {
+          return Swal.fire("Error", "Invalid Google Token", "error");
         }
 
-        // 6. MICROSOFT
-        document.getElementById('microsoft-signin-btn').addEventListener('click', async () => {
-            await supabase.auth.signInWithOAuth({ 
-                provider: 'azure', 
-                options: { scopes: 'email', redirectTo: window.location.origin + '/index.html' } 
-            });
-        });
+        const email = decoded.email;
 
-        // 7. CHECK SESSION
-        (async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session && isUserAllowed(session.user.email)) {
-                window.location.href = "index.html";
-            }
-        })();
+        if (!isUserAllowed(email)) {
+          return Swal.fire("Access Denied", "Unauthorized email.", "error");
+        }
+
+        try {
+          // CORRECCIÓN: Usar supabaseClient
+          const { data, error } = await supabaseClient.auth.signInWithIdToken({
+            provider: "google",
+            token: response.credential,
+          });
+
+          if (error) throw error;
+
+          const userId = data.user.id;
+          await supabaseClient.from("profiles").upsert(
+            {
+              id: userId,
+              full_name: decoded.name,
+              avatar_url: decoded.picture,
+              email: email,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+
+          window.location.href = "index.html";
+        } catch (error) {
+          console.error("Google Login Error:", error);
+          Swal.fire("Error", "Authentication failed.", "error");
+        }
+      };
+
+      // 6. MICROSOFT
+      const msBtn = document.getElementById("microsoft-signin-btn");
+      if (msBtn) {
+        msBtn.addEventListener("click", async () => {
+          // CORRECCIÓN: Usar supabaseClient
+          await supabaseClient.auth.signInWithOAuth({
+            provider: "azure",
+            options: {
+              scopes: "email",
+              redirectTo: window.location.origin + "/index.html",
+            },
+          });
+        });
+      }
+
+      // 7. CHECK SESSION
+      (async () => {
+        if (!supabaseClient) return;
+        // CORRECCIÓN: Usar supabaseClient
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession();
+        if (session && isUserAllowed(session.user.email)) {
+          window.location.href = "index.html";
+        }
+      })();
     </script>
-</body>
+  </body>
 </html>
