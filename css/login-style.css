@@ -429,23 +429,40 @@ body {
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .right-pane-animated {
-    display: none;
+    display: none; /* Oculta la parte derecha */
   }
 
   .left-pane-form {
     width: 100%;
-    padding: 1.5rem;
-  }
-
-  .brand-header {
-    position: relative;
-    top: 0;
-    left: 0;
-    margin-bottom: 2rem;
+    height: 100vh; /* Asegura altura completa */
+    padding: 2rem;
+    /* Esto es nuevo: usamos Flexbox para centrar todo verticalmente */
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
     justify-content: center;
   }
 
+  /* ARREGLO DEL LOGO: Quitamos el 'absolute' */
+  .brand-header {
+    position: relative; /* Ya no es absoluto */
+    top: auto;          /* Reseteamos top */
+    left: auto;         /* Reseteamos left */
+    width: 100%;
+    margin-bottom: 2rem; /* Espacio antes del "Welcome" */
+    justify-content: center; /* Centra el logo y el texto horizontalmente */
+  }
+
+  /* Aseguramos que el formulario no se desborde */
   .form-content-wrapper {
     margin-top: 0;
+    width: 100%;
+    max-width: 400px; /* Mantiene un ancho elegante */
+    text-align: center; /* Centra los textos internos si es necesario */
+  }
+
+  /* Alineamos el texto de bienvenida al centro explícitamente */
+  .welcome-text {
+    text-align: center;
   }
 }
