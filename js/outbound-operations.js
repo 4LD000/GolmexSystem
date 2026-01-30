@@ -1,4 +1,4 @@
-// js/outbound-operations.js - V6.8 (Tab Follow, Day History, UI Reset & Header Fixes)
+// js/outbound-operations.js - V7.0 (Race Condition Fix & Smart Status Revert)
 (function () {
   // --- 1. CONFIG & DEPENDENCIES ---
   if (!window.supabase) return console.error("Supabase missing");
@@ -116,7 +116,7 @@
 
   // --- 2. INITIALIZATION ---
   async function init() {
-    console.log("Outbound Ops V6.8 Initialized");
+    console.log("Outbound Ops V7.0 Initialized");
 
     const {
       data: { user },
@@ -130,7 +130,6 @@
 
   // --- 3. DATA FETCHING ---
   async function fetchOrders() {
-    // [MODIFIED] Animation for Refresh Button
     const icon = btnRefresh.querySelector("i");
     if (icon) icon.classList.add("bx-spin");
     globalStatus.textContent = "Syncing...";
@@ -139,7 +138,6 @@
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const dateStr = thirtyDaysAgo.toISOString();
 
-    // [MODIFIED] Removed .neq('status', 'archived') to allow fetching archived orders for Day History
     const { data: ordersData, error: ordersError } = await supabase
       .from(ORDERS_TABLE)
       .select(
@@ -155,7 +153,6 @@
       )
       .order("created_at", { ascending: false });
 
-    // [MODIFIED] Remove spin animation
     if (icon) icon.classList.remove("bx-spin");
 
     if (ordersError) {
@@ -167,7 +164,6 @@
     allOrdersRaw = ordersData || [];
     groupOrdersLogic();
 
-    // [MODIFIED] Update Global Status with Real Counts
     const pendingCount = Object.values(groupedOrders).filter(
       (o) => o.status_aggregate === "pending",
     ).length;
@@ -184,7 +180,6 @@
     const currentFilter = activeTab ? activeTab.dataset.filter : "pending";
     renderSidebar(currentFilter, searchInput.value);
 
-    // [MODIFIED] If an order is active, reload it to update UI (progress bars, etc)
     if (currentActiveOrderCode) {
       loadOrderDetails(currentActiveOrderCode);
     }
@@ -245,7 +240,6 @@
     Object.values(groupedOrders).forEach((order) => {
       const statuses = order.items.map((i) => i.status);
 
-      // [MODIFIED] Added 'archived' check
       if (statuses.every((s) => s === "archived")) {
         order.status_aggregate = "archived";
       } else if (statuses.every((s) => s === "shipped" || s === "completed")) {
@@ -271,7 +265,6 @@
     ordersListContainer.innerHTML = "";
     const ordersArray = Object.values(groupedOrders);
 
-    // [MODIFIED] Helper to check if a date is today (local time)
     const isToday = (dateString) => {
       if (!dateString) return false;
       const d = new Date(dateString);
@@ -298,14 +291,12 @@
           order.status_aggregate === "loading" ||
           order.status_aggregate === "ready";
       } else if (filter === "shipped") {
-        // [MODIFIED] Logic to show Shipped OR Archived orders IF they belong to TODAY
         if (
           order.status_aggregate === "shipped" ||
           order.status_aggregate === "completed"
         ) {
           matchesFilter = true;
         } else if (order.status_aggregate === "archived") {
-          // Only show archived if completed today
           matchesFilter = isToday(order.completed_at);
         }
       }
@@ -313,7 +304,6 @@
       return matchesSearch && matchesFilter;
     });
 
-    // Sort by priority/date
     filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (filtered.length === 0) {
@@ -333,16 +323,33 @@
       let statusLabel = order.status_aggregate.toUpperCase().replace(/_/g, " ");
       if (statusLabel === "READY") statusLabel = "READY TO LOAD";
 
-      // [MODIFIED] Handle ARCHIVED label in list if shown
       if (order.status_aggregate === "archived")
         statusLabel = "ARCHIVED (TODAY)";
+
+      let ownerIcon = "";
+      if (
+        order.processed_by &&
+        order.status_aggregate !== "shipped" &&
+        order.status_aggregate !== "archived"
+      ) {
+        const isMine =
+          currentUser && order.processed_by === currentUser.email;
+        if (isMine) {
+            ownerIcon = `<i class='bx bxs-user-check' style='color:var(--out-success); float:right;' title='Your Order'></i>`;
+        } else {
+            ownerIcon = `<i class='bx bxs-lock-alt' style='color:var(--out-text-light); float:right;' title='Locked by ${order.processed_by}'></i>`;
+        }
+      }
 
       el.innerHTML = `
                 <div class="ord-id">
                     <span>${urgentMarker}${order.code}</span>
                     <span style="font-size:0.8rem; color:#999;">${date}</span>
                 </div>
-                <div class="ord-client">Items: ${order.items.length}</div>
+                <div class="ord-client">
+                    Items: ${order.items.length}
+                    ${ownerIcon}
+                </div>
                 <div class="ord-status status-${mapStatusColor(order.status_aggregate)}">
                     ${statusLabel}
                 </div>
@@ -357,24 +364,20 @@
     if (status === "ready" || status === "ready_to_load") return "loading";
     if (status === "loading") return "loading";
     if (status === "shipped" || status === "completed") return "completed";
-    if (status === "archived") return "completed"; // Use completed color for archived day-view
+    if (status === "archived") return "completed";
     return "pending";
   }
 
   // --- 5. WORKSPACE DETAIL ---
   async function loadOrderDetails(orderCode) {
     const order = groupedOrders[orderCode];
-    // If order vanished (e.g. filtered out and not in current scope), reset
     if (!order) {
-      // Only reset if we were looking at this specific order and it's gone from data
       if (currentActiveOrderCode === orderCode) resetWorkspace();
       return;
     }
 
     currentActiveOrderCode = orderCode;
 
-    // [MODIFIED] TAB FOLLOW LOGIC: Switch tab if status changes
-    // Map current status to filter tab name
     let targetFilter = "pending";
     if (order.status_aggregate === "processing") targetFilter = "processing";
     else if (
@@ -392,7 +395,6 @@
     const activeTab = document.querySelector(".filter-tab.active");
     const currentFilter = activeTab ? activeTab.dataset.filter : "pending";
 
-    // If mismatch, switch tab
     if (currentFilter !== targetFilter) {
       filterTabs.forEach((t) => {
         if (t.dataset.filter === targetFilter) {
@@ -401,10 +403,8 @@
           t.classList.remove("active");
         }
       });
-      // Re-render sidebar with new filter
       renderSidebar(targetFilter, searchInput.value);
     } else {
-      // Just refresh sidebar to keep highlights updated
       renderSidebar(currentFilter, searchInput.value);
     }
 
@@ -439,37 +439,205 @@
     activeClient.textContent = clientDisplayName;
     activeTotalPallets.textContent = order.total_pallets_target;
 
-    await renderItemsGrid(order);
-    checkLoadingEligibility(order);
+    let accessLevel = 'UNCLAIMED';
+    let isFinished = order.status_aggregate === 'shipped' || order.status_aggregate === 'archived';
+
+    if (isFinished) {
+        accessLevel = 'READ_ONLY';
+    } else if (order.processed_by) {
+        if (currentUser && order.processed_by === currentUser.email) {
+            accessLevel = 'MINE';
+        } else {
+            accessLevel = 'OTHERS';
+        }
+    } else {
+        accessLevel = 'UNCLAIMED';
+    }
+
+    updateHeaderOwnershipUI(accessLevel, order);
+
+    const isGridReadOnly = (accessLevel === 'OTHERS' || accessLevel === 'UNCLAIMED' || accessLevel === 'READ_ONLY');
+
+    await renderItemsGrid(order, isGridReadOnly, accessLevel);
+    checkLoadingEligibility(order, accessLevel);
   }
 
-  // [MODIFIED] New Helper to Reset UI
+  function updateHeaderOwnershipUI(accessLevel, order) {
+      const existingActions = activeHeaderLeft.querySelectorAll('.claim-actions-container');
+      existingActions.forEach(el => el.remove());
+
+      const container = document.createElement('div');
+      container.className = 'claim-actions-container';
+      container.style.marginTop = '0.5rem';
+
+      if (accessLevel === 'UNCLAIMED') {
+          container.innerHTML = `
+            <button onclick="window.outClaimOrder()" class="btn-out-primary" style="background-color: var(--out-accent); color: #000; font-weight: 800; border: 2px solid #b3922d;">
+                <i class='bx bx-check-circle'></i> CLAIM / START
+            </button>
+            <span style="font-size: 0.8rem; color: var(--out-text-light); margin-left: 10px;">
+                <i class='bx bx-info-circle'></i> Claim to start scanning.
+            </span>
+          `;
+      } else if (accessLevel === 'OTHERS') {
+          container.innerHTML = `
+            <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; border: 1px solid #ef4444;">
+                <i class='bx bxs-lock-alt'></i> PROCESSED BY: ${order.processed_by}
+            </div>
+          `;
+      } else if (accessLevel === 'MINE') {
+          container.innerHTML = `
+            <button onclick="window.outReleaseOrder()" class="btn-out-secondary" style="font-size: 0.8rem; padding: 4px 10px;">
+                <i class='bx bx-log-out'></i> Release Order
+            </button>
+            <span style="font-size: 0.8rem; color: var(--out-success); margin-left: 10px; font-weight: 600;">
+                <i class='bx bxs-user-check'></i> You are working on this.
+            </span>
+          `;
+      }
+      
+      if (accessLevel !== 'READ_ONLY') {
+          activeHeaderLeft.appendChild(container);
+      }
+  }
+
+  // --- [UPDATED] CLAIM FUNCTION WITH RACE CONDITION FIX ---
+  window.outClaimOrder = async function() {
+      if (!currentActiveOrderCode) return;
+      if (!currentUser) {
+          Swal.fire("Error", "No user session found.", "error");
+          return;
+      }
+
+      const loadingBtn = document.querySelector('.claim-actions-container button');
+      if(loadingBtn) { loadingBtn.textContent = "Assigning..."; loadingBtn.disabled = true; }
+
+      const order = groupedOrders[currentActiveOrderCode];
+      
+      // We will perform an atomic update. 
+      // We only update IF 'processed_by' IS NULL.
+      // This handles the Race Condition. If user B clicks 1ms later, the condition 'is null' will fail.
+      
+      const itemIds = order.items.map(i => i.row_id);
+      
+      const updates = { 
+          processed_by: currentUser.email,
+          status: 'processing' // Move to processing immediately
+      };
+      
+      if (!order.started_at) {
+          updates.started_at = new Date().toISOString();
+      }
+
+      // Supabase update with filter to prevent race condition
+      const { data, error, count } = await supabase.from(ORDERS_TABLE)
+        .update(updates, { count: 'exact-rows' }) // Request count of rows updated
+        .in('id', itemIds)
+        .is('processed_by', null) // <--- CRITICAL: Only update if currently null
+        .select(); // Select to confirm data return
+
+      if (error) {
+          Swal.fire("Error", "System error claiming order: " + error.message, "error");
+          await fetchOrders(); 
+      } else if (count === 0 && (!data || data.length === 0)) {
+          // If count is 0, it means the .is('processed_by', null) check failed.
+          // Someone else claimed it!
+          Swal.fire({
+              title: "Too Late!",
+              text: "Another user has already claimed this order.",
+              icon: "warning"
+          });
+          await fetchOrders(); // Sync to see who took it
+      } else {
+          // Success
+          await fetchOrders(); 
+          loadOrderDetails(currentActiveOrderCode);
+      }
+  };
+
+  // --- [UPDATED] RELEASE FUNCTION WITH SMART STATUS REVERT ---
+  window.outReleaseOrder = async function() {
+      if (!currentActiveOrderCode) return;
+      
+      const result = await Swal.fire({
+          title: "Release Order?",
+          text: "Others will be able to take this order. Continue?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+          confirmButtonText: "Yes, release it"
+      });
+
+      if (result.isConfirmed) {
+          const order = groupedOrders[currentActiveOrderCode];
+          const itemIds = order.items.map(i => i.row_id);
+
+          // 1. Calculate Total Progress
+          // We iterate over the items currently in memory (which are synced with DB via loadOrderDetails)
+          let totalScans = 0;
+          order.items.forEach(item => {
+              totalScans += (item.current_scans || 0);
+          });
+
+          // 2. Determine new status
+          // If 0 scans, revert to 'pending'. If > 0, keep 'processing'.
+          let newStatus = 'processing';
+          let newStartedAt = order.started_at; 
+
+          if (totalScans === 0) {
+              newStatus = 'pending';
+              newStartedAt = null; // Clear start time if we are resetting to pending
+          }
+
+          const { error } = await supabase.from(ORDERS_TABLE)
+            .update({ 
+                processed_by: null,
+                status: newStatus,
+                started_at: newStartedAt
+            })
+            .in('id', itemIds);
+
+          if (error) {
+              Swal.fire("Error", "Could not release order.", "error");
+          } else {
+              await fetchOrders();
+              loadOrderDetails(currentActiveOrderCode);
+              
+              // Optional feedback
+              if (newStatus === 'pending') {
+                  const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                  toast.fire({ icon: 'info', title: 'Order reverted to Pending (No progress)' });
+              }
+          }
+      }
+  };
+
+
   function resetWorkspace() {
     currentActiveOrderCode = null;
     stateActive.classList.add("hidden");
     stateEmpty.classList.remove("hidden");
 
-    // Reset Tabs to Active (Pending)
     filterTabs.forEach((t) => t.classList.remove("active"));
     const pendingTab = document.querySelector(
       '.filter-tab[data-filter="pending"]',
     );
     if (pendingTab) pendingTab.classList.add("active");
 
-    // Render Sidebar for Pending
     renderSidebar("pending", "");
 
-    // Clear search input
     if (searchInput) searchInput.value = "";
   }
 
-  async function renderItemsGrid(order) {
+  async function renderItemsGrid(order, isReadOnly = false, accessLevel = 'MINE') {
     let html = "";
     const isOrderLoading = order.status_aggregate === "loading";
     const isOrderShipped =
       order.status_aggregate === "shipped" ||
-      order.status_aggregate === "archived"; // [MODIFIED] Lock archived too
-    const isUI_Locked = isOrderLoading || isOrderShipped;
+      order.status_aggregate === "archived"; 
+    
+    const isUI_Locked = isOrderLoading || isOrderShipped || isReadOnly;
 
     for (const item of order.items) {
       const { count } = await supabase
@@ -479,7 +647,7 @@
 
       const scannedCount = count || 0;
       const isComplete = scannedCount >= item.qty_target_pallets;
-      item.current_scans = scannedCount;
+      item.current_scans = scannedCount; // Update memory for release logic
 
       const progressPercent = Math.min(
         100,
@@ -489,7 +657,13 @@
       let btnState = "";
       let btnText = "Scan Pallets";
 
-      if (isUI_Locked || isComplete) {
+      if (accessLevel === 'UNCLAIMED') {
+          btnState = "disabled";
+          btnText = "<i class='bx bxs-lock-alt'></i> Claim to Scan";
+      } else if (accessLevel === 'OTHERS') {
+          btnState = "disabled";
+          btnText = "<i class='bx bxs-lock'></i> Locked";
+      } else if (isUI_Locked || isComplete) {
         btnState = "disabled";
         btnText = isComplete
           ? '<i class="bx bx-check"></i> Complete'
@@ -534,7 +708,7 @@
     itemsTrack.innerHTML = html;
   }
 
-  function checkLoadingEligibility(order) {
+  function checkLoadingEligibility(order, accessLevel) {
     const allItemsComplete = order.items.every(
       (i) => i.current_scans >= i.qty_target_pallets,
     );
@@ -543,9 +717,20 @@
       order.status_aggregate === "archived";
     const isLoading = order.status_aggregate === "loading";
 
+    if (accessLevel !== 'MINE' && !alreadyShipped) {
+      loadingSection.classList.add("disabled");
+      loadingMsg.classList.remove("hidden");
+      loadingMsg.innerHTML = accessLevel === 'UNCLAIMED' 
+          ? "<i class='bx bxs-lock-alt'></i> <b>Claim Order</b> to enable loading." 
+          : "<i class='bx bxs-lock'></i> Order is processed by another user.";
+      loadingActions.classList.add("hidden");
+      return;
+    }
+
     if (!allItemsComplete) {
       loadingSection.classList.add("disabled");
       loadingMsg.classList.remove("hidden");
+      loadingMsg.innerHTML = "<i class='bx bx-lock-alt'></i> Complete all items to enable loading.";
       loadingActions.classList.add("hidden");
       return;
     }
@@ -690,31 +875,6 @@
       scanFeedback.textContent = "Validating...";
 
       try {
-        const currentOrder = groupedOrders[currentActiveOrderCode];
-        let shouldUpdateStartedAt = false;
-
-        if (currentOrder.status_aggregate === "pending") {
-          const itemIds = currentOrder.items.map((i) => i.row_id);
-          const updatePayload = { status: "processing" };
-
-          if (!currentOrder.started_at) {
-            updatePayload.started_at = new Date().toISOString();
-            shouldUpdateStartedAt = true;
-          }
-
-          await supabase
-            .from(ORDERS_TABLE)
-            .update(updatePayload)
-            .in("id", itemIds);
-
-          currentOrder.status_aggregate = "processing";
-          if (shouldUpdateStartedAt)
-            currentOrder.started_at = updatePayload.started_at;
-
-          activeStatus.textContent = "PROCESSING";
-          activeStatus.className = "out-big-badge status-processing";
-        }
-
         const { data: rpcResult, error: rpcError } = await supabase.rpc(
           "rpc_allocate_pallet",
           {
@@ -1124,7 +1284,6 @@
             `;
     }
 
-    // [FIX APPLIED HERE: MARGIN 0, BOX-SIZING, NO EXTERNAL MARGINS]
     const bolStyles = `
             <style>
             .hoja { width: 100%; height: 100%; background: white; margin: 0; padding: 0.5cm; position: relative; box-sizing: border-box; overflow: hidden; }
@@ -1211,10 +1370,8 @@
       });
 
       loadModal.classList.add("hidden");
-      // [MODIFIED] Instead of reloading details, generate BOL, PRINT, then RESET workspace
       window.printBOL(finalBolNumber);
 
-      // Wait a moment for the BOL modal to open, then reset the UI behind it
       setTimeout(async () => {
         await fetchOrders();
         resetWorkspace();
@@ -1365,14 +1522,13 @@
       win.print();
     };
 
-    // [FIX APPLIED HERE: MATCHING ORDERS PORTAL OPTIONS EXACTLY]
     btnBolDownload.onclick = () => {
       const element = bolContainer;
       const opt = {
         margin: 0,
         filename: `BOL-${currentActiveOrderCode}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true }, // Added rendering options
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
         jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
       };
       html2pdf().set(opt).from(element).save();
