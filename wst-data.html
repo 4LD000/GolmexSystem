@@ -82,7 +82,7 @@
             <div class="wst-database-toolbar" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
                 <div class="wst-db-info">
                     <h3>Product Standards Master List</h3>
-                    <p style="color: var(--color-text-secondary); font-size: 0.9rem;">Manage standard times, pallet configurations, and weights.</p>
+                    <p style="color: var(--color-text-secondary); font-size: 0.9rem;">Manage SKUs, standard times, and configurations.</p>
                 </div>
                 <button class="btn-goldmex-primary" id="wst-add-product-btn">
                     <i class='bx bx-plus'></i> Add New Product
@@ -93,6 +93,7 @@
                 <table id="wstProductsTable" class="display responsive nowrap" style="width:100%">
                     <thead>
                         <tr>
+                            <th>SKU / Part #</th>
                             <th>Product Name</th>
                             <th>Cases/Pallet</th>
                             <th>Units/Case</th>
@@ -121,6 +122,11 @@
             <form id="wstProductForm">
                 <input type="hidden" id="wst-prod-id">
                 
+                <div class="cm-form-group" style="margin-bottom: 1rem;">
+                    <label for="wst-prod-sku" style="font-size:0.95rem; font-weight:700; color:var(--goldmex-primary-color);">SKU / Part Number</label>
+                    <input type="text" id="wst-prod-sku" placeholder="e.g. GMX-001-A" required style="font-family:monospace; letter-spacing:1px; font-weight:600;">
+                </div>
+
                 <div class="cm-form-group" style="margin-bottom: 1.5rem;">
                     <label for="wst-prod-name" style="font-size:0.95rem;">Product Name / Description</label>
                     <input type="text" id="wst-prod-name" placeholder="e.g. Leche Carnation 225g" required style="font-size: 1.1rem; font-weight:500;">

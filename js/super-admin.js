@@ -1,4 +1,4 @@
-// js/super-admin.js - V16 (Added Password Management for Native Users)
+// js/super-admin.js - V20 (Auto-Discovery of Modules + Password Fix)
 console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
 
 (function () {
@@ -35,7 +35,7 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
     const savePermissionsBtn = document.getElementById("save-permissions-btn");
     const permissionsUserEmailLabel = document.getElementById("permissions-user-email");
 
-    // --- NUEVO: Selectores para Modal de Password ---
+    // Modal Password
     const passwordModal = document.getElementById("password-modal");
     const closePasswordModalBtn = document.getElementById("close-password-modal");
     const passwordUserEmailLabel = document.getElementById("password-user-email");
@@ -49,11 +49,8 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
     let userTable = null;
     let exceptionTable = null;
     
-    // Variables de contexto
-    let editingId = null;       // ID del registro a editar (Permisos)
-    let editingContext = null;  // 'profile' o 'exception'
-    
-    // --- NUEVO: Estado para Password ---
+    let editingId = null;       
+    let editingContext = null;  
     let passwordEditingUserId = null; 
 
     // --- HELPERS ---
@@ -140,7 +137,6 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
             const isSelf = user.id === currentUser.id;
             const disabledAttr = (isSuper || isSelf) ? "disabled" : "";
 
-            // --- MODIFICADO: Agregamos botón de candado para password ---
             const roleSelect = `
                 <select class="role-select" onchange="window.saHandleRoleChange(this, '${user.id}', '${user.role}')" ${disabledAttr}>
                     <option value="employee" ${user.role === 'employee' ? 'selected' : ''}>Employee</option>
@@ -255,7 +251,89 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
     }
 
     // ========================================================================
-    // 4. MODAL DE PERMISOS (COMPARTIDO)
+    // 4. GENERADOR DINÁMICO DE PERMISOS (AUTO-DISCOVERY)
+    // ========================================================================
+
+    function generatePermissionsUI() {
+        const sidebar = document.getElementById('sidebar'); 
+        const form = document.getElementById('permissions-form');
+        
+        if (!sidebar || !form) {
+            console.warn("Auto-Discovery: Sidebar or Form not found.");
+            return;
+        }
+
+        // Limpiar formulario antiguo/estático
+        form.innerHTML = ''; 
+
+        // 1. Contenedor para items sueltos "General"
+        let generalContainer = null;
+        
+        // 2. Obtener items del menú lateral real
+        const menuItems = sidebar.querySelectorAll('.menu > li');
+        
+        menuItems.forEach(item => {
+            // Ignorar el item del Super Admin (ya que se controla por rol, no por módulo)
+            // También ignorar elementos ocultos por CSS (display: none)
+            if (item.classList.contains('role-super-admin') || item.style.display === 'none') return;
+
+            // CASO A: Categorías (Dropdowns)
+            if (item.classList.contains('menu-item-dropdown')) {
+                const parentLink = item.querySelector('.menu-link');
+                const categoryName = parentLink ? parentLink.querySelector('span').innerText.trim() : 'Other';
+                
+                const subLinks = item.querySelectorAll('.sub-menu-link');
+                
+                // Solo crear grupo si tiene sub-links con data-module
+                let hasValidModules = false;
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'permission-group';
+                groupDiv.innerHTML = `<h3>${categoryName}</h3>`;
+
+                subLinks.forEach(sub => {
+                    const modName = sub.dataset.module;
+                    const modLabel = sub.innerText.trim();
+                    if (modName) {
+                        addCheckboxToGroup(groupDiv, modName, modLabel);
+                        hasValidModules = true;
+                    }
+                });
+
+                if (hasValidModules) form.appendChild(groupDiv);
+            } 
+            // CASO B: Módulos Sueltos (Static)
+            else if (item.classList.contains('menu-item-static')) {
+                const link = item.querySelector('.menu-link');
+                const modName = link.dataset.module;
+                const modLabel = link.querySelector('span').innerText.trim();
+
+                if (modName && modName !== 'home') { // Home suele ser público
+                    if (!generalContainer) {
+                        generalContainer = document.createElement('div');
+                        generalContainer.className = 'permission-group';
+                        generalContainer.innerHTML = `<h3>General / Portals</h3>`;
+                    }
+                    addCheckboxToGroup(generalContainer, modName, modLabel);
+                }
+            }
+        });
+
+        // Poner el grupo General al principio si existe
+        if (generalContainer) form.prepend(generalContainer);
+    }
+
+    function addCheckboxToGroup(container, value, labelText) {
+        const label = document.createElement('label');
+        label.className = 'checkbox-container';
+        label.innerHTML = `
+            <input type="checkbox" name="modules" value="${value}">
+            <span class="checkmark"></span> ${labelText}
+        `;
+        container.appendChild(label);
+    }
+
+    // ========================================================================
+    // 5. MODAL DE PERMISOS
     // ========================================================================
 
     window.saOpenPermissions = function(id, context) {
@@ -276,9 +354,12 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
         permissionsUserEmailLabel.innerHTML = `
             <span style="color:var(--color-text-secondary);">Editing:</span> ${email} 
             <span class="role-badge" style="font-size:0.7rem; margin-left:10px;">${role.toUpperCase()}</span>
-            <br><span style="font-size:0.8rem; color:var(--color-text-light);">${context === 'exception' ? '(Default permissions for future login)' : '(Live permissions)'}</span>
         `;
 
+        // [NUEVO] Generar UI fresca basada en el Sidebar actual
+        generatePermissionsUI();
+
+        // Marcar checkboxes según permisos guardados
         const checkboxes = permissionsForm.querySelectorAll("input[type='checkbox']");
         checkboxes.forEach(cb => {
             cb.checked = allowedModules.includes('*') || allowedModules.includes(cb.value);
@@ -323,18 +404,17 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
     }
 
     // ========================================================================
-    // 5. NUEVO: GESTIÓN DE PASSWORDS (MODAL)
+    // 6. GESTIÓN DE PASSWORDS (MODAL)
     // ========================================================================
 
     window.saOpenPasswordModal = function(id, email) {
         passwordEditingUserId = id;
         passwordUserEmailLabel.textContent = `Set password for: ${email}`;
-        newPasswordInput.value = ""; // Limpiar input
-        newPasswordInput.type = "password"; // Resetear visibilidad
+        newPasswordInput.value = ""; 
+        newPasswordInput.type = "password"; 
         togglePasswordBtn.className = "bx bx-show";
         
         passwordModal.classList.add("visible");
-        // Auto-focus para agilidad
         setTimeout(() => newPasswordInput.focus(), 100);
     };
 
@@ -349,7 +429,6 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
         savePasswordBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Updating...";
 
         try {
-            // Llamada a la Función RPC creada en SQL (Privilegios Admin)
             const { error } = await supabase.rpc('admin_set_user_password', {
                 target_user_id: passwordEditingUserId,
                 new_password: newPass
@@ -370,7 +449,7 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
     }
 
     // ========================================================================
-    // 6. UTILIDADES GLOBALES
+    // 7. UTILIDADES GLOBALES
     // ========================================================================
 
     window.saHandleRoleChange = async function(select, id, oldRole) {
@@ -451,11 +530,10 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
         closePermissionsModalBtn.addEventListener("click", () => permissionsModal.classList.remove("visible"));
         savePermissionsBtn.addEventListener("click", savePermissions);
 
-        // Password Modal (NUEVOS LISTENERS)
+        // Password Modal
         closePasswordModalBtn.addEventListener("click", () => passwordModal.classList.remove("visible"));
         savePasswordBtn.addEventListener("click", handleSetPassword);
         
-        // Toggle Visibility (Ojo)
         togglePasswordBtn.addEventListener("click", () => {
             if (newPasswordInput.type === "password") {
                 newPasswordInput.type = "text";
@@ -466,7 +544,6 @@ console.log("Super Admin JS: >>> SCRIPT EXECUTION STARTED <<<");
             }
         });
         
-        // Allow Enter key in password input
         newPasswordInput.addEventListener("keyup", (e) => {
             if (e.key === "Enter") handleSetPassword();
         });

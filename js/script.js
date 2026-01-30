@@ -1,4 +1,4 @@
-// js/script.js (COMPLETO - V18 - SIN OMISIONES)
+// js/script.js (COMPLETO - V19 - FIXED IMAGE LOADING)
 
 console.log("Script.js: >>> CORE SYSTEM STARTED <<<");
 
@@ -101,7 +101,11 @@ function stopInactivityTimer() {
 function updateUserUI(user, profile = null) {
   if (user) {
     const name = profile ? profile.full_name : user.email.split("@")[0];
-    const avatar = profile ? profile.avatar_url : "assets/user-placeholder.jpg";
+    
+    // [CORRECCIÓN] Validación estricta de la URL del avatar para evitar error 404
+    const avatar = (profile && profile.avatar_url && profile.avatar_url.trim() !== "") 
+        ? profile.avatar_url 
+        : "assets/favicon.png"; // Usamos favicon como fallback seguro
 
     if (userNameElement) userNameElement.textContent = name;
     if (userEmailElement) userEmailElement.textContent = user.email;

@@ -7,8 +7,11 @@
     <title>Goldmex System</title>
 
     <link rel="stylesheet" href="css/style.css" />
+    
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    
     <link rel="stylesheet" type="text/css" href="css/dataTables.min.css" />
+    
     <link rel="icon" href="assets/favicon.png" type="image/png" />
 
     <link rel="stylesheet" href="css/client-management.css" />
@@ -25,6 +28,10 @@
     <link rel="stylesheet" href="css/wst-scan.css" />
     <link rel="stylesheet" href="css/wst-ranking.css" />
     <link rel="stylesheet" href="css/super-admin.css" />
+    <link rel="stylesheet" href="css/inventory-management.css" />
+    <link rel="stylesheet" href="css/orders-portal.css" />
+    <link rel="stylesheet" href="css/outbound-operations.css" />
+    <link rel="stylesheet" href="css/outbound-analytics.css" />
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -61,6 +68,7 @@
                 <input type="search" placeholder="Search..." />
             </div>
             <ul class="menu">
+                
                 <li class="menu-item menu-item-static" id="client-portal-link">
                     <a href="#" class="menu-link" data-module="brokerage-cqp">
                         <i class="bx bx-file-find"></i>
@@ -72,6 +80,13 @@
                     <a href="#" class="menu-link" data-module="import-portal">
                         <i class="bx bxs-paper-plane"></i>
                         <span>Import Portal</span>
+                    </a>
+                </li>
+
+                <li class="menu-item menu-item-static" id="orders-portal-link">
+                    <a href="#" class="menu-link" data-module="orders-portal">
+                        <i class='bx bxs-ship'></i>
+                        <span>Orders Portal</span>
                     </a>
                 </li>
 
@@ -112,7 +127,7 @@
                             <a href="#" class="sub-menu-link" data-module="wst-workstation">Workstation</a>
                         </li>
                         <li>
-                            <a href="#" class="sub-menu-link" data-module="wst-scan">Scanner Final</a>
+                            <a href="#" class="sub-menu-link" data-module="wst-scan">Scanner Inbound</a>
                         </li>
                         <li>
                             <a href="#" class="sub-menu-link" data-module="wst-ranking">Ranking TV</a>
@@ -120,12 +135,31 @@
                         <li>
                             <a href="#" class="sub-menu-link" data-module="wst-data">Data Manager</a>
                         </li>
+                        <li>
+                            <a href="#" class="sub-menu-link" data-module="inventory-management">Inventory Manager</a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item menu-item-dropdown" id="outbound-menu">
+                    <a href="#" class="menu-link">
+                        <i class='bx bxs-truck'></i>
+                        <span>Outbound</span>
+                        <i class="bx bx-chevron-down"></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li>
+                            <a href="#" class="sub-menu-link" data-module="outbound-operations">Operations Dashboard</a>
+                        </li>
+                        <li>
+                            <a href="#" class="sub-menu-link" data-module="outbound-analytics">Analytics & Control</a>
+                        </li>
                     </ul>
                 </li>
 
                 <li class="menu-item menu-item-dropdown" id="brokerage-menu">
                     <a href="#" class="menu-link">
-                        <i class="bx bxs-truck"></i>
+                        <i class="bx bxs-file-import"></i>
                         <span>Brokerage</span>
                         <i class="bx bx-chevron-down"></i>
                     </a>

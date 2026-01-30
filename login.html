@@ -163,12 +163,11 @@
     </div>
 
     <script>
-      // 1. CONFIGURACIÓN
+      // 1. CONFIGURATION
       const SUPABASE_URL = "https://ogatafslnevidfopuvbp.supabase.co";
       const SUPABASE_ANON_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nYXRhZnNsbmV2aWRmb3B1dmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NDM0MTQsImV4cCI6MjA2MjMxOTQxNH0.Z4uAWCmyzbiFBVM51vLHwo7larVx6Y3wYK6vMzgj9j0";
 
-      // CORRECCIÓN: Usamos 'supabaseClient' para evitar conflicto con la variable global de la librería
       let supabaseClient;
       try {
         if (window.supabase) {
@@ -181,49 +180,40 @@
         console.error("Init Error", e);
       }
 
-      // DOMINIOS PARA AUTOCOMPLETAR
+      // [MODIFIED] DOMAINS CONFIGURATION (Updated to include Internal Domain)
       const CORPORATE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
+      const INTERNAL_DOMAIN = "@sys.goldmex.com"; 
 
-      // LISTAS DE ACCESO (Del Backup)
-      const MANAGER_USERS = [
-        "fulfillment@gmxecommerce.com",
-        "tgarcia@goldmexintl.com",
-        "kmartinez@goldmexintl.com",
-        "anogales@goldmexintl.com",
-        "carlos@flexbpo.com",
-        "alexandermontes@flexbpo.com",
-        "jorge@customscity.com",
-        "jachags@gmail.com",
-        "aesquivez@goldmexintl.com",
-      ];
-      const EMPLOYEE_DOMAINS = ["@gmxecommerce.com", "@goldmexintl.com"];
-      const EMPLOYEE_EXCEPTIONS = [
-        "kikecanfir@gmail.com",
-        "enriqueflores.10@hotmail.com",
-        "jatejix@gmail.com",
-      ];
-      const RESTRICTED_VIEW_DOMAINS = [
-        "estafeta.com",
-        "gelalogs.com",
-        "viettelpost.com.vn",
-      ];
-      const RESTRICTED_VIEW_USERS = [
-        "kikecanfir5@gmail.com",
-        "quynhanhtruonga8@gmail.com",
-        "quanganhpn2002@gmail.com",
-      ];
-
-      function isUserAllowed(email) {
+      // [MODIFIED] ACCESS CHECK FUNCTION (Replaces hardcoded lists with dynamic logic)
+      async function checkUserAccess(email) {
         if (!email) return false;
         const lowerEmail = email.toLowerCase();
         const domain = lowerEmail.substring(lowerEmail.lastIndexOf("@"));
-        return (
-          MANAGER_USERS.includes(lowerEmail) ||
-          EMPLOYEE_DOMAINS.includes(domain) ||
-          EMPLOYEE_EXCEPTIONS.includes(lowerEmail) ||
-          RESTRICTED_VIEW_DOMAINS.includes(domain) ||
-          RESTRICTED_VIEW_USERS.includes(lowerEmail)
-        );
+        
+        // 1. Check Domains (Corporate & Internal)
+        if (CORPORATE_DOMAINS.includes(domain) || domain === INTERNAL_DOMAIN) {
+            return true;
+        }
+        
+        // 2. Check Profiles Table (Database)
+        const { data: profile } = await supabaseClient
+            .from("profiles")
+            .select("id")
+            .eq("email", email)
+            .maybeSingle();
+
+        if (profile) return true;
+
+        // 3. Check Exceptions Table (Database)
+        const { data: exception } = await supabaseClient
+            .from("allowed_exceptions")
+            .select("id")
+            .eq("email", email)
+            .maybeSingle();
+
+        if (exception) return true;
+
+        return false;
       }
 
       // 3. TOGGLE PASSWORD
@@ -239,7 +229,7 @@
         });
       }
 
-      // --- 4. LOGIN NATIVO ROBUSTO ---
+      // --- 4. NATIVE LOGIN LOGIC (Updated Loop) ---
       const loginForm = document.getElementById("native-login-form");
       const submitBtn = document.getElementById("native-submit-btn");
 
@@ -254,32 +244,24 @@
           submitBtn.disabled = true;
           submitBtn.textContent = "Signing in...";
 
-          // Generar lista de intentos
+          // [MODIFIED] Loop Logic to include Internal Domain
           let emailsToTry = [];
 
           if (rawInput.includes("@")) {
-            // Caso: Escribió correo completo
             emailsToTry.push(rawInput);
           } else {
-            // Caso: Escribió solo usuario -> Probar ambos dominios
-            emailsToTry.push(rawInput + CORPORATE_DOMAINS[0]); // gmxecommerce
-            emailsToTry.push(rawInput + CORPORATE_DOMAINS[1]); // goldmexintl
+            // Priority: Internal -> Corporate 1 -> Corporate 2
+            emailsToTry.push(rawInput + INTERNAL_DOMAIN); 
+            emailsToTry.push(rawInput + CORPORATE_DOMAINS[0]); 
+            emailsToTry.push(rawInput + CORPORATE_DOMAINS[1]); 
           }
 
           let successData = null;
 
-          // Intentar login con cada variante
           for (const emailTry of emailsToTry) {
-            // Verificar lista blanca primero para no gastar intentos
-            if (!isUserAllowed(emailTry)) {
-              console.log(`Skipped ${emailTry} (Not allowed)`);
-              continue;
-            }
-
             console.log(`Trying login: ${emailTry}`);
 
             try {
-              // CORRECCIÓN: Usar supabaseClient
               const { data, error } =
                 await supabaseClient.auth.signInWithPassword({
                   email: emailTry,
@@ -288,7 +270,7 @@
 
               if (!error && data.user) {
                 successData = data;
-                break; // ¡ENTRÓ! Romper ciclo
+                break; 
               } else {
                 console.warn(`Failed ${emailTry}:`, error.message);
               }
@@ -298,13 +280,28 @@
           }
 
           if (successData) {
-            // --- LOGIN EXITOSO ---
+            // [MODIFIED] Added Access Check AFTER successful authentication
             const user = successData.user;
             const emailUsed = user.email;
+
+            const isAllowed = await checkUserAccess(emailUsed);
+
+            if (!isAllowed) {
+                await supabaseClient.auth.signOut();
+                Swal.fire({
+                  icon: "error",
+                  title: "Access Denied",
+                  text: "Your account is not authorized for this system.",
+                  confirmButtonColor: "#ef4444",
+                });
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Sign In";
+                return;
+            }
+
             const fallbackName =
               user.user_metadata?.full_name || emailUsed.split("@")[0];
 
-            // Actualizar Profiles (CORRECCIÓN: Usar supabaseClient)
             await supabaseClient.from("profiles").upsert(
               {
                 id: user.id,
@@ -317,11 +314,10 @@
 
             window.location.href = "index.html";
           } else {
-            // --- LOGIN FALLIDO ---
             Swal.fire({
               icon: "error",
               title: "Authentication Failed",
-              text: "Invalid credentials or user does not have a password set.",
+              text: "Invalid credentials.",
               confirmButtonColor: "#1a365d",
             });
             submitBtn.disabled = false;
@@ -330,8 +326,7 @@
         });
       }
 
-      // 5. LOGIN GOOGLE
-      // CORRECCIÓN: Asignar a window para que el script de Google lo encuentre inmediatamente
+      // 5. GOOGLE LOGIN
       window.handleCredentialResponse = async function (response) {
         if (!response.credential) return;
 
@@ -344,12 +339,14 @@
 
         const email = decoded.email;
 
-        if (!isUserAllowed(email)) {
+        // [MODIFIED] Use dynamic check instead of hardcoded lists
+        const isAllowed = await checkUserAccess(email);
+        
+        if (!isAllowed) {
           return Swal.fire("Access Denied", "Unauthorized email.", "error");
         }
 
         try {
-          // CORRECCIÓN: Usar supabaseClient
           const { data, error } = await supabaseClient.auth.signInWithIdToken({
             provider: "google",
             token: response.credential,
@@ -376,11 +373,10 @@
         }
       };
 
-      // 6. MICROSOFT
+      // 6. MICROSOFT LOGIN
       const msBtn = document.getElementById("microsoft-signin-btn");
       if (msBtn) {
         msBtn.addEventListener("click", async () => {
-          // CORRECCIÓN: Usar supabaseClient
           await supabaseClient.auth.signInWithOAuth({
             provider: "azure",
             options: {
@@ -394,12 +390,18 @@
       // 7. CHECK SESSION
       (async () => {
         if (!supabaseClient) return;
-        // CORRECCIÓN: Usar supabaseClient
         const {
           data: { session },
         } = await supabaseClient.auth.getSession();
-        if (session && isUserAllowed(session.user.email)) {
-          window.location.href = "index.html";
+        
+        // [MODIFIED] Added checkUserAccess to session persistence check
+        if (session) {
+            const allowed = await checkUserAccess(session.user.email);
+            if(allowed) {
+                window.location.href = "index.html";
+            } else {
+                await supabaseClient.auth.signOut();
+            }
         }
       })();
     </script>

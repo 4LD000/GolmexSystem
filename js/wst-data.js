@@ -29,6 +29,7 @@
     const modalCancelBtn = document.getElementById('wst-modal-cancel-btn');
     const productForm = document.getElementById('wstProductForm');
     const modalTitle = document.getElementById('wstModalTitle');
+    const inputSku = document.getElementById('wst-prod-sku'); // NEW SKU INPUT
     
     // --- DOM ELEMENTS (Calculator) ---
     const inputMinutes = document.getElementById('wst-prod-minutes');
@@ -45,7 +46,7 @@
 
     // --- 2. INITIALIZATION ---
     async function init() {
-        console.log("Initializing WST Data Manager V9 (Edit Fix)...");
+        console.log("Initializing WST Data Manager V11 (Auto-Sequence SKU)...");
         
         initTabs();
         initDataTables();
@@ -65,7 +66,6 @@
         await loadLogs();
 
         setupEventListeners();
-        // NOTE: setupTimeCalculator is removed here, logic moved to separate function to be reusable
     }
 
     // --- 3. TAB LOGIC ---
@@ -145,6 +145,7 @@
             pageLength: 15,
             lengthMenu: [15, 50, 100, 200],
             columns: [
+                { data: 'sku', className: "dt-left" },
                 { data: 'name', width: "25%" },
                 { data: 'cases', className: "dt-center" },
                 { data: 'units', className: "dt-center" },
@@ -220,6 +221,8 @@
             const m = Math.floor((totalSec % 3600) / 60);
 
             return {
+                // Render SKU with clear formatting
+                sku: `<span style="font-family:monospace; font-weight:700; color:var(--wst-primary); background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px;">${prod.sku || '---'}</span>`,
                 name: `<span style="font-weight:600;">${prod.name}</span>`,
                 cases: prod.cases_per_pallet,
                 units: prod.units_per_case,
@@ -291,9 +294,8 @@
         logsTable.clear().rows.add(rows).draw();
     }
 
-    // --- 8. MODAL & CALC ---
+    // --- 8. MODAL & CALC & LOGIC ---
 
-    // Shared calculation function (Fixes issue where preview doesn't update on Edit)
     function updateTimePreview() {
         if(!inputMinutes || !inputCases || !calcPreview) return;
         
@@ -312,15 +314,39 @@
 
     function openModal(edit) {
         productModal.style.display = 'flex';
-        modalTitle.innerHTML = edit ? 'Edit Product' : 'Add Product';
+        modalTitle.innerHTML = edit ? 'Edit Product' : 'Add New Product';
     }
 
     function closeModal() {
         productModal.style.display = 'none';
         productForm.reset();
         document.getElementById('wst-prod-id').value = '';
-        // Reset fields to avoid ghosts
+        inputSku.disabled = false; // Reset lock for new add
+        inputSku.classList.remove('input-locked'); // Optional styling reset
         if(calcPreview) calcPreview.innerHTML = 'Preview: 0 sec';
+    }
+
+    // --- NEW: AUTO-SEQUENCE GENERATOR ---
+    function generateNextSku() {
+        let maxSeq = 0;
+        
+        // Loop through existing products to find highest GMXxxxx
+        productsCache.forEach(p => {
+            if (p.sku && p.sku.startsWith('GMX')) {
+                // Remove 'GMX' and parse integer
+                const numPart = parseInt(p.sku.replace('GMX', ''), 10);
+                if (!isNaN(numPart) && numPart > maxSeq) {
+                    maxSeq = numPart;
+                }
+            }
+        });
+
+        // Increment
+        const nextSeq = maxSeq + 1;
+        // Pad with zeros (e.g., 1 -> '0001')
+        const paddedSeq = String(nextSeq).padStart(4, '0');
+        
+        return `GMX${paddedSeq}`;
     }
 
     window.wstEditProduct = function(id) {
@@ -329,12 +355,16 @@
         
         // --- CORE DATA ---
         document.getElementById('wst-prod-id').value = p.id;
+        
+        // Populate and LOCK the SKU field to prevent breaking traceability
+        inputSku.value = p.sku || 'GMX----'; 
+        inputSku.disabled = true;
+
         document.getElementById('wst-prod-name').value = p.name;
         
         // Set these first as they are needed for calculation
         document.getElementById('wst-prod-cases').value = p.cases_per_pallet;
         document.getElementById('wst-prod-minutes').value = (p.seconds_per_case/60).toFixed(2);
-
         document.getElementById('wst-prod-units').value = p.units_per_case;
 
         // --- WEIGHTS & MEASURES DATA ---
@@ -346,8 +376,6 @@
         }
 
         openModal(true);
-        
-        // FORCE CALCULATION UPDATE
         updateTimePreview();
     };
 
@@ -360,12 +388,17 @@
     function setupEventListeners() {
         if(addProductBtn) addProductBtn.onclick = () => {
             openModal(false);
+            
+            // --- AUTO GENERATE SKU ON OPEN ---
+            const nextSku = generateNextSku();
+            inputSku.value = nextSku;
+            inputSku.disabled = true; // Lock it so user follows sequence
+            
             updateTimePreview(); // Reset preview
         };
         if(modalCloseX) modalCloseX.onclick = closeModal;
         if(modalCancelBtn) modalCancelBtn.onclick = closeModal;
         
-        // Attach live calculation listeners
         if(inputMinutes) inputMinutes.oninput = updateTimePreview;
         if(inputCases) inputCases.oninput = updateTimePreview;
         
@@ -373,13 +406,14 @@
             e.preventDefault();
             const sec = Math.round(parseFloat(inputMinutes.value)*60);
             
-            // Build Data Object (Updated V9)
+            // Build Data Object
             const data = {
+                // Ensure we capture SKU even if disabled
+                sku: inputSku.value.trim().toUpperCase(),
                 name: document.getElementById('wst-prod-name').value,
                 cases_per_pallet: parseInt(inputCases.value) || 0,
                 units_per_case: parseInt(document.getElementById('wst-prod-units').value) || 0,
                 seconds_per_case: sec,
-                // New fields for BOL calc
                 value_per_piece: parseFloat(document.getElementById('wst-prod-value').value) || 0,
                 unit_of_measure: document.getElementById('wst-prod-uom').value,
                 packaging_weight_g: parseFloat(document.getElementById('wst-prod-pkg-weight').value) || 0,
@@ -400,34 +434,31 @@
 
         if(exportCsvBtn) exportCsvBtn.onclick = () => {
             if(!logsCache.length) return alert("No data to export");
-            const csvRows = [['Log ID','Date','Start','End','Line','Product','Status','Crew','Members','Target (Weighted)','Real Time (Net)','Pause Time (Secs)','Diff (Secs)']];
+            const csvRows = [['Log ID','Date','SKU','Product','Status','Crew','Target','Real Time','Diff (Secs)']];
             
             logsCache.forEach(l => {
                 const crew = l.worker_count || 1;
-                const members = Array.isArray(l.team_members) ? l.team_members.join("|") : l.operator_name;
                 const target = l.current_target_seconds || Math.ceil((l.standard_time_seconds || 0) / crew);
-                const real = l.final_time_seconds !== null ? l.final_time_seconds : (Math.floor((Date.now() - new Date(l.start_time).getTime())/1000) - (l.total_pause_seconds||0));
-                
+                const real = l.final_time_seconds !== null ? l.final_time_seconds : 0;
+                // Safely access sku if joined
+                const prodSku = l.production_products?.sku || ''; 
+
                 csvRows.push([
                     l.id,
                     new Date(l.start_time).toLocaleDateString(),
-                    new Date(l.start_time).toLocaleTimeString(),
-                    l.warehouse_scan_time ? new Date(l.warehouse_scan_time).toLocaleTimeString() : '',
-                    l.warehouse_lines?.line_name,
+                    prodSku, // Added to export
                     `"${(l.production_products?.name || '').replace(/"/g, '""')}"`,
                     l.status,
                     l.worker_count,
-                    `"${members}"`,
                     target,
                     real,
-                    l.total_pause_seconds || 0,
                     target - real
                 ].join(','));
             });
             
             const link = document.createElement("a");
             link.href = "data:text/csv;charset=utf-8," + encodeURI(csvRows.join("\n"));
-            link.download = `report_${new Date().toISOString().slice(0,10)}.csv`;
+            link.download = `report_wst_${new Date().toISOString().slice(0,10)}.csv`;
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         };
     }
