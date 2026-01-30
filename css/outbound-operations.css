@@ -1,5 +1,5 @@
 /* ====================================================================
- * == STYLES FOR OUTBOUND OPERATIONS (V6.7 - PDF Fix Match Orders Portal) ==
+ * == STYLES FOR OUTBOUND OPERATIONS (V7.0 - Camera & Claim UI) ==
  * File: css/outbound-operations.css
  * ====================================================================
  */
@@ -1120,6 +1120,23 @@ body.dark-mode .item-header h4 {
 
 .hoja * {
     box-sizing: border-box !important;
+}
+
+/* --- CAMERA READER STYLES (New) --- */
+#out-reader-container.hidden {
+    display: none !important;
+}
+
+#out-qr-reader {
+    width: 100%;
+    min-height: 250px;
+    background: #000;
+    position: relative;
+}
+
+#out-qr-reader video {
+    width: 100%;
+    object-fit: cover;
 }
 
 /* Mobile Responsive */

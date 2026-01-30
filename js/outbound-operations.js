@@ -1,8 +1,13 @@
-// js/outbound-operations.js - V7.0 (Race Condition Fix & Smart Status Revert)
+// js/outbound-operations.js - V7.2 (Full BOL Restored + Camera + Claim Logic)
 (function () {
   // --- 1. CONFIG & DEPENDENCIES ---
   if (!window.supabase) return console.error("Supabase missing");
   if (typeof Swal === "undefined") console.warn("SweetAlert2 missing");
+
+  // Check for Html5Qrcode library
+  const hasCameraLib = typeof Html5Qrcode !== "undefined";
+  if (!hasCameraLib)
+    console.warn("Html5Qrcode library not loaded. Camera features disabled.");
 
   const moduleContainer = document.querySelector(".out-container");
   if (!moduleContainer) return;
@@ -26,6 +31,10 @@
     qrs: [],
   };
   let realTimeSub = null;
+
+  // Camera State
+  let html5QrCode = null;
+  let isCameraRunning = false;
 
   // --- DOM ELEMENTS (Main) ---
   const globalStatus = document.getElementById("out-global-status");
@@ -72,7 +81,7 @@
   const btnCancelLoad = document.getElementById("cancelLoadBtn");
   const btnCloseLoadModal = document.getElementById("closeLoadModal");
 
-  // --- DOM ELEMENTS (Scan Modal) ---
+  // --- DOM ELEMENTS (Scan Modal & Camera) ---
   const scanModal = document.getElementById("outScanModal");
   const scanTitle = document.getElementById("scan-modal-title");
   const scanInput = document.getElementById("out-scan-input");
@@ -85,6 +94,10 @@
   const btnConfirmItem = document.getElementById("out-btn-confirm-item");
   const btnCancelScan = document.getElementById("out-btn-cancel-scan");
   const closeScanModalBtn = document.getElementById("closeScanModal");
+
+  // Camera specific DOM
+  const readerContainer = document.getElementById("out-reader-container");
+  const btnStopCamera = document.getElementById("btn-stop-camera");
 
   // --- DOM ELEMENTS (BOL Preview) ---
   const bolModal = document.getElementById("outBolPreviewModal");
@@ -116,7 +129,7 @@
 
   // --- 2. INITIALIZATION ---
   async function init() {
-    console.log("Outbound Ops V7.0 Initialized");
+    console.log("Outbound Ops V7.2 Initialized");
 
     const {
       data: { user },
@@ -322,7 +335,6 @@
 
       let statusLabel = order.status_aggregate.toUpperCase().replace(/_/g, " ");
       if (statusLabel === "READY") statusLabel = "READY TO LOAD";
-
       if (order.status_aggregate === "archived")
         statusLabel = "ARCHIVED (TODAY)";
 
@@ -332,12 +344,11 @@
         order.status_aggregate !== "shipped" &&
         order.status_aggregate !== "archived"
       ) {
-        const isMine =
-          currentUser && order.processed_by === currentUser.email;
+        const isMine = currentUser && order.processed_by === currentUser.email;
         if (isMine) {
-            ownerIcon = `<i class='bx bxs-user-check' style='color:var(--out-success); float:right;' title='Your Order'></i>`;
+          ownerIcon = `<i class='bx bxs-user-check' style='color:var(--out-success); float:right;' title='Your Order'></i>`;
         } else {
-            ownerIcon = `<i class='bx bxs-lock-alt' style='color:var(--out-text-light); float:right;' title='Locked by ${order.processed_by}'></i>`;
+          ownerIcon = `<i class='bx bxs-lock-alt' style='color:var(--out-text-light); float:right;' title='Locked by ${order.processed_by}'></i>`;
         }
       }
 
@@ -439,39 +450,45 @@
     activeClient.textContent = clientDisplayName;
     activeTotalPallets.textContent = order.total_pallets_target;
 
-    let accessLevel = 'UNCLAIMED';
-    let isFinished = order.status_aggregate === 'shipped' || order.status_aggregate === 'archived';
+    let accessLevel = "UNCLAIMED";
+    let isFinished =
+      order.status_aggregate === "shipped" ||
+      order.status_aggregate === "archived";
 
     if (isFinished) {
-        accessLevel = 'READ_ONLY';
+      accessLevel = "READ_ONLY";
     } else if (order.processed_by) {
-        if (currentUser && order.processed_by === currentUser.email) {
-            accessLevel = 'MINE';
-        } else {
-            accessLevel = 'OTHERS';
-        }
+      if (currentUser && order.processed_by === currentUser.email) {
+        accessLevel = "MINE";
+      } else {
+        accessLevel = "OTHERS";
+      }
     } else {
-        accessLevel = 'UNCLAIMED';
+      accessLevel = "UNCLAIMED";
     }
 
     updateHeaderOwnershipUI(accessLevel, order);
 
-    const isGridReadOnly = (accessLevel === 'OTHERS' || accessLevel === 'UNCLAIMED' || accessLevel === 'READ_ONLY');
-
+    const isGridReadOnly =
+      accessLevel === "OTHERS" ||
+      accessLevel === "UNCLAIMED" ||
+      accessLevel === "READ_ONLY";
     await renderItemsGrid(order, isGridReadOnly, accessLevel);
     checkLoadingEligibility(order, accessLevel);
   }
 
   function updateHeaderOwnershipUI(accessLevel, order) {
-      const existingActions = activeHeaderLeft.querySelectorAll('.claim-actions-container');
-      existingActions.forEach(el => el.remove());
+    const existingActions = activeHeaderLeft.querySelectorAll(
+      ".claim-actions-container",
+    );
+    existingActions.forEach((el) => el.remove());
 
-      const container = document.createElement('div');
-      container.className = 'claim-actions-container';
-      container.style.marginTop = '0.5rem';
+    const container = document.createElement("div");
+    container.className = "claim-actions-container";
+    container.style.marginTop = "0.5rem";
 
-      if (accessLevel === 'UNCLAIMED') {
-          container.innerHTML = `
+    if (accessLevel === "UNCLAIMED") {
+      container.innerHTML = `
             <button onclick="window.outClaimOrder()" class="btn-out-primary" style="background-color: var(--out-accent); color: #000; font-weight: 800; border: 2px solid #b3922d;">
                 <i class='bx bx-check-circle'></i> CLAIM / START
             </button>
@@ -479,14 +496,14 @@
                 <i class='bx bx-info-circle'></i> Claim to start scanning.
             </span>
           `;
-      } else if (accessLevel === 'OTHERS') {
-          container.innerHTML = `
+    } else if (accessLevel === "OTHERS") {
+      container.innerHTML = `
             <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; border: 1px solid #ef4444;">
                 <i class='bx bxs-lock-alt'></i> PROCESSED BY: ${order.processed_by}
             </div>
           `;
-      } else if (accessLevel === 'MINE') {
-          container.innerHTML = `
+    } else if (accessLevel === "MINE") {
+      container.innerHTML = `
             <button onclick="window.outReleaseOrder()" class="btn-out-secondary" style="font-size: 0.8rem; padding: 4px 10px;">
                 <i class='bx bx-log-out'></i> Release Order
             </button>
@@ -494,125 +511,129 @@
                 <i class='bx bxs-user-check'></i> You are working on this.
             </span>
           `;
-      }
-      
-      if (accessLevel !== 'READ_ONLY') {
-          activeHeaderLeft.appendChild(container);
-      }
+    }
+
+    if (accessLevel !== "READ_ONLY") {
+      activeHeaderLeft.appendChild(container);
+    }
   }
 
-  // --- [UPDATED] CLAIM FUNCTION WITH RACE CONDITION FIX ---
-  window.outClaimOrder = async function() {
-      if (!currentActiveOrderCode) return;
-      if (!currentUser) {
-          Swal.fire("Error", "No user session found.", "error");
-          return;
-      }
+  // --- CLAIM FUNCTION WITH RACE CONDITION FIX ---
+  window.outClaimOrder = async function () {
+    if (!currentActiveOrderCode) return;
+    if (!currentUser) {
+      Swal.fire("Error", "No user session found.", "error");
+      return;
+    }
 
-      const loadingBtn = document.querySelector('.claim-actions-container button');
-      if(loadingBtn) { loadingBtn.textContent = "Assigning..."; loadingBtn.disabled = true; }
+    const loadingBtn = document.querySelector(
+      ".claim-actions-container button",
+    );
+    if (loadingBtn) {
+      loadingBtn.textContent = "Assigning...";
+      loadingBtn.disabled = true;
+    }
 
-      const order = groupedOrders[currentActiveOrderCode];
-      
-      // We will perform an atomic update. 
-      // We only update IF 'processed_by' IS NULL.
-      // This handles the Race Condition. If user B clicks 1ms later, the condition 'is null' will fail.
-      
-      const itemIds = order.items.map(i => i.row_id);
-      
-      const updates = { 
-          processed_by: currentUser.email,
-          status: 'processing' // Move to processing immediately
-      };
-      
-      if (!order.started_at) {
-          updates.started_at = new Date().toISOString();
-      }
+    const order = groupedOrders[currentActiveOrderCode];
+    const itemIds = order.items.map((i) => i.row_id);
 
-      // Supabase update with filter to prevent race condition
-      const { data, error, count } = await supabase.from(ORDERS_TABLE)
-        .update(updates, { count: 'exact-rows' }) // Request count of rows updated
-        .in('id', itemIds)
-        .is('processed_by', null) // <--- CRITICAL: Only update if currently null
-        .select(); // Select to confirm data return
+    const updates = {
+      processed_by: currentUser.email,
+      status: "processing",
+    };
 
-      if (error) {
-          Swal.fire("Error", "System error claiming order: " + error.message, "error");
-          await fetchOrders(); 
-      } else if (count === 0 && (!data || data.length === 0)) {
-          // If count is 0, it means the .is('processed_by', null) check failed.
-          // Someone else claimed it!
-          Swal.fire({
-              title: "Too Late!",
-              text: "Another user has already claimed this order.",
-              icon: "warning"
-          });
-          await fetchOrders(); // Sync to see who took it
-      } else {
-          // Success
-          await fetchOrders(); 
-          loadOrderDetails(currentActiveOrderCode);
-      }
+    if (!order.started_at) {
+      updates.started_at = new Date().toISOString();
+    }
+
+    const { data, error, count } = await supabase
+      .from(ORDERS_TABLE)
+      .update(updates, { count: "exact-rows" })
+      .in("id", itemIds)
+      .is("processed_by", null)
+      .select();
+
+    if (error) {
+      Swal.fire(
+        "Error",
+        "System error claiming order: " + error.message,
+        "error",
+      );
+      await fetchOrders();
+    } else if (count === 0 && (!data || data.length === 0)) {
+      Swal.fire({
+        title: "Too Late!",
+        text: "Another user has already claimed this order.",
+        icon: "warning",
+      });
+      await fetchOrders();
+    } else {
+      await fetchOrders();
+      loadOrderDetails(currentActiveOrderCode);
+    }
   };
 
-  // --- [UPDATED] RELEASE FUNCTION WITH SMART STATUS REVERT ---
-  window.outReleaseOrder = async function() {
-      if (!currentActiveOrderCode) return;
-      
-      const result = await Swal.fire({
-          title: "Release Order?",
-          text: "Others will be able to take this order. Continue?",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#3085d6",
-          cancelButtonColor: "#d33",
-          confirmButtonText: "Yes, release it"
+  // --- RELEASE FUNCTION WITH STATUS REVERT ---
+  window.outReleaseOrder = async function () {
+    if (!currentActiveOrderCode) return;
+
+    const result = await Swal.fire({
+      title: "Release Order?",
+      text: "Others will be able to take this order. Continue?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, release it",
+    });
+
+    if (result.isConfirmed) {
+      const order = groupedOrders[currentActiveOrderCode];
+      const itemIds = order.items.map((i) => i.row_id);
+
+      let totalScans = 0;
+      order.items.forEach((item) => {
+        totalScans += item.current_scans || 0;
       });
 
-      if (result.isConfirmed) {
-          const order = groupedOrders[currentActiveOrderCode];
-          const itemIds = order.items.map(i => i.row_id);
+      let newStatus = "processing";
+      let newStartedAt = order.started_at;
 
-          // 1. Calculate Total Progress
-          // We iterate over the items currently in memory (which are synced with DB via loadOrderDetails)
-          let totalScans = 0;
-          order.items.forEach(item => {
-              totalScans += (item.current_scans || 0);
-          });
-
-          // 2. Determine new status
-          // If 0 scans, revert to 'pending'. If > 0, keep 'processing'.
-          let newStatus = 'processing';
-          let newStartedAt = order.started_at; 
-
-          if (totalScans === 0) {
-              newStatus = 'pending';
-              newStartedAt = null; // Clear start time if we are resetting to pending
-          }
-
-          const { error } = await supabase.from(ORDERS_TABLE)
-            .update({ 
-                processed_by: null,
-                status: newStatus,
-                started_at: newStartedAt
-            })
-            .in('id', itemIds);
-
-          if (error) {
-              Swal.fire("Error", "Could not release order.", "error");
-          } else {
-              await fetchOrders();
-              loadOrderDetails(currentActiveOrderCode);
-              
-              // Optional feedback
-              if (newStatus === 'pending') {
-                  const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                  toast.fire({ icon: 'info', title: 'Order reverted to Pending (No progress)' });
-              }
-          }
+      if (totalScans === 0) {
+        newStatus = "pending";
+        newStartedAt = null;
       }
-  };
 
+      const { error } = await supabase
+        .from(ORDERS_TABLE)
+        .update({
+          processed_by: null,
+          status: newStatus,
+          started_at: newStartedAt,
+        })
+        .in("id", itemIds);
+
+      if (error) {
+        Swal.fire("Error", "Could not release order.", "error");
+      } else {
+        await fetchOrders();
+        loadOrderDetails(currentActiveOrderCode);
+
+        if (newStatus === "pending") {
+          const toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 2000,
+          });
+          toast.fire({
+            icon: "info",
+            title: "Order reverted to Pending (No progress)",
+          });
+        }
+      }
+    }
+  };
 
   function resetWorkspace() {
     currentActiveOrderCode = null;
@@ -626,17 +647,20 @@
     if (pendingTab) pendingTab.classList.add("active");
 
     renderSidebar("pending", "");
-
     if (searchInput) searchInput.value = "";
   }
 
-  async function renderItemsGrid(order, isReadOnly = false, accessLevel = 'MINE') {
+  async function renderItemsGrid(
+    order,
+    isReadOnly = false,
+    accessLevel = "MINE",
+  ) {
     let html = "";
     const isOrderLoading = order.status_aggregate === "loading";
     const isOrderShipped =
       order.status_aggregate === "shipped" ||
-      order.status_aggregate === "archived"; 
-    
+      order.status_aggregate === "archived";
+
     const isUI_Locked = isOrderLoading || isOrderShipped || isReadOnly;
 
     for (const item of order.items) {
@@ -647,7 +671,7 @@
 
       const scannedCount = count || 0;
       const isComplete = scannedCount >= item.qty_target_pallets;
-      item.current_scans = scannedCount; // Update memory for release logic
+      item.current_scans = scannedCount;
 
       const progressPercent = Math.min(
         100,
@@ -657,12 +681,12 @@
       let btnState = "";
       let btnText = "Scan Pallets";
 
-      if (accessLevel === 'UNCLAIMED') {
-          btnState = "disabled";
-          btnText = "<i class='bx bxs-lock-alt'></i> Claim to Scan";
-      } else if (accessLevel === 'OTHERS') {
-          btnState = "disabled";
-          btnText = "<i class='bx bxs-lock'></i> Locked";
+      if (accessLevel === "UNCLAIMED") {
+        btnState = "disabled";
+        btnText = "<i class='bx bxs-lock-alt'></i> Claim to Scan";
+      } else if (accessLevel === "OTHERS") {
+        btnState = "disabled";
+        btnText = "<i class='bx bxs-lock'></i> Locked";
       } else if (isUI_Locked || isComplete) {
         btnState = "disabled";
         btnText = isComplete
@@ -717,11 +741,12 @@
       order.status_aggregate === "archived";
     const isLoading = order.status_aggregate === "loading";
 
-    if (accessLevel !== 'MINE' && !alreadyShipped) {
+    if (accessLevel !== "MINE" && !alreadyShipped) {
       loadingSection.classList.add("disabled");
       loadingMsg.classList.remove("hidden");
-      loadingMsg.innerHTML = accessLevel === 'UNCLAIMED' 
-          ? "<i class='bx bxs-lock-alt'></i> <b>Claim Order</b> to enable loading." 
+      loadingMsg.innerHTML =
+        accessLevel === "UNCLAIMED"
+          ? "<i class='bx bxs-lock-alt'></i> <b>Claim Order</b> to enable loading."
           : "<i class='bx bxs-lock'></i> Order is processed by another user.";
       loadingActions.classList.add("hidden");
       return;
@@ -730,7 +755,8 @@
     if (!allItemsComplete) {
       loadingSection.classList.add("disabled");
       loadingMsg.classList.remove("hidden");
-      loadingMsg.innerHTML = "<i class='bx bx-lock-alt'></i> Complete all items to enable loading.";
+      loadingMsg.innerHTML =
+        "<i class='bx bx-lock-alt'></i> Complete all items to enable loading.";
       loadingActions.classList.add("hidden");
       return;
     }
@@ -831,8 +857,14 @@
     scanFeedback.textContent = "Ready to scan.";
     scanFeedback.className = "scan-feedback";
 
+    // Ensure camera UI is reset
+    if (readerContainer) readerContainer.classList.add("hidden");
+    isCameraRunning = false;
+
     updateScanUI();
     scanModal.classList.remove("hidden");
+
+    // Focus input for handhelds (works with inputmode=none)
     setTimeout(() => scanInput.focus(), 100);
   };
 
@@ -853,6 +885,8 @@
       scanFeedback.className = "scan-feedback success";
       btnConfirmItem.disabled = false;
       btnConfirmItem.textContent = "FINISH";
+      // Auto stop camera if target reached
+      stopCameraScanner();
     } else {
       scanInput.disabled = false;
       btnConfirmItem.disabled = currentScanSession.sessionCount === 0;
@@ -860,50 +894,111 @@
     }
   }
 
+  // [MODIFIED] Shared Logic for Keyboard (Handheld) and Camera
+  async function validateAndAllocateQr(qr) {
+    if (!qr) return;
+
+    if (currentScanSession.qrs.includes(qr)) {
+      scanFeedback.textContent = "Duplicate scan!";
+      scanFeedback.className = "scan-feedback error";
+      return;
+    }
+
+    scanFeedback.textContent = "Validating...";
+
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+        "rpc_allocate_pallet",
+        {
+          p_qr_id: qr,
+          p_order_item_id: currentScanSession.rowId,
+          p_product_id: currentScanSession.productId,
+          p_order_code: currentActiveOrderCode,
+        },
+      );
+
+      if (rpcError) throw rpcError;
+      if (!rpcResult.success) throw new Error(rpcResult.message);
+
+      currentScanSession.qrs.push(qr);
+      currentScanSession.sessionCount++;
+
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${qr}</span> <i class='bx bx-check' style='color:#10b981'></i>`;
+      scanList.prepend(li);
+
+      scanFeedback.textContent = "OK: " + qr;
+      scanFeedback.className = "scan-feedback success";
+
+      updateScanUI();
+
+      // Clear input for next scan
+      scanInput.value = "";
+    } catch (err) {
+      scanFeedback.textContent = err.message || err.toString();
+      scanFeedback.className = "scan-feedback error";
+      scanInput.value = "";
+    }
+  }
+
+  // [MODIFIED] Handle Keydown (Handheld/USB Scanner)
   async function handleScanInput(e) {
     if (e.key === "Enter") {
       const qr = scanInput.value.trim();
-      if (!qr) return;
-      scanInput.value = "";
+      await validateAndAllocateQr(qr);
+    }
+  }
 
-      if (currentScanSession.qrs.includes(qr)) {
-        scanFeedback.textContent = "Duplicate scan!";
-        scanFeedback.className = "scan-feedback error";
-        return;
-      }
+  // [NEW] Camera Logic
+  async function startCameraScanner() {
+    if (!hasCameraLib) {
+      Swal.fire("Error", "Camera library not available.", "error");
+      return;
+    }
 
-      scanFeedback.textContent = "Validating...";
+    if (isCameraRunning) return;
 
+    try {
+      readerContainer.classList.remove("hidden");
+      html5QrCode = new Html5Qrcode("out-qr-reader");
+
+      await html5QrCode.start(
+        { facingMode: "environment" }, // Rear camera
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText, decodedResult) => {
+          // Handle Scan Success
+          // Optional: Play Beep Sound
+          validateAndAllocateQr(decodedText);
+        },
+        (errorMessage) => {
+          // Ignore scanning errors (frame didn't have QR)
+        },
+      );
+
+      isCameraRunning = true;
+      scanFeedback.textContent = "Camera active. Point at QR.";
+    } catch (err) {
+      console.error("Camera start error", err);
+      readerContainer.classList.add("hidden");
+      Swal.fire(
+        "Camera Error",
+        "Could not start camera. Check permissions.",
+        "error",
+      );
+    }
+  }
+
+  async function stopCameraScanner() {
+    if (html5QrCode && isCameraRunning) {
       try {
-        const { data: rpcResult, error: rpcError } = await supabase.rpc(
-          "rpc_allocate_pallet",
-          {
-            p_qr_id: qr,
-            p_order_item_id: currentScanSession.rowId,
-            p_product_id: currentScanSession.productId,
-            p_order_code: currentActiveOrderCode,
-          },
-        );
-
-        if (rpcError) throw rpcError;
-        if (!rpcResult.success) throw new Error(rpcResult.message);
-
-        currentScanSession.qrs.push(qr);
-        currentScanSession.sessionCount++;
-
-        const li = document.createElement("li");
-        li.innerHTML = `<span>${qr}</span> <i class='bx bx-check' style='color:#10b981'></i>`;
-        scanList.prepend(li);
-
-        scanFeedback.textContent = "OK";
-        scanFeedback.className = "scan-feedback success";
-
-        updateScanUI();
-      } catch (err) {
-        scanFeedback.textContent = err.message || err.toString();
-        scanFeedback.className = "scan-feedback error";
+        await html5QrCode.stop();
+        html5QrCode.clear();
+      } catch (e) {
+        console.error("Failed to stop camera", e);
       }
     }
+    isCameraRunning = false;
+    if (readerContainer) readerContainer.classList.add("hidden");
   }
 
   async function commitScanSession() {
@@ -958,13 +1053,13 @@
   }
 
   function closeScanModalLogic() {
+    stopCameraScanner(); // Ensure camera stops
     scanModal.classList.add("hidden");
     currentScanSession = { active: false, qrs: [] };
     btnConfirmItem.textContent = "DONE";
   }
 
   // --- 7. LOADING & BOL GENERATION ---
-
   window.outStartLoading = async function () {
     const itemIds = groupedOrders[currentActiveOrderCode].items.map(
       (i) => i.row_id,
@@ -987,18 +1082,15 @@
   function handlePhotoSelection(e) {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-
     files.forEach((file) => {
       evidencePhotos.push({ file: file, url: URL.createObjectURL(file) });
     });
-
     renderPhotoGrid();
     e.target.value = "";
   }
 
   function renderPhotoGrid() {
     let html = `<label class="photo-upload-box"><input type="file" id="temp-photo-input" accept="image/*" multiple hidden><i class='bx bx-image-add'></i><span>Add</span></label>`;
-
     evidencePhotos.forEach((photo, index) => {
       html += `
                 <div class="photo-preview-card">
@@ -1009,9 +1101,7 @@
                 </div>
             `;
     });
-
     photoGrid.innerHTML = html;
-
     const newInp = document.getElementById("temp-photo-input");
     if (newInp) newInp.onchange = handlePhotoSelection;
 
@@ -1046,7 +1136,6 @@
     return grandTotalG * 0.00220462;
   }
 
-  // --- BOL GENERATION (LOGIC REPLICATION FROM ORDERS PORTAL) ---
   window.printBOL = async function (bolNumberOverride = null) {
     if (!currentActiveOrderCode) return;
 
@@ -1284,6 +1373,7 @@
             `;
     }
 
+    // [FIX APPLIED HERE: MARGIN 0, BOX-SIZING, NO EXTERNAL MARGINS]
     const bolStyles = `
             <style>
             .hoja { width: 100%; height: 100%; background: white; margin: 0; padding: 0.5cm; position: relative; box-sizing: border-box; overflow: hidden; }
@@ -1295,7 +1385,6 @@
     bolModal.classList.remove("hidden");
   };
 
-  // --- BUTTON EVENT LISTENERS ---
   btnConfirmLoad.onclick = async () => {
     btnConfirmLoad.textContent = "Processing...";
     btnConfirmLoad.disabled = true;
@@ -1330,27 +1419,11 @@
 
       const { data: rpcData, error: rpcError } = await supabase.rpc(
         "generate_and_assign_bol_by_code",
-        {
-          p_order_code: currentActiveOrderCode,
-        },
+        { p_order_code: currentActiveOrderCode },
       );
 
       if (rpcError) throw rpcError;
       const finalBolNumber = rpcData.bol_number;
-
-      const ord = groupedOrders[currentActiveOrderCode];
-      if (ord) {
-        ord.shipping_data.unit = inputTransportUnit.value;
-        ord.shipping_data.caja = inputTransportCaja.value;
-        ord.shipping_data.seals = inputTransportSeals.value;
-        ord.shipping_data.instructions = inputSpecialInstructions.value;
-        ord.completed_at = new Date().toISOString();
-        ord.processed_by = processedByUser;
-        ord.evidence_photos = photoUrls;
-        ord.shipping_data.bol_url = finalBolNumber;
-        ord.status_aggregate = "shipped";
-        ord.items.forEach((i) => (i.status = "shipped"));
-      }
 
       const orderRows = groupedOrders[currentActiveOrderCode].items;
       const idsToUpdate = orderRows.map((i) => i.row_id);
@@ -1371,7 +1444,6 @@
 
       loadModal.classList.add("hidden");
       window.printBOL(finalBolNumber);
-
       setTimeout(async () => {
         await fetchOrders();
         resetWorkspace();
@@ -1439,11 +1511,7 @@
     const { data: pallets } = await supabase
       .from(PRODUCTION_TABLE)
       .select(
-        `
-                pallet_qr_id,
-                warehouse_scan_time,
-                production_products (sku, name)
-            `,
+        `pallet_qr_id, warehouse_scan_time, production_products (sku, name)`,
       )
       .in("allocated_order_item_id", itemIds);
 
@@ -1463,7 +1531,6 @@
       detItemsList.innerHTML =
         "<tr><td colspan='4' style='text-align:center; padding:1rem;'>No items found.</td></tr>";
     }
-
     detailsModal.classList.remove("hidden");
   };
 
@@ -1488,40 +1555,30 @@
 
     scanInput.addEventListener("keydown", handleScanInput);
 
+    // [MODIFIED] Camera Button Hooks
     if (btnCameraScan) {
-      btnCameraScan.onclick = () => {
-        Swal.fire(
-          "Camera Mode",
-          "Mobile camera integration requires HTTPS and a library like html5-qrcode. This button currently focuses the input for external scanners.",
-          "info",
-        );
-        scanInput.focus();
-      };
+      btnCameraScan.onclick = startCameraScanner;
+    }
+    if (btnStopCamera) {
+      btnStopCamera.onclick = stopCameraScanner;
     }
 
     if (btnCloseLoadModal)
       btnCloseLoadModal.onclick = () => loadModal.classList.add("hidden");
     if (btnCancelLoad)
       btnCancelLoad.onclick = () => loadModal.classList.add("hidden");
-
-    if (btnPrintBol) {
-      btnPrintBol.onclick = () => window.printBOL();
-    }
-
+    if (btnPrintBol) btnPrintBol.onclick = () => window.printBOL();
     btnBolClose.onclick = () => bolModal.classList.add("hidden");
     closeBolModalIcon.onclick = () => bolModal.classList.add("hidden");
-
     btnBolPrint.onclick = () => {
       const printContent = bolContainer.innerHTML;
       const win = window.open("", "", "height=700,width=900");
-      win.document.write("<html><head><title>Print BOL</title>");
-      win.document.write("</head><body>");
+      win.document.write("<html><head><title>Print BOL</title></head><body>");
       win.document.write(printContent);
       win.document.write("</body></html>");
       win.document.close();
       win.print();
     };
-
     btnBolDownload.onclick = () => {
       const element = bolContainer;
       const opt = {
@@ -1533,27 +1590,19 @@
       };
       html2pdf().set(opt).from(element).save();
     };
-
     if (btnCloseDetails)
       btnCloseDetails.onclick = () => detailsModal.classList.add("hidden");
     if (btnCloseDetailsFooter)
       btnCloseDetailsFooter.onclick = () =>
         detailsModal.classList.add("hidden");
-
     if (btnSlidePrev && btnSlideNext && itemsTrack) {
-      btnSlidePrev.onclick = () => {
+      btnSlidePrev.onclick = () =>
         itemsTrack.scrollBy({ left: -360, behavior: "smooth" });
-      };
-      btnSlideNext.onclick = () => {
+      btnSlideNext.onclick = () =>
         itemsTrack.scrollBy({ left: 360, behavior: "smooth" });
-      };
     }
-
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        console.log("Tab is visible again. Refreshing orders...");
-        fetchOrders();
-      }
+      if (document.visibilityState === "visible") fetchOrders();
     });
   }
 
@@ -1563,9 +1612,7 @@
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: ORDERS_TABLE },
-        () => {
-          fetchOrders();
-        },
+        () => fetchOrders(),
       )
       .subscribe();
   }

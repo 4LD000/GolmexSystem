@@ -134,6 +134,13 @@
     </div>
 
     <div class="out-modal-body scan-layout">
+      <div id="out-reader-container" class="hidden" style="width: 100%; margin-bottom: 1rem; border: 2px solid var(--out-border); border-radius: 8px; overflow: hidden;">
+          <div id="out-qr-reader" style="width: 100%;"></div>
+          <button id="btn-stop-camera" class="btn-out-secondary" style="width: 100%; border-radius: 0; border: none; border-top: 1px solid #ccc; color: var(--out-danger);">
+              <i class='bx bxs-camera-off'></i> Stop Camera
+          </button>
+      </div>
+
       <div class="scan-input-area">
         <div class="scan-box">
           <i class="bx bx-qr-scan"></i>
@@ -142,6 +149,7 @@
             id="out-scan-input"
             placeholder="Scan Pallet QR..."
             autocomplete="off"
+            inputmode="none" 
           />
           <button
             id="btn-camera-scan"
@@ -526,6 +534,7 @@
 </div>
 
 <link rel="stylesheet" href="css/outbound-operations.css" />
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/outbound-operations.js"></script>
