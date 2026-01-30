@@ -1,540 +1,428 @@
-<div class="out-container">
-  <div class="out-header">
-    <div class="out-header-title">
-      <h2><i class="bx bxs-truck"></i> Outbound Operations</h2>
+<div class="out-analytics-container">
+  <div class="oa-header">
+    <div class="oa-title-area">
+      <h2><i class="bx bxs-pie-chart-alt-2"></i> Outbound Analytics</h2>
+      <p>Shipping Control Tower & Historical Data</p>
     </div>
-    <div class="out-header-info">
-      <span id="out-global-status" class="badge-counter"
-        >Loading System...</span
-      >
+
+    <div class="oa-tabs">
+      <button class="oa-tab-button active" data-tab="oa-tab-dashboard">
+        <i class="bx bxs-dashboard"></i> Dashboard
+      </button>
+      <button class="oa-tab-button" data-tab="oa-tab-history">
+        <i class="bx bx-history"></i> Master History
+      </button>
+      <button class="oa-tab-button" data-tab="oa-tab-team">
+        <i class="bx bxs-trophy"></i> Team Ranking
+      </button>
     </div>
-    <div class="out-header-actions">
-      <button id="out-refresh-btn" class="btn-out-secondary">
+
+    <div class="oa-header-actions">
+      <button id="oa-refresh-btn" class="btn-oa-secondary" title="Force Sync">
         <i class="bx bx-refresh"></i> Refresh
       </button>
     </div>
   </div>
 
-  <div class="out-layout">
-    <div class="out-sidebar">
-      <div class="out-sidebar-header">
-        <div class="search-box">
-          <i class="bx bx-search"></i>
-          <input
-            type="text"
-            id="out-search-order"
-            placeholder="Search Order #..."
-          />
-        </div>
-        <div class="out-filter-tabs">
-          <button class="filter-tab active" data-filter="pending">
-            Active
-          </button>
-          <button class="filter-tab" data-filter="processing">
-            Processing
-          </button>
-          <button class="filter-tab" data-filter="loading">Loading</button>
-          <button class="filter-tab" data-filter="shipped">Shipped</button>
-        </div>
-      </div>
-
-      <div id="out-orders-list" class="out-orders-list"></div>
-    </div>
-
-    <div class="out-workspace">
-      <div id="out-state-empty" class="out-workspace-empty">
-        <div class="empty-content">
-          <i class="bx bxs-component"></i>
-          <h3>No Order Selected</h3>
-          <p>Select an order from the list to begin picking or loading.</p>
-        </div>
-      </div>
-
-      <div id="out-state-active" class="out-workspace-active hidden">
-        <div class="out-order-header">
-          <div class="header-left" id="out-header-left-container">
-            <h2 id="out-active-code">ORD-XXXXX</h2>
-            <span id="out-active-status" class="out-big-badge status-processing"
-              >IN PROCESS</span
-            >
+  <div class="oa-content-wrapper">
+    <div id="oa-tab-dashboard" class="oa-tab-content active">
+      <div class="oa-kpi-grid">
+        <div class="oa-card kpi-card">
+          <div class="kpi-icon blue">
+            <i class="bx bxs-truck"></i>
           </div>
-          <div class="header-right">
-            <div class="meta-box">
-              <label>Client</label>
-              <span id="out-active-client">--</span>
+          <div class="kpi-info">
+            <span class="kpi-label">Total Shipped Orders</span>
+            <h3 id="oa-kpi-orders">0</h3>
+            <small class="kpi-sub" id="oa-sub-orders">Last 30 Days</small>
+          </div>
+        </div>
+
+        <div class="oa-card kpi-card">
+          <div class="kpi-icon gold">
+            <i class="bx bxs-package"></i>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Total Pallets</span>
+            <h3 id="oa-kpi-pallets">0</h3>
+            <small class="kpi-sub">Last 30 Days</small>
+          </div>
+        </div>
+
+        <div class="oa-card kpi-card">
+          <div class="kpi-icon green">
+            <i class="bx bx-dumbbell"></i>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Total Weight (Lbs)</span>
+            <h3 id="oa-kpi-weight">0</h3>
+            <small class="kpi-sub">Estimated</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="oa-charts-grid">
+        <div class="oa-card chart-container main-chart">
+          <div class="chart-header">
+            <h4>
+              <i class="bx bx-bar-chart-alt-2"></i> Shipment Volume (Pallets)
+            </h4>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="oaShipmentChart"></canvas>
+          </div>
+        </div>
+
+        <div class="oa-charts-sidebar">
+          <div class="oa-card chart-container small-chart">
+            <div class="chart-header">
+              <h4><i class="bx bxs-pie-chart-alt"></i> Status Split</h4>
             </div>
-            <div class="meta-box">
-              <label>Total Pallets</label>
-              <span id="out-active-total-pallets">0</span>
+            <div class="chart-wrapper">
+              <canvas id="oaStatusChart"></canvas>
+            </div>
+          </div>
+
+          <div class="oa-card chart-container small-chart">
+            <div class="chart-header">
+              <h4><i class="bx bx-line-chart"></i> Avg. Time (Mins)</h4>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="oaEfficiencyChart"></canvas>
             </div>
           </div>
         </div>
-
-        <div class="out-section picking-section">
-          <div class="section-title">
-            <h3><i class="bx bx-list-check"></i> Order Items (Picking)</h3>
-            <span class="section-subtitle"
-              >Scan pallets for each item individually.</span
-            >
-          </div>
-
-          <div class="out-slider-wrapper">
-            <button
-              class="out-slider-btn prev"
-              id="btn-slide-prev"
-              title="Scroll Left"
-            >
-              <i class="bx bx-chevron-left"></i>
-            </button>
-
-            <div class="out-items-track" id="out-items-container"></div>
-
-            <button
-              class="out-slider-btn next"
-              id="btn-slide-next"
-              title="Scroll Right"
-            >
-              <i class="bx bx-chevron-right"></i>
-            </button>
-          </div>
-        </div>
-
-        <div
-          class="out-section loading-section disabled"
-          id="out-loading-section"
-        >
-          <div class="section-title">
-            <h3><i class="bx bxs-truck"></i> Shipment & Documentation</h3>
-            <span class="section-subtitle"
-              >Locked until all items are processed.</span
-            >
-          </div>
-
-          <div class="loading-controls">
-            <div class="loading-status-msg" id="out-loading-msg">
-              <i class="bx bx-lock-alt"></i> Complete all items to enable
-              loading.
-            </div>
-
-            <div class="loading-actions hidden" id="out-loading-actions"></div>
-          </div>
-        </div>
       </div>
     </div>
-  </div>
-</div>
 
-<div id="outScanModal" class="out-modal hidden">
-  <div class="out-modal-content large-modal">
-    <div class="out-modal-header">
-      <h3 id="scan-modal-title">Scanning...</h3>
-      <button class="out-close-modal" id="closeScanModal">
-        <i class="bx bx-x"></i>
-      </button>
-    </div>
-
-    <div class="out-modal-body scan-layout">
-      <div id="out-reader-container" class="hidden" style="width: 100%; margin-bottom: 1rem; border: 2px solid var(--out-border); border-radius: 8px; overflow: hidden;">
-          <div id="out-qr-reader" style="width: 100%;"></div>
-          <button id="btn-stop-camera" class="btn-out-secondary" style="width: 100%; border-radius: 0; border: none; border-top: 1px solid #ccc; color: var(--out-danger);">
-              <i class='bx bxs-camera-off'></i> Stop Camera
-          </button>
-      </div>
-
-      <div class="scan-input-area">
-        <div class="scan-box">
-          <i class="bx bx-qr-scan"></i>
-          <input
-            type="text"
-            id="out-scan-input"
-            placeholder="Scan Pallet QR..."
-            autocomplete="off"
-            inputmode="none" 
-          />
-          <button
-            id="btn-camera-scan"
-            class="btn-icon-inside"
-            title="Use Camera"
-          >
-            <i class="bx bxs-camera"></i>
-          </button>
-        </div>
-        <div id="out-scanner-feedback" class="scan-feedback">
-          Ready to scan.
-        </div>
-
-        <div class="scan-mini-history">
-          <label>Session Scans:</label>
-          <ul id="out-scan-list"></ul>
-        </div>
-      </div>
-
-      <div class="scan-progress-area">
-        <div class="big-counter">
-          <span id="scan-current">0</span>
-          <span class="divider">/</span>
-          <span id="scan-target">0</span>
-        </div>
-        <label>Pallets Scanned</label>
-
-        <div class="progress-ring-container">
-          <div class="progress-bar-linear">
-            <div id="scan-progress-fill" class="fill" style="width: 0%"></div>
+    <div id="oa-tab-history" class="oa-tab-content">
+      <div class="oa-controls-toolbar">
+        <div class="oa-filter-group">
+          <label><i class="bx bx-calendar"></i> Date Range</label>
+          <div class="date-inputs">
+            <input type="date" id="oa-date-start" />
+            <span>to</span>
+            <input type="date" id="oa-date-end" />
           </div>
         </div>
 
-        <div style="display: flex; gap: 1rem; width: 100%; margin-top: auto">
-          <button
-            id="out-btn-cancel-scan"
-            class="btn-out-secondary"
-            style="flex: 1"
-          >
-            Cancel
-          </button>
-          <button
-            id="out-btn-confirm-item"
-            class="btn-out-success"
-            style="flex: 2"
-            disabled
-          >
-            <i class="bx bx-check"></i> CONFIRM ITEM
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="outLoadModal" class="out-modal hidden">
-  <div class="out-modal-content">
-    <div class="out-modal-header">
-      <h3><i class="bx bxs-camera"></i> Loading Evidence</h3>
-      <button class="out-close-modal" id="closeLoadModal">
-        <i class="bx bx-x"></i>
-      </button>
-    </div>
-    <div class="out-modal-body">
-      <div class="load-step">
-        <h4>1. Upload Evidence (4-6 Photos)</h4>
-        <p class="helper-text">
-          Photos of the truck, loading process, and final seal.
-        </p>
-
-        <div class="photo-grid" id="out-photo-grid">
-          <label class="photo-upload-box">
-            <input
-              type="file"
-              id="out-photo-input"
-              accept="image/*"
-              multiple
-              hidden
-            />
-            <i class="bx bx-image-add"></i>
-            <span>Add Photos</span>
-          </label>
-        </div>
-        <div id="out-photo-count" class="validation-msg">
-          0 photos selected (Min 4)
-        </div>
-      </div>
-
-      <hr class="modal-divider" />
-
-      <div class="load-step">
-        <h4>2. Transport Data</h4>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Trailer Number</label>
-            <input type="text" id="out-transport-unit" placeholder="e.g. T19" />
-          </div>
-          <div class="form-group">
-            <label>Container Number</label>
+        <div class="oa-filter-group flex-grow">
+          <label><i class="bx bx-search"></i> Search History</label>
+          <div class="search-box-wrapper">
             <input
               type="text"
-              id="out-transport-caja"
-              placeholder="e.g. 4353"
+              id="oa-history-search"
+              placeholder="Search Order #, Client, or User..."
+              autocomplete="off"
             />
           </div>
-          <div class="form-group full">
-            <label>Seal Numbers</label>
-            <input
-              type="text"
-              id="out-transport-seals"
-              placeholder="e.g. 33614329"
-            />
-          </div>
-          <div class="form-group full">
-            <label>Special Instructions</label>
-            <textarea
-              id="out-special-instructions"
-              rows="2"
-              placeholder="Enter special instructions for BOL..."
-              style="
-                width: 100%;
-                padding: 0.8rem;
-                border: 1px solid var(--out-border);
-                border-radius: 8px;
-                font-family: inherit;
-              "
-            ></textarea>
+        </div>
+
+        <div class="oa-filter-group actions-group">
+          <label>&nbsp;</label>
+          <div style="display: flex; gap: 0.5rem">
+            <button id="oa-apply-filters" class="btn-oa-primary">
+              <i class="bx bx-filter"></i> Filter
+            </button>
+            <button
+              id="oa-export-csv"
+              class="btn-oa-export"
+              title="Download Detailed CSV Report"
+            >
+              <i class="bx bxs-file-export"></i> Export Report
+            </button>
           </div>
         </div>
       </div>
-    </div>
-    <div class="out-modal-footer">
-      <button class="btn-out-secondary" id="cancelLoadBtn">Cancel</button>
-      <button class="btn-out-primary" id="confirmLoadBtn" disabled>
-        Generate BOL & Close
-      </button>
-    </div>
-  </div>
-</div>
 
-<div id="outSimpleConfirm" class="out-modal hidden">
-  <div class="out-modal-content small-modal center-text">
-    <div class="icon-box warning"><i class="bx bx-question-mark"></i></div>
-    <h3 id="simple-confirm-title">Are you sure?</h3>
-    <p id="simple-confirm-msg">This action cannot be undone.</p>
-    <div class="out-modal-actions">
-      <button id="simple-confirm-no" class="btn-out-secondary">No</button>
-      <button id="simple-confirm-yes" class="btn-out-primary">Yes</button>
-    </div>
-  </div>
-</div>
-
-<div id="outBolPreviewModal" class="out-modal hidden">
-  <div
-    class="out-modal-content large-modal"
-    style="height: 90vh; max-width: 1000px"
-  >
-    <div class="out-modal-header">
-      <h3><i class="bx bxs-file-pdf"></i> Bill Of Lading (BOL)</h3>
-      <button class="out-close-modal" id="closeBolModal">
-        <i class="bx bx-x"></i>
-      </button>
-    </div>
-    <div
-      class="out-modal-body"
-      style="
-        background: #525659;
-        padding: 1rem;
-        display: flex;
-        justify-content: center;
-        overflow: auto;
-      "
-    >
-      <div
-        id="bol-render-container"
-        style="
-          background: white;
-          width: 21.59cm;
-          min-height: 27.94cm;
-          padding: 0.5cm;
-          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        "
-      >
-        Loading BOL...
+      <div class="oa-table-wrapper">
+        <table id="oaHistoryTable" class="display nowrap" style="width: 100%">
+          <thead>
+            <tr>
+              <th>Order #</th>
+              <th>Finish Date</th>
+              <th>Duration</th>
+              <th>Client</th>
+              <th>Items</th>
+              <th>Pallets</th>
+              <th>User</th>
+              <th>Status</th>
+              <th>View</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
-    <div class="out-modal-footer">
-      <button class="btn-out-secondary" id="btn-bol-close">Close</button>
-      <button class="btn-out-primary" id="btn-bol-print">
-        <i class="bx bx-printer"></i> Print
-      </button>
-      <button class="btn-out-success" id="btn-bol-download">
-        <i class="bx bxs-download"></i> Download PDF
-      </button>
-    </div>
-  </div>
-</div>
 
-<div id="outDetailsModal" class="out-modal hidden">
-  <div class="out-modal-content large-modal">
-    <div class="out-modal-header">
-      <h3><i class="bx bx-history"></i> Order Traceability & Details</h3>
-      <button class="out-close-modal" id="closeDetailsModal">
-        <i class="bx bx-x"></i>
-      </button>
-    </div>
-    <div class="out-modal-body">
+    <div id="oa-tab-team" class="oa-tab-content">
       <div
-        style="
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-          margin-bottom: 1.5rem;
-        "
+        class="oa-team-layout"
+        style="height: 100%; display: flex; flex-direction: column"
       >
         <div
+          class="oa-card full-width"
           style="
-            background: var(--out-bg);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--out-border);
-          "
-        >
-          <h4 style="margin-top: 0; color: var(--out-primary)">
-            <i class="bx bxs-user-badge"></i> Processed By
-          </h4>
-          <div id="out-det-user" style="font-weight: 600; font-size: 1.1rem">
-            --
-          </div>
-          <div
-            style="
-              margin-top: 0.5rem;
-              font-size: 0.9rem;
-              color: var(--out-text-light);
-            "
-          >
-            <strong>Start:</strong> <span id="out-det-start">--</span><br />
-            <strong>End:</strong> <span id="out-det-end">--</span>
-          </div>
-        </div>
-        <div
-          style="
-            background: var(--out-bg);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--out-border);
+            flex: 1;
             display: flex;
-            align-items: center;
-            justify-content: center;
             flex-direction: column;
-            text-align: center;
+            overflow: hidden;
           "
         >
-          <h4
-            style="
-              margin: 0;
-              color: var(--out-text-light);
-              font-size: 0.9rem;
-              text-transform: uppercase;
-            "
-          >
-            Total Duration
-          </h4>
-          <div
-            id="out-det-duration"
-            style="font-size: 2rem; font-weight: 800; color: var(--out-success)"
-          >
-            0m
+          <div class="chart-header">
+            <h4>
+              <i class="bx bxs-trophy" style="color: var(--oa-gold)"></i>
+              Operator Leaderboard
+            </h4>
+            <p style="color: #666; font-size: 0.9rem; margin: 0">
+              Top performers by volume (Last 30 Days)
+            </p>
+          </div>
+          <div class="oa-table-wrapper" style="border: none; box-shadow: none">
+            <table id="oaTeamTable" class="display nowrap" style="width: 100%">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Operator / User</th>
+                  <th>Orders Processed</th>
+                  <th>Total Pallets</th>
+                  <th>Last Active</th>
+                  <th>Performance Rating</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+<div id="oaEvidenceModal" class="oa-modal-overlay">
+  <div class="oa-modal oa-modal-lg">
+    <div
+      class="oa-modal-header"
+      style="background: var(--oa-primary); color: #ffffff"
+    >
+      <h3 style="color: #ffffff !important">
+        <i class="bx bxs-camera"></i> Shipment Evidence
+      </h3>
+      <button
+        class="oa-close-modal"
+        id="oaCloseEvidenceModal"
+        style="color: #ffffff"
+      >
+        <i class="bx bx-x"></i>
+      </button>
+    </div>
+    <div class="oa-modal-body">
+      <div style="text-align: center; margin-bottom: 2rem">
+        <h2 id="oa-ev-order-code" style="margin-bottom: 0.5rem">ORD-XXXX</h2>
+        <span id="oa-ev-status-badge"></span>
+      </div>
 
-      <div style="margin-bottom: 1.5rem">
+      <div
+        style="
+          background: var(--oa-bg);
+          padding: 1.5rem;
+          border-radius: 8px;
+          border: 1px solid var(--oa-border);
+          margin-bottom: 2rem;
+        "
+      >
         <h4
           style="
-            border-bottom: 1px solid var(--out-border);
+            border-bottom: 1px solid var(--oa-border);
             padding-bottom: 0.5rem;
             margin-bottom: 1rem;
-            color: var(--out-text-main);
           "
         >
-          <i class="bx bxs-truck"></i> Transport Information
+          <i class="bx bxs-truck"></i> Transport Details
         </h4>
         <div
           style="
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 1rem;
+            font-size: 0.9rem;
           "
         >
           <div>
-            <label style="font-size: 0.8rem; color: var(--out-text-light)"
+            <label
+              style="
+                display: block;
+                font-weight: 600;
+                color: var(--oa-text-light);
+              "
               >Trailer / Unit</label
             >
-            <div id="out-det-trailer" style="font-weight: 600">--</div>
-          </div>
-          <div>
-            <label style="font-size: 0.8rem; color: var(--out-text-light)"
-              >Container / Plate</label
+            <span
+              id="oa-ev-trans-unit"
+              style="font-size: 1.1rem; font-weight: 600"
+              >--</span
             >
-            <div id="out-det-plate" style="font-weight: 600">--</div>
           </div>
           <div>
-            <label style="font-size: 0.8rem; color: var(--out-text-light)"
+            <label
+              style="
+                display: block;
+                font-weight: 600;
+                color: var(--oa-text-light);
+              "
+              >Container / Plates</label
+            >
+            <span
+              id="oa-ev-trans-plate"
+              style="font-size: 1.1rem; font-weight: 600"
+              >--</span
+            >
+          </div>
+          <div>
+            <label
+              style="
+                display: block;
+                font-weight: 600;
+                color: var(--oa-text-light);
+              "
               >Seals</label
             >
-            <div id="out-det-seals" style="font-weight: 600">--</div>
+            <span
+              id="oa-ev-trans-seals"
+              style="font-size: 1.1rem; font-weight: 600"
+              >--</span
+            >
           </div>
-        </div>
-        <div style="margin-top: 1rem">
-          <label style="font-size: 0.8rem; color: var(--out-text-light)"
-            >Special Instructions</label
-          >
-          <div
-            id="out-det-notes"
-            style="
-              font-style: italic;
-              background: var(--out-bg);
-              padding: 0.5rem;
-              border-radius: 4px;
-            "
-          >
-            --
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-bottom: 1.5rem">
-        <h4
-          style="
-            border-bottom: 1px solid var(--out-border);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            color: var(--out-text-main);
-          "
-        >
-          <i class="bx bxs-image"></i> Loading Evidence
-        </h4>
-        <div
-          id="out-det-photos"
-          class="photo-grid"
-          style="grid-template-columns: repeat(4, 1fr); gap: 1rem"
-        >
-          <span style="color: var(--out-text-light)">No photos available.</span>
         </div>
       </div>
 
       <div>
-        <h4
-          style="
-            border-bottom: 1px solid var(--out-border);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            color: var(--out-text-main);
-          "
-        >
-          <i class="bx bxs-barcode"></i> Scanned Pallets (Items)
+        <h4 style="margin-bottom: 1rem">
+          <i class="bx bxs-image"></i> Loading Photos
         </h4>
-        <div style="overflow-x: auto">
-          <table
-            style="width: 100%; border-collapse: collapse; font-size: 0.9rem"
-          >
-            <thead style="background: var(--out-bg); text-align: left">
-              <tr>
-                <th style="padding: 0.5rem">Pallet QR</th>
-                <th style="padding: 0.5rem">Product SKU</th>
-                <th style="padding: 0.5rem">Product Name</th>
-                <th style="padding: 0.5rem">Scan Time</th>
-              </tr>
-            </thead>
-            <tbody id="out-det-items-list"></tbody>
-          </table>
-        </div>
+        <div
+          id="oa-ev-photo-grid"
+          class="oa-photo-gallery"
+          style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))"
+        ></div>
       </div>
     </div>
-    <div class="out-modal-footer">
-      <button class="btn-out-secondary" id="btnCloseDetailsFooter">
+    <div class="oa-modal-footer" style="justify-content: space-between">
+      <button type="button" class="btn-oa-secondary" id="oaCloseEvidenceFooter">
         Close
+      </button>
+      <button type="button" class="btn-oa-primary" id="oa-btn-link-to-docs">
+        View BOL Document <i class="bx bx-right-arrow-alt"></i>
       </button>
     </div>
   </div>
 </div>
 
-<link rel="stylesheet" href="css/outbound-operations.css" />
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
+<div id="oaBolPreviewModal" class="oa-modal-overlay">
+  <div class="oa-modal oa-modal-lg">
+    <div class="oa-modal-header" style="background: #525659; color: white">
+      <h3 style="color: white !important">
+        <i class="bx bxs-file-pdf"></i> Bill Of Lading (BOL)
+      </h3>
+      <button
+        class="oa-close-modal"
+        id="oaCloseBolPreview"
+        style="color: white"
+      >
+        <i class="bx bx-x"></i>
+      </button>
+    </div>
+
+    <div
+      class="oa-modal-body"
+      style="
+        background-color: #525659;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+      "
+    >
+      <div id="oa-bol-render-container">Generating BOL...</div>
+    </div>
+
+    <div class="oa-modal-footer" style="justify-content: space-between">
+      <button type="button" class="btn-oa-primary" id="oa-btn-link-to-evidence">
+        <i class="bx bx-left-arrow-alt"></i> View Evidence (Photos)
+      </button>
+
+      <div style="display: flex; gap: 1rem">
+        <button
+          type="button"
+          class="btn-oa-secondary"
+          id="oa-btn-bol-modal-close"
+        >
+          Close
+        </button>
+        <button
+          type="button"
+          class="btn-oa-primary"
+          id="oa-btn-bol-modal-print"
+        >
+          <i class="bx bx-printer"></i> Print
+        </button>
+        <button
+          type="button"
+          class="btn-oa-secondary"
+          id="oa-btn-bol-modal-download"
+          style="background: #dc2626; color: white; border-color: #dc2626"
+        >
+          <i class="bx bxs-download"></i> Download PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  id="oaImageViewerModal"
+  class="oa-modal-overlay"
+  style="z-index: 2200; background: rgba(0, 0, 0, 0.9)"
+>
+  <div style="position: relative; max-width: 90%; max-height: 90%">
+    <button
+      id="oaCloseImageViewer"
+      style="
+        position: absolute;
+        top: -40px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+      "
+    >
+      <i class="bx bx-x"></i>
+    </button>
+    <img
+      id="oa-lightbox-img"
+      src=""
+      style="
+        max-width: 100%;
+        max-height: 85vh;
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      "
+    />
+    <div style="text-align: center; margin-top: 1rem">
+      <a
+        id="oa-lightbox-download"
+        href="#"
+        download
+        class="btn-oa-secondary"
+        style="background: white; color: black; display: inline-flex"
+      >
+        <i class="bx bxs-download"></i> Download Original
+      </a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="js/outbound-operations.js"></script>
+<script src="js/outbound-analytics.js"></script>
