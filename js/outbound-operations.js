@@ -5,9 +5,10 @@
   if (typeof Swal === "undefined") console.warn("SweetAlert2 missing");
 
   // Check for Html5Qrcode library
-  const hasCameraLib = typeof Html5Qrcode !== "undefined";
+  // This initial check serves for global logging, but we will re-check strictly on button click
+  let hasCameraLib = typeof Html5Qrcode !== "undefined";
   if (!hasCameraLib)
-    console.warn("Html5Qrcode library not loaded. Camera features disabled.");
+    console.warn("Html5Qrcode library not loaded yet (checking pending...).");
 
   const moduleContainer = document.querySelector(".out-container");
   if (!moduleContainer) return;
@@ -951,6 +952,12 @@
 
   // [NEW] Camera Logic
   async function startCameraScanner() {
+    // CHANGED: Re-verify library existence just-in-time to prevent race conditions
+    // If the library loaded AFTER the page init, this check will fix it.
+    if (typeof Html5Qrcode !== "undefined") {
+      hasCameraLib = true;
+    }
+
     if (!hasCameraLib) {
       Swal.fire("Error", "Camera library not available.", "error");
       return;
